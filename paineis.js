@@ -138,6 +138,11 @@ SH.pin = () => `${head('Perfil', 'Trocar meu PIN')}
     <label class="lab"><span>PIN novo (4 a 8 números)</span><input class="in" id="pinNovo" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password"></label>
     <button class="btn block" type="submit">Trocar PIN</button>
   </form>`;
-SH.instalar = () => `${head('Instalar', 'Rotina na tela de início')}
-  ${IOS ? `<ol class="steps"><li>Abra este endereço no <b>Safari</b>.</li><li>Toque em <b>Compartilhar</b> (o quadrado com a seta).</li><li>Toque em <b>Adicionar à Tela de Início</b>.</li><li>Abra o Rotina pelo ícone novo e entre de novo (o app instalado guarda os dados separado do Safari).</li></ol>`
-  : `<ol class="steps"><li>No Chrome, toque no menu <b>⋮</b>.</li><li>Toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</li><li>Abra o Rotina pelo ícone novo.</li></ol>${S.instalarEvt ? `<button class="btn block" data-a="instalarja">Instalar agora</button>` : ''}`}`;
+SH.instalar = () => {
+  const android = /Android/.test(navigator.userAgent), mac = /Macintosh/.test(navigator.userAgent) && !IOS;
+  const passos = IOS ? '<ol class="steps"><li>Abra este endereço no <b>Safari</b>.</li><li>Toque em <b>Compartilhar</b> (o quadrado com a seta).</li><li>Toque em <b>Adicionar à Tela de Início</b>.</li><li>Abra o Rotina pelo ícone novo e entre de novo (o app instalado guarda os dados separado do Safari).</li></ol>'
+    : android ? '<ol class="steps"><li>No Chrome, toque no menu <b>⋮</b>.</li><li>Toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</li><li>Abra o Rotina pelo ícone novo.</li></ol>'
+    : mac ? '<ol class="steps"><li>No <b>Safari</b>: menu <b>Arquivo › Adicionar ao Dock</b>.</li><li>No <b>Chrome</b> ou <b>Edge</b>: ícone de instalar na barra de endereço, à direita.</li><li>O Rotina abre numa janela própria, como um programa.</li></ol>'
+    : '<ol class="steps"><li>Abra o Rotina no <b>Edge</b> ou no <b>Chrome</b>.</li><li>Clique no ícone de instalar na barra de endereço, à direita (um monitor com uma seta, ou ⊕). Se não aparecer: menu <b>⋯</b> › <b>Aplicativos</b> › <b>Instalar este site como um aplicativo</b>.</li><li>O Rotina passa a abrir numa janela própria, aparece no menu Iniciar e pode ser fixado na barra de tarefas.</li><li>Para receber os avisos, ative as notificações aqui no perfil e confira em <b>Configurações do Windows › Sistema › Notificações</b> se o Edge ou o Chrome estão liberados.</li></ol>';
+  return `${head('Instalar', IOS || android ? 'Rotina na tela de início' : 'Rotina no computador')}${passos}${S.instalarEvt ? '<button class="btn block" data-a="instalarja">Instalar agora</button>' : ''}`;
+};

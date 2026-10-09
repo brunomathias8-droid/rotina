@@ -1,12 +1,12 @@
 {
+  "id": "./",
   "name": "Rotina · a casa em dia, a dois",
   "short_name": "Rotina",
-  "description": "Afazeres, pendências, finanças e compras da casa, a dois.",
+  "description": "Afazeres, pendências, finanças e compras da casa, a dois. No celular e no computador.",
   "lang": "pt-BR",
   "scope": "./",
   "start_url": "./",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#F5F1EA",
   "theme_color": "#F5F1EA",
   "icons": [
@@ -14,5 +14,10 @@
     { "src": "icones/icone-512.png", "sizes": "512x512", "type": "image/png" },
     { "src": "icones/icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "icones/icone.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "Novo lançamento", "short_name": "Lançar", "url": "./#novo", "icons": [{ "src": "icones/icone-192.png", "sizes": "192x192" }] },
+    { "name": "Finanças", "url": "./#financas", "icons": [{ "src": "icones/icone-192.png", "sizes": "192x192" }] },
+    { "name": "Lista de compras", "short_name": "Compras", "url": "./#compras", "icons": [{ "src": "icones/icone-192.png", "sizes": "192x192" }] }
   ]
 }

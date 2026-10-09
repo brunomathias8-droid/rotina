@@ -17,6 +17,10 @@ const agoraHM = () => { const d = new Date(); return String(d.getHours()).padSta
 function lsGet(k) { try { return localStorage.getItem('rotina_' + k); } catch (e) { return null; } }
 function lsSet(k, v) { try { if (v === null) localStorage.removeItem('rotina_' + k); else localStorage.setItem('rotina_' + k, v); } catch (e) { /* sem armazenamento */ } }
 
+/* tela larga (computador): menu lateral e duas colunas. No celular as colunas somem e tudo fica em sequência. */
+const LARGO = () => window.matchMedia('(min-width: 900px)').matches;
+const COL_INI = '<div class="cols"><div class="col">', COL_MEIO = '</div><div class="col">', COL_FIM = '</div></div>';
+
 /* datas */
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const DIAS_LONGO = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];

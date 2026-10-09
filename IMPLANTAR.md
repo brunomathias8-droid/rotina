@@ -53,6 +53,12 @@ São 3 partes. As partes 1 e 2 levam uns 15 minutos e já deixam o app funcionan
    4. Orçamento por categoria. Depois de 1 a 3 meses de uso, o botão "Preencher com a média" ajuda.
    5. A primeira meta: comece pela reserva de emergência.
 
+### No computador (Windows)
+
+1. Abra **https://brunomathias8-droid.github.io/rotina/** no **Edge** ou no **Chrome** e entre com o mesmo nome e PIN.
+2. Instale: ícone de instalar na barra de endereço, à direita (ou menu **⋯ › Aplicativos › Instalar este site como um aplicativo**). O Rotina abre numa janela própria e aparece no menu Iniciar; dá para fixar na barra de tarefas.
+3. Notificações no computador: avatar › Notificações › Ativar. Confira em **Configurações do Windows › Sistema › Notificações** se o Edge ou o Chrome estão liberados.
+
 ### Chamar sua esposa
 
 No app: toque no seu avatar (canto de cima) › **Convidar**. O link já leva o código. Ela cria o próprio nome e PIN e entra no rodízio dos afazeres na hora.

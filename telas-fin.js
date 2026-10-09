@@ -37,7 +37,7 @@ function finResumo() {
   const top = Object.entries(r.porCat).sort((a, b) => b[1] - a[1]).slice(0, 5), maxCat = top.length ? top[0][1] : 1;
   const ms = metas().slice(0, 3), pl = patrimonioEm(hoje()), plAnt = patrimonioEm(N_diaDoMes(N_somaMes(atual, -1), 31));
   const temPat = lista('patrimonio').length > 0, temAnt = inicioPatrimonio() && inicioPatrimonio() < atual + '-01';
-  return `<div class="panel hero"><p class="eb" style="color:inherit;opacity:.8">Saldo do mês</p><p class="saldo">${reais(r.saldo)}</p>
+  return `${COL_INI}<div class="panel hero"><p class="eb" style="color:inherit;opacity:.8">Saldo do mês</p><p class="saldo">${reais(r.saldo)}</p>
       <div class="grid3"><div class="stat"><span class="tiny muted">Receitas</span><b>${compacto(r.rec)}</b></div><div class="stat"><span class="tiny muted">Despesas</span><b>${compacto(r.desp)}</b></div><div class="stat"><span class="tiny muted">Investido</span><b>${compacto(r.inv)}</b></div></div>
       ${r.poupanca != null ? `<p class="small muted">${r.poupanca >= 0 ? `Sobrou ${pctTxt(r.poupanca)} da renda` : `Gastaram ${pctTxt(-r.poupanca)} a mais do que ganharam`}${r.inv > 0 ? ` · ${pctTxt(r.inv / r.rec)} foi investido` : ''}.</p>` : ''}
       ${prev && (prev.aPagar || prev.aReceber) ? `<p class="small muted">Até o fim do mês: faltam pagar <b>${reais(prev.aPagar)}</b>${prev.aReceber ? ` e receber <b>${reais(prev.aReceber)}</b>` : ''}. Saldo previsto: <b>${reais(prev.saldo)}</b>.</p>` : ''}</div>
@@ -46,12 +46,12 @@ function finResumo() {
       <div class="stack" style="gap:2px">${passos.map(([t, ok, k, cl]) => `<button class="passo ${ok ? 'ok' : ''}" ${ok ? 'disabled' : `data-a="sheet" data-k="${k}"${cl ? ` data-v="${cl}"` : ''}`}><span class="ck sm ${ok ? 'on' : ''}">${ic('check', 14, 2.6)}</span><span>${t}</span>${ok ? '' : ic('chev', 16)}</button>`).join('')}</div></div>` : ''}
     ${alertas.length ? `<div class="stack">${alertas.slice(0, 6).map(a => `<div class="note ${a.nivel === 'bad' ? 'bad' : a.nivel === 'warn' ? 'warn' : ''}"><span>${ic(a.nivel === 'info' ? 'flag' : 'alert', 16)}</span><span style="flex:1">${esc(a.txt)}</span>${a.acao ? `<button class="link" data-a="pagar" data-k="${a.acao.k}" data-id="${a.acao.id}" data-ref="${a.acao.ref || ''}">Pagar</button>` : a.meta ? `<button class="link" data-a="sheet" data-k="meta" data-id="${a.meta}">Ver</button>` : ''}</div>`).join('')}</div>` : ''}
     ${secao('Últimos 6 meses')}<div class="panel">${grafColunas(meses, [{ nome: 'Receitas', cor: VIZ.rec, vals: rs.map(x => x.rec) }, { nome: 'Despesas', cor: VIZ.desp, vals: rs.map(x => x.desp) }, { nome: 'Investido', cor: VIZ.inv, vals: rs.map(x => x.inv) }], 'Receitas, despesas e investimentos dos últimos 6 meses')}</div>
-    ${secao('Para onde foi a renda', `<button class="link" data-a="fv" data-v="orcamento">Orçamento</button>`)}
+    ${COL_MEIO}${secao('Para onde foi a renda', `<button class="link" data-a="fv" data-v="orcamento">Orçamento</button>`)}
     <div class="panel">${div.base ? grafPilha([{ nome: 'Essenciais', cor: VIZ.rec, v: div.essencial, pct: div.pct.essencial, meta: met.essencial }, { nome: 'Estilo de vida', cor: VIZ.desp, v: div.livre, pct: div.pct.livre, meta: met.livre }, { nome: 'Futuro (investimentos)', cor: VIZ.inv, v: div.futuro, pct: div.pct.futuro, meta: met.futuro }], div.base)
       + `<p class="tiny muted">Método ${met.essencial}/${met.livre}/${met.futuro}: até ${met.essencial}% da renda no essencial, ${met.livre}% no estilo de vida e pelo menos ${met.futuro}% para o futuro.</p>` : '<p class="small muted">Lance as receitas do mês para ver como a renda foi dividida.</p>'}</div>
     ${top.length ? secao('Maiores gastos', `<button class="link" data-a="fv" data-v="extrato">Extrato</button>`) + `<div class="panel">${top.map(([id, g]) => { const c = categoria(id); return `<button class="orc" data-a="fcat" data-v="${esc(id)}"><div class="between"><span><b>${esc(c.ic)} ${esc(c.nome)}</b></span><span class="num">${reais(g)}${r.desp ? ` <span class="tiny muted">${Math.round(g / r.desp * 100)}%</span>` : ''}</span></div>${bar(g, maxCat, 'var(--viz-2)')}</button>`; }).join('')}</div>` : ''}
     ${ms.length ? secao('Metas', `<button class="link" data-a="fv" data-v="metas">Ver todas</button>`) + `<div class="lst">${ms.map(linhaMeta).join('')}</div>` : ''}
-    ${temPat ? secao('Patrimônio líquido', `<button class="link" data-a="fv" data-v="patrimonio">Detalhes</button>`) + `<button class="panel" data-a="fv" data-v="patrimonio" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit"><p class="saldo" style="font-size:28px">${reais(pl.liquido)}</p>${temAnt ? `<p class="small muted">${pl.liquido - plAnt.liquido >= 0 ? '▲' : '▼'} ${reais(Math.abs(pl.liquido - plAnt.liquido))} desde o fim do mês passado</p>` : '<p class="small muted">Tudo o que vocês têm menos o que devem.</p>'}</button>` : ''}`;
+    ${temPat ? secao('Patrimônio líquido', `<button class="link" data-a="fv" data-v="patrimonio">Detalhes</button>`) + `<button class="panel" data-a="fv" data-v="patrimonio" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit"><p class="saldo" style="font-size:28px">${reais(pl.liquido)}</p>${temAnt ? `<p class="small muted">${pl.liquido - plAnt.liquido >= 0 ? '▲' : '▼'} ${reais(Math.abs(pl.liquido - plAnt.liquido))} desde o fim do mês passado</p>` : '<p class="small muted">Tudo o que vocês têm menos o que devem.</p>'}</button>` : ''}${COL_FIM}`;
 }
 
 /* ---------- Extrato ---------- */
@@ -111,14 +111,14 @@ function finContas() {
   const ag = agendaMes(S.mes), pagar = ag.filter(x => !x.entrada && x.status !== 'pago'), receber = ag.filter(x => x.entrada && x.status !== 'pago'), ok = ag.filter(x => x.status === 'pago');
   const soma = l => l.reduce((a, x) => a + (x.resta != null ? x.resta : x.v), 0), venc = pagar.filter(x => x.status === 'vencido');
   const recs = recorrentes();
-  return `<div class="grid3"><div class="stat"><span class="tiny muted">A pagar</span><b>${compacto(soma(pagar))}</b></div><div class="stat"><span class="tiny muted">A receber</span><b>${compacto(soma(receber))}</b></div><div class="stat"><span class="tiny muted">Pago</span><b>${compacto(ok.filter(x => !x.entrada).reduce((a, x) => a + x.v, 0))}</b></div></div>
+  return `${COL_INI}<div class="grid3"><div class="stat"><span class="tiny muted">A pagar</span><b>${compacto(soma(pagar))}</b></div><div class="stat"><span class="tiny muted">A receber</span><b>${compacto(soma(receber))}</b></div><div class="stat"><span class="tiny muted">Pago</span><b>${compacto(ok.filter(x => !x.entrada).reduce((a, x) => a + x.v, 0))}</b></div></div>
     ${venc.length ? secao('Vencidas', `<span class="tag bad">${venc.length}</span>`) + listaOu(venc, linhaAgenda) : ''}
     ${secao('A pagar', `<span class="tiny muted">${pagar.length - venc.length}</span>`)}${listaOu(pagar.filter(x => x.status !== 'vencido'), linhaAgenda, `<div class="panel">${vazio('🎉', ag.length ? 'Nada mais a pagar neste mês.' : 'Cadastre as contas fixas para elas aparecerem aqui todo mês.')}</div>`)}
     ${receber.length ? secao('A receber') + listaOu(receber, linhaAgenda) : ''}
     ${ok.length ? `<details><summary>${secao('Pagas e recebidas', `<span class="tiny muted">${ok.length}</span>`)}</summary>${listaOu(ok, linhaAgenda)}</details>` : ''}
-    ${secao('Contas fixas e receitas', `<button class="link" data-a="sheet" data-k="conta">+ Nova</button>`)}
+    ${COL_MEIO}${secao('Contas fixas e receitas', `<button class="link" data-a="sheet" data-k="conta">+ Nova</button>`)}
     ${listaOu(recs, c => `<button class="it${c.ativa === false ? ' feito' : ''}" data-a="sheet" data-k="conta" data-id="${c.id}"><span class="em-tile">${esc(c.tipo === 'aporte' ? '📈' : categoria(c.cat).ic)}</span><span class="main"><span class="t">${esc(c.nome)}</span><span class="s">${c.tipo === 'entrada' ? 'recebe' : c.tipo === 'aporte' ? 'investe' : 'vence'} todo dia ${c.vence || 1}${c.forma ? ' · ' + esc(c.forma === 'cartao' && S.d.cartoes.get(c.cartao) ? S.d.cartoes.get(c.cartao).nome : formaNome(c.forma)) : ''}${c.fim ? ' · até ' + fmtMesCurto(c.fim + '-01') : ''}${c.ativa === false ? ' · pausada' : ''}</span></span><span class="v ${c.tipo === 'entrada' ? 'c-good' : ''}">${reais(c.v)}</span></button>`,
-      `<div class="panel">${vazio('🧾', 'Salário, aluguel, luz, internet, escola, assinaturas… Cadastre uma vez e o app lembra todo mês.')}<button class="btn block" data-a="sheet" data-k="conta">Cadastrar conta fixa</button></div>`)}`;
+      `<div class="panel">${vazio('🧾', 'Salário, aluguel, luz, internet, escola, assinaturas… Cadastre uma vez e o app lembra todo mês.')}<button class="btn block" data-a="sheet" data-k="conta">Cadastrar conta fixa</button></div>`)}${COL_FIM}`;
 }
 
 /* ---------- Cartões ---------- */
@@ -128,7 +128,7 @@ function finCartoes() {
   if (!ks.length) return `<div class="panel">${vazio('💳', 'Cadastre os cartões de crédito com o dia de fechamento e de vencimento. O app monta as faturas sozinho, inclusive das compras parceladas.')}<button class="btn block" data-a="sheet" data-k="cartao">Cadastrar cartão</button></div>`;
   const doMes = faturasDoMes(atual);
   return `<p class="small muted">Faturas que vencem em ${MESES[+atual.slice(5) - 1]}: <b>${reais(doMes)}</b></p>
-    ${ks.map(k => {
+    <div class="grade-cards">${ks.map(k => {
       const f = faturaDaVez(k), usado = limiteUsado(k), st = STATUS_FATURA[f.status] || STATUS_FATURA.aberta, fut = parcelasFuturas(k, 3);
       return `<div class="panel cartao" style="--cc:${esc(k.cor || CORES_CARTAO[0])}">
         <button class="between" data-a="sheet" data-k="cartao" data-id="${k.id}" style="border:0;background:none;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left"><span class="hrow"><span class="cc-chip"></span><b>${esc(k.nome)}</b></span><span class="muted">${ic('edit', 16)}</span></button>
@@ -139,7 +139,7 @@ function finCartoes() {
         ${fut.some(x => x.total) ? `<p class="tiny muted">Já comprometido: ${fut.filter(x => x.total).map(x => `${mesCurto(x.ref)} ${reais(x.total)}`).join(' · ')}</p>` : ''}
         <div class="grid2"><button class="btn ghost sm" data-a="sheet" data-k="fatura" data-id="${k.id}" data-v="${f.ref}">Ver compras</button>${f.resta ? `<button class="btn sm warm" data-a="pagar" data-k="fatura" data-id="${k.id}" data-ref="${f.ref}">Pagar ${reais(f.resta)}</button>` : `<button class="btn ghost sm" data-a="novoLanc" data-tipo="saida" data-cartao="${k.id}">+ Compra</button>`}</div>
         <p class="tiny muted">Melhor dia de compra: dia ${k.fecha}. Compras a partir dele só entram na fatura seguinte.</p></div>`;
-    }).join('')}
+    }).join('')}</div>
     <button class="btn ghost block" data-a="sheet" data-k="cartao">${ic('plus', 16, 2.4)} Novo cartão</button>`;
 }
 
@@ -154,12 +154,12 @@ function finOrcamento() {
     return `<button class="orc" data-a="fcat" data-v="${esc(c.id)}"><div class="between"><span><b>${esc(c.ic)} ${esc(c.nome)}</b></span><span class="num">${reais(g)}${c.orc ? ` <span class="tiny muted">de ${reais(c.orc)}</span>` : ''}</span></div>
       ${c.orc ? bar(g, c.orc, cor) : ''}<span class="between tiny muted"><span>${c.orc ? (p > 1 ? `${ic('alert', 12, 2.4)} passou ${reais(g - c.orc)}` : `restam ${reais(c.orc - g)}`) : 'sem orçamento'}</span><span>média 3 meses ${reais(med)}</span></span></button>`;
   };
-  return `<div class="panel">${div.base ? grafPilha([{ nome: 'Essenciais', cor: VIZ.rec, v: div.essencial, pct: div.pct.essencial, meta: met.essencial }, { nome: 'Estilo de vida', cor: VIZ.desp, v: div.livre, pct: div.pct.livre, meta: met.livre }, { nome: 'Futuro (investimentos)', cor: VIZ.inv, v: div.futuro, pct: div.pct.futuro, meta: met.futuro }], div.base) : '<p class="small muted">Sem receitas lançadas neste mês.</p>'}
+  return `${COL_INI}<div class="panel">${div.base ? grafPilha([{ nome: 'Essenciais', cor: VIZ.rec, v: div.essencial, pct: div.pct.essencial, meta: met.essencial }, { nome: 'Estilo de vida', cor: VIZ.desp, v: div.livre, pct: div.pct.livre, meta: met.livre }, { nome: 'Futuro (investimentos)', cor: VIZ.inv, v: div.futuro, pct: div.pct.futuro, meta: met.futuro }], div.base) : '<p class="small muted">Sem receitas lançadas neste mês.</p>'}
       <p class="tiny muted">Renda do mês: ${reais(r.rec)}. Método ${met.essencial}/${met.livre}/${met.futuro} (essenciais / estilo de vida / futuro).</p></div>
     ${com.length ? `<div class="panel soft" style="padding:12px 14px"><div class="between"><span class="small">Gasto nas categorias com orçamento</span><b class="num">${reais(totG)} <span class="tiny muted">de ${reais(totOrc)}</span></b></div>${bar(totG, totOrc, totG > totOrc ? 'var(--bad)' : 'var(--accent)')}</div>` : ''}
-    ${secao('Por categoria', `<button class="link" data-a="sheet" data-k="orcamento">Editar</button>`)}
+    ${COL_MEIO}${secao('Por categoria', `<button class="link" data-a="sheet" data-k="orcamento">Editar</button>`)}
     <div class="panel">${com.length ? com.map(linha).join('') : `<div class="note"><span>Definam quanto querem gastar por mês em cada categoria. Dica: comecem pela média dos últimos 3 meses e cortem um pouco onde dá.</span></div><button class="btn block" data-a="sheet" data-k="orcamento">Definir orçamento</button>`}</div>
-    ${sem.length ? secao('Gastos sem orçamento') + `<div class="panel">${sem.map(linha).join('')}</div>` : ''}`;
+    ${sem.length ? secao('Gastos sem orçamento') + `<div class="panel">${sem.map(linha).join('')}</div>` : ''}${COL_FIM}`;
 }
 
 /* ---------- Metas ---------- */
@@ -174,10 +174,10 @@ function linhaMeta(m) {
 }
 function finMetas() {
   const ms = metas(), arq = lista('metas').filter(m => m.ativa === false);
-  return `${ms.length ? listaOu(ms, linhaMeta) : `<div class="panel soft"><p class="h3">Objetivos da família</p><p class="small muted">Metas claras e com prazo funcionam melhor. Escolha um modelo para começar:</p></div>`}
-    ${secao(ms.length ? 'Nova meta' : 'Modelos')}
+  return `${COL_INI}${ms.length ? listaOu(ms, linhaMeta) : `<div class="panel soft"><p class="h3">Objetivos da família</p><p class="small muted">Metas claras e com prazo funcionam melhor. Escolha um modelo para começar:</p></div>`}
+    ${COL_MEIO}${secao(ms.length ? 'Nova meta' : 'Modelos')}
     <div class="presets">${PRESETS_META.map(p => `<button class="preset" data-a="presetMeta" data-v="${p.k}"><span class="em">${p.ic}</span><b>${esc(p.t)}</b><span class="tiny muted">${esc(p.d)}</span></button>`).join('')}</div>
-    ${arq.length ? `<details><summary>${secao('Arquivadas', `<span class="tiny muted">${arq.length}</span>`)}</summary>${listaOu(arq, linhaMeta)}</details>` : ''}`;
+    ${arq.length ? `<details><summary>${secao('Arquivadas', `<span class="tiny muted">${arq.length}</span>`)}</summary>${listaOu(arq, linhaMeta)}</details>` : ''}${COL_FIM}`;
 }
 
 /* ---------- Patrimônio ---------- */
@@ -194,14 +194,14 @@ function finPatrimonio() {
   inv.forEach(p => { porClasse[p.classe] = (porClasse[p.classe] || 0) + valorAtual(p); });
   const totInv = Object.values(porClasse).reduce((a, v) => a + v, 0), aloc = Object.entries(porClasse).sort((a, b) => b[1] - a[1]);
   const delta = pl.liquido - ant.liquido, serie = seriePatrimonio(12), temAnt = serie.length > 1;
-  return `<div class="panel hero"><p class="eb" style="color:inherit;opacity:.8">Patrimônio líquido</p><p class="saldo">${reais(pl.liquido)}</p>
+  return `${COL_INI}<div class="panel hero"><p class="eb" style="color:inherit;opacity:.8">Patrimônio líquido</p><p class="saldo">${reais(pl.liquido)}</p>
       ${temAnt ? `<p class="small muted">${delta >= 0 ? '▲' : '▼'} ${reais(Math.abs(delta))} desde o fim do mês passado</p>` : '<p class="small muted">Tudo o que vocês têm menos o que devem.</p>'}
       <div class="grid2"><div class="stat"><span class="tiny muted">Tem</span><b>${compacto(pl.ativos)}</b></div><div class="stat"><span class="tiny muted">Deve</span><b>${compacto(pl.passivos)}</b></div></div></div>
     ${secao('Evolução')}<div class="panel">${temAnt ? grafLinha(serie, 'Patrimônio líquido mês a mês') : '<p class="small muted">O gráfico mês a mês aparece a partir do segundo mês de uso.</p>'}<p class="tiny muted">Calculado com os saldos informados e os lançamentos. Atualize os saldos uma vez por mês para a linha ficar fiel.</p></div>
     ${aloc.length ? secao('Onde está investido') + `<div class="panel">${aloc.map(([cl, v]) => `<div class="stack" style="gap:6px"><div class="between small"><span><b>${classe(cl).ic} ${classe(cl).n}</b></span><span class="num">${reais(v)} <span class="tiny muted">${Math.round(v / totInv * 100)}%</span></span></div>${bar(v, totInv, 'var(--viz-1)')}</div>`).join('')}</div>` : ''}
-    ${GRUPOS_PAT.map(([g, nome]) => { const l = itens.filter(p => classe(p.classe).g === g); return l.length ? secao(nome, `<span class="num small">${g === 'dividas' ? '− ' : ''}${reais(pl[g])}</span>`) + listaOu(l, linhaPat) : ''; }).join('')}
+    ${COL_MEIO}${GRUPOS_PAT.map(([g, nome]) => { const l = itens.filter(p => classe(p.classe).g === g); return l.length ? secao(nome, `<span class="num small">${g === 'dividas' ? '− ' : ''}${reais(pl[g])}</span>`) + listaOu(l, linhaPat) : ''; }).join('')}
     ${pl.cartoes ? secao('Cartões a pagar', `<span class="num small">− ${reais(pl.cartoes)}</span>`) + `<div class="lst">${cartoes().map(k => { const d = dividaCartaoEm(k, h); return d ? `<button class="it" data-a="fv" data-v="cartoes"><span class="em-tile">💳</span><span class="main"><span class="t">${esc(k.nome)}</span><span class="s">faturas em aberto</span></span><span class="v c-bad">− ${reais(d)}</span></button>` : ''; }).join('')}</div>` : ''}
-    ${botoesPat()}`;
+    ${botoesPat()}${COL_FIM}`;
 }
 const botoesPat = () => `<div class="grid2"><button class="btn ghost sm" data-a="sheet" data-k="pat" data-v="conta">+ Conta</button><button class="btn ghost sm" data-a="sheet" data-k="pat" data-v="rendafixa">+ Investimento</button><button class="btn ghost sm" data-a="sheet" data-k="pat" data-v="imovel">+ Bem</button><button class="btn ghost sm" data-a="sheet" data-k="pat" data-v="financiamento">+ Dívida</button></div>`;
 

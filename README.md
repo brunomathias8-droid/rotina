@@ -1,6 +1,6 @@
 # Rotina
 
-Afazeres da casa, pendências, finanças e lista de compras, a dois. App instalável no celular (iPhone e Android), sem loja.
+Afazeres da casa, pendências, finanças e lista de compras, a dois. Funciona no iPhone, no Android e no computador (Windows ou Mac), instalável sem loja.
 
 ## Como funciona
 
@@ -17,6 +17,17 @@ Afazeres da casa, pendências, finanças e lista de compras, a dois. App instal�
 - O app busca o que a outra pessoa mudou a cada 30 segundos enquanto está aberto.
 
 Passo a passo para colocar no ar: [IMPLANTAR.md](IMPLANTAR.md).
+
+## Celular e computador
+
+| Onde | Como fica |
+|---|---|
+| iPhone e Android | Menu embaixo, uma coluna, painéis que sobem de baixo. Instala pela tela de início |
+| Computador (Windows, Mac) e tablet deitado | A partir de 900 px de largura: menu lateral, telas em duas colunas, janelas centralizadas, valores dos gráficos ao passar o mouse. Instala pelo Edge ou Chrome e abre numa janela própria, com atalho no menu Iniciar |
+
+Atalhos de teclado no computador: `1` a `5` trocam de tela, `N` abre um lançamento, `/` vai para a busca ou o campo de adicionar, `Esc` fecha. O ícone instalado no Windows tem atalhos (botão direito): Novo lançamento, Finanças e Lista de compras.
+
+Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome e PIN.
 
 ## Telas
 

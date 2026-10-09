@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Rotina</title>
-<meta name="description" content="Afazeres, pendências, finanças e compras da casa, a dois.">
+<meta name="description" content="Afazeres, pendências, finanças e compras da casa, a dois. No celular e no computador.">
 <meta name="theme-color" content="#F5F1EA">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -60,7 +60,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ib{width:42px;height:42px;display:grid;place-items:center;border:0;background:var(--s1);color:var(--fg);cursor:pointer;border-radius:50%;position:relative;flex:none;box-shadow:var(--sh)}
 .ib .dot{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--bad)}
 #main{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 16px 28px;display:flex;flex-direction:column;gap:14px;scrollbar-width:thin}
-#main > *{flex-shrink:0}
+#main > *,#main .col > *{flex-shrink:0}
 nav{display:grid;grid-template-columns:repeat(5,1fr);flex:none;background:var(--nav);box-shadow:0 -1px 0 var(--line);padding:4px 6px calc(4px + env(safe-area-inset-bottom))}
 nav button{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:54px;font-size:11px;font-weight:700;color:var(--mut);cursor:pointer;position:relative}
 nav button.on{color:var(--accent)}
@@ -247,6 +247,45 @@ ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;f
 .emojis{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px}
 .emojis button{height:44px;border:0;border-radius:12px;background:var(--s1);font-size:22px;cursor:pointer;box-shadow:inset 0 0 0 1.5px var(--line)}
 .emojis button.on{box-shadow:inset 0 0 0 2.5px var(--accent);background:var(--accent-soft)}
+
+
+/* ---------- computador e tablet deitado (900 px ou mais) ---------- */
+.cols,.col{display:contents}
+.grade-cards{display:flex;flex-direction:column;gap:14px}
+.nav-brand,.nav-dica{display:none}
+kbd{font:600 11px var(--fb);background:var(--s2);border-radius:5px;padding:1px 5px;box-shadow:inset 0 -1px 0 var(--s3)}
+@media (min-width:900px){
+  .app{max-width:none}
+  .app.logado{display:grid;grid-template-columns:236px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .app.logado #top{grid-column:2;grid-row:1;padding:18px 36px 4px}
+  .app.logado #top .brand{display:none}
+  .app.logado nav{grid-column:1;grid-row:1/3;display:flex;flex-direction:column;gap:4px;padding:22px 14px 18px;box-shadow:1px 0 0 var(--line);overflow-y:auto}
+  .nav-brand{display:block;padding:4px 12px 20px;font-size:26px}
+  nav button{flex-direction:row;justify-content:flex-start;gap:12px;height:46px;padding:0 14px;border-radius:12px;font-size:15px;flex:none}
+  nav button:hover{background:var(--s2);color:var(--fg)}
+  nav button.on{background:var(--accent-soft);color:var(--accent)}
+  nav button.on::before{display:none}
+  nav .badge{position:static;margin-left:auto}
+  .nav-dica{display:block;margin-top:auto;padding:12px;font-size:12px;color:var(--mut);line-height:1.9}
+  .app.logado #main{grid-column:2;grid-row:2;padding:10px 36px 56px}
+  #main > *{width:100%;max-width:1120px;margin-inline:auto;box-sizing:border-box}
+  #main.estreito > *{max-width:760px}
+  .cols{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px;align-items:start}
+  .col{display:flex;flex-direction:column;gap:14px;min-width:0}
+  .grade-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));align-items:start}
+  .display{font-size:36px}
+  .chips.scroll{flex-wrap:wrap;margin:0;padding:0;overflow:visible}
+  .presets{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .graf{max-height:300px}
+  .graf.mini{max-height:60px}
+  .sheet{left:50%;top:50%;right:auto;bottom:auto;width:min(620px,92vw);max-height:88vh;transform:translate(-50%,-50%);border-radius:22px;animation:fade .18s;padding:18px 24px 28px}
+  .sheet .grab{display:none}
+  .toast{bottom:28px}
+  .login{max-width:420px;margin:24px auto 0;width:100%}
+  .it:hover,.row:hover{background:var(--s2)}
+  button.it{cursor:pointer}
+}
+@media (min-width:1300px){ .app.logado{grid-template-columns:260px minmax(0,1fr)} }
 
 @keyframes fade{from{opacity:0}}
 @keyframes up{from{transform:translateY(40px);opacity:.4}}

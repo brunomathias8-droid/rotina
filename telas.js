@@ -63,7 +63,7 @@ function scrHoje() {
 
   return `<div class="stack" style="gap:4px"><p class="eb">${fmtData(h)}</p><h1 class="display">${saudacao()}, ${esc(primeiroNome(S.eu))}.</h1><p class="muted">${resumo}</p></div>
     ${!o ? `<div class="note warn"><span>Falta chamar a outra pessoa da casa. <button class="link" data-a="convidar">Mandar o convite</button></span></div>` : ''}
-    ${pedidas.map(a => `<div class="troca"><div class="between"><div class="stack" style="gap:2px"><p class="h3">${esc(primeiroNome(a.troca.de))} pediu para você fazer ${esc(a.ic || '')} ${esc(a.nome)}</p>
+    ${COL_INI}${pedidas.map(a => `<div class="troca"><div class="between"><div class="stack" style="gap:2px"><p class="h3">${esc(primeiroNome(a.troca.de))} pediu para você fazer ${esc(a.ic || '')} ${esc(a.nome)}</p>
       <p class="small muted">${a.troca.motivo ? '“' + esc(a.troca.motivo) + '” · ' : ''}${rotuloDia(a.prox)}. No rodízio, a próxima vez fica com ${esc(primeiroNome(a.troca.de))}.</p></div>${av(a.troca.de, 32)}</div>
       <div class="hrow"><button class="btn sm" data-a="troca" data-op="aceitar" data-id="${a.id}">Aceitar</button><button class="btn ghost sm" data-a="troca" data-op="recusar" data-id="${a.id}">Recusar</button></div></div>`).join('')}
     ${recusadas.map(a => `<div class="note"><span>${esc(primeiroNome(a.troca.para))} recusou a troca de <b>${esc(a.nome)}</b>. Continua com você.</span><button class="link" data-a="troca" data-op="cancelar" data-id="${a.id}">Ok</button></div>`).join('')}
@@ -73,7 +73,7 @@ function scrHoje() {
     ${o && doOutro.length ? `<p class="small muted">Com ${esc(primeiroNome(o.id))} hoje: ${doOutro.map(a => esc(a.nome)).join(', ')}.</p>` : ''}
 
     ${pend.length ? secao('Pendências urgentes', `<button class="link" data-a="tab" data-v="pendencias">Ver todas</button>`) + listaOu(pend, linhaPend) : ''}
-    ${contas.length ? secao('Contas a pagar', `<button class="link" data-a="irFin" data-v="contas">Ver todas</button>`) + listaOu(contas, linhaAgenda) : ''}
+    ${COL_MEIO}${contas.length ? secao('Contas a pagar', `<button class="link" data-a="irFin" data-v="contas">Ver todas</button>`) + listaOu(contas, linhaAgenda) : ''}
 
     <button class="panel" data-a="irFin" data-v="resumo" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit">
       <div class="between"><p class="eb">${fmtMes(ref)} até agora</p><span class="muted">${ic('chev', 18)}</span></div>
@@ -81,7 +81,7 @@ function scrHoje() {
       ${orc ? `<div class="stack" style="gap:6px">${bar(gastoOrc, orc, gastoOrc > orc ? 'var(--bad)' : gastoOrc > orc * .85 ? 'var(--warn)' : 'var(--accent)')}<span class="tiny muted">${reais(gastoOrc)} de ${reais(orc)} nas categorias com orçamento</span></div>` : ''}
     </button>
     ${ms.length ? `<div class="lst">${ms.map(([m]) => linhaMeta(m)).join('')}</div>` : ''}
-    ${nCompras ? `<button class="panel soft" data-a="tab" data-v="compras" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit;flex-direction:row;align-items:center"><span class="em-tile" style="background:var(--s1)">🛒</span><span style="flex:1"><b>${nCompras} ${plu(nCompras, 'item', 'itens')}</b> na lista de compras</span>${ic('chev', 18)}</button>` : ''}`;
+    ${nCompras ? `<button class="panel soft" data-a="tab" data-v="compras" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit;flex-direction:row;align-items:center"><span class="em-tile" style="background:var(--s1)">🛒</span><span style="flex:1"><b>${nCompras} ${plu(nCompras, 'item', 'itens')}</b> na lista de compras</span>${ic('chev', 18)}</button>` : ''}${COL_FIM}`;
 }
 
 /* ============================== Casa (afazeres) ============================== */
@@ -115,17 +115,19 @@ function scrCasa() {
   const usadas = new Set(todos.map(a => a.nome.toLowerCase()));
   const sug = SUGESTOES.map((s, i) => ({ ...s, i })).filter(s => !usadas.has(s.nome.toLowerCase()));
 
-  return `<div class="between"><h1 class="display">Afazeres</h1><button class="btn sm" data-a="sheet" data-k="afazer">${ic('plus', 16, 2.4)} Novo</button></div>
-    ${S.pessoas.length > 1 ? `<div class="panel"><div class="between"><div class="seg" style="flex:1;max-width:220px">${[['semana', 'Esta semana'], ['mes', 'Este mês']].map(([k, l]) => `<button class="${S.placar === k ? 'on' : ''}" data-a="filtro" data-k="placar" data-v="${k}">${l}</button>`).join('')}</div><span class="tiny muted">${total} ${plu(total, 'ponto')}</span></div>
+  const placar = S.pessoas.length > 1 ? `<div class="panel"><div class="between"><div class="seg" style="flex:1;max-width:220px">${[['semana', 'Esta semana'], ['mes', 'Este mês']].map(([k, l]) => `<button class="${S.placar === k ? 'on' : ''}" data-a="filtro" data-k="placar" data-v="${k}">${l}</button>`).join('')}</div><span class="tiny muted">${total} ${plu(total, 'ponto')}</span></div>
       <div class="grid2">${S.pessoas.slice(0, 4).map(p => `<div class="hrow" style="gap:10px">${av(p.id, 34)}<div><b class="num" style="font-size:20px;font-family:var(--fd)">${pts(p.id)}</b><p class="tiny muted">${esc(p.id === S.eu ? 'Você' : primeiroNome(p.id))} · ${semana.filter(x => x.quem === p.id).length} ${plu(semana.filter(x => x.quem === p.id).length, 'feito')}</p></div></div>`).join('')}</div>
       ${total ? `<div class="split">${S.pessoas.map(p => pts(p.id) ? `<i class="cor-${esc(p.cor)}" style="flex:${pts(p.id)}"></i>` : '').join('')}</div>` : ''}
-      <p class="tiny muted">Pontos pelo esforço: leve 1, médio 2, pesado 3. O objetivo é equilíbrio, não competição.</p></div>` : ''}
-    ${todos.length ? `<div class="chips scroll">${[['todos', 'Todos'], ['eu', 'Comigo'], ...outros().map(p => [p.id, 'Com ' + primeiroNome(p.id)])].map(([k, l]) => `<button class="chip ${f === k ? 'on' : ''}" data-a="filtro" data-k="fCasa" data-v="${k}">${esc(l)}</button>`).join('')}</div>` : ''}
+      <p class="tiny muted">Pontos pelo esforço: leve 1, médio 2, pesado 3. O objetivo é equilíbrio, não competição.</p></div>` : '';
+  return `<div class="between"><h1 class="display">Afazeres</h1><button class="btn sm" data-a="sheet" data-k="afazer">${ic('plus', 16, 2.4)} Novo</button></div>
+    ${LARGO() ? '' : placar}
+    ${COL_INI}    ${todos.length ? `<div class="chips scroll">${[['todos', 'Todos'], ['eu', 'Comigo'], ...outros().map(p => [p.id, 'Com ' + primeiroNome(p.id)])].map(([k, l]) => `<button class="chip ${f === k ? 'on' : ''}" data-a="filtro" data-k="fCasa" data-v="${k}">${esc(l)}</button>`).join('')}</div>` : ''}
     ${grupos.map(([t, l]) => secao(t, `<span class="tiny muted">${l.length}</span>`) + listaOu(l, linhaAfazer)).join('')}
     ${todos.length && !afz.length ? `<div class="panel">${vazio('🌿', 'Nada neste filtro.')}</div>` : ''}
+    ${COL_MEIO}${LARGO() ? placar : ''}
     ${sug.length ? `<div class="panel soft"><p class="h3">${todos.length ? 'Mais ideias' : 'Comece com o básico'}</p><p class="small muted">Toque para adicionar. Depois dá para mudar dia, frequência e quem faz.</p>
       <div class="chips">${sug.map(s => `<button class="chip" data-a="sugestao" data-i="${s.i}">${s.ic} ${esc(s.nome)}</button>`).join('')}</div></div>` : ''}
-    ${recentes.length ? secao('Feitos nos últimos dias') + listaOu(recentes, linhaFeito) : ''}`;
+    ${recentes.length ? secao('Feitos nos últimos dias') + listaOu(recentes, linhaFeito) : ''}${COL_FIM}`;
 }
 
 /* ============================== Pendências ============================== */

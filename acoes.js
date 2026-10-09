@@ -23,10 +23,14 @@ function renderNav() {
     casa: afazeres().filter(a => a.prox <= h && quemFaz(a) === S.eu).length,
     pendencias: pendAbertas().filter(p => p.prazo && p.prazo < h && (p.resp === S.eu || p.resp === 'ambos')).length
   };
-  n.innerHTML = ABAS_APP.map(([k, l, i]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}" aria-current="${S.tab === k ? 'page' : 'false'}">${ic(i, 22)}${l}${badge[k] ? `<span class="badge">${badge[k]}</span>` : ''}</button>`).join('');
+  n.innerHTML = `<p class="brand nav-brand">Rotina<b>.</b></p>`
+    + ABAS_APP.map(([k, l, i], j) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}" aria-current="${S.tab === k ? 'page' : 'false'}" title="${l} (${j + 1})">${ic(i, 22)}${l}${badge[k] ? `<span class="badge">${badge[k]}</span>` : ''}</button>`).join('')
+    + `<p class="nav-dica">Atalhos: <kbd>1</kbd>–<kbd>5</kbd> trocam de tela · <kbd>N</kbd> novo lançamento · <kbd>/</kbd> buscar ou adicionar · <kbd>Esc</kbd> fecha</p>`;
 }
 function render(keep = true) {
   const m = $('#main'); if (!m) return; const y = m.scrollTop;
+  $('#app').classList.toggle('logado', !!S.sessao);
+  m.classList.toggle('estreito', !S.sessao || S.tab === 'pendencias' || S.tab === 'compras' || (S.tab === 'financas' && S.fv === 'extrato'));
   try { m.innerHTML = S.sessao ? SCR[S.tab]() : telaLogin(); }
   catch (e) { console.error(e); m.innerHTML = `<div class="note warn"><span>Algo deu errado nesta tela: ${esc(e.message)}. Toque em outra aba ou feche e abra o app.</span></div>`; }
   m.scrollTop = keep ? y : 0; renderNav(); renderTop();
@@ -302,7 +306,17 @@ function aoDigitar(e) {
 }
 document.addEventListener('input', aoDigitar);
 document.addEventListener('change', aoDigitar);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.sheet) closeSheet(); });
+/* Teclado (computador): Esc fecha, 1–5 trocam de tela, N abre um lançamento, / vai para a busca ou o campo de adicionar */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (S.sheet) closeSheet(); else if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return; }
+  const alvo = e.target, digitando = alvo && (alvo.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName));
+  if (digitando || e.ctrlKey || e.metaKey || e.altKey || !S.sessao || S.sheet) return;
+  if (/^[1-5]$/.test(e.key)) { e.preventDefault(); A.tab({ v: ABAS_APP[+e.key - 1][0] }); return; }
+  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); A.novoLanc({ tipo: 'saida' }); return; }
+  if (e.key === '/') { const c = $('#busca') || $('#comptxt') || $('#pendtxt'); if (c) { e.preventDefault(); c.focus(); } }
+});
+/* Ao passar da tela de celular para a de computador (ou girar o tablet), redesenha no novo formato */
+try { window.matchMedia('(min-width: 900px)').addEventListener('change', () => { if (S.sessao) { render(); if (S.sheet) renderSheet(); } }); } catch (e) { /* navegador antigo */ }
 
 /* ============ rotas (links das notificações e do convite) ============ */
 function aplicarRota() {
@@ -315,6 +329,7 @@ function aplicarRota() {
   const [tab, sub] = h.split('/');
   if (SCR[tab]) S.tab = tab;
   if (tab === 'financas' && sub) S.fv = sub;
+  if (tab === 'novo') { S.tab = 'financas'; S.fv = 'resumo'; S.abrirNovo = true; } // atalho do ícone instalado
   history.replaceState(null, '', location.pathname);
 }
 window.addEventListener('hashchange', () => { aplicarRota(); closeSheet(); render(false); });
@@ -336,6 +351,7 @@ async function iniciar() {
   S.fila = fila || [];
   if (cache) aplicarSinc({ completo: true, agora: cache.ultimaSinc, casa: cache.casa, pessoas: cache.pessoas || [], ...(cache.cols || {}) });
   render(false);
+  if (S.abrirNovo) { S.abrirNovo = false; A.novoLanc({ tipo: 'saida' }); }
   if (navigator.onLine) {
     await sincronizar(!cache);
     processarFila();
