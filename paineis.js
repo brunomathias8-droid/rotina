@@ -60,6 +60,7 @@ SH.tarefa = s => {
     <details ${f.ic ? 'open' : ''}><summary class="small muted">Ícone (opcional)</summary><div class="emojis" style="margin-top:6px">${EMOJIS_TAREFA.map(e => `<button class="${f.ic === e ? 'on' : ''}" data-a="f" data-k="ic" data-v="${f.ic === e ? '' : e}" aria-label="${e}">${e}</button>`).join('')}</div></details>
     <div class="between"><span><b>Importante</b><br><span class="small muted">Aparece no topo da lista</span></span><button class="tog ${f.alta ? 'on' : ''}" data-a="f" data-k="alta" data-v="${f.alta ? '' : '1'}" aria-pressed="${f.alta}" aria-label="Importante"></button></div>
     <button class="btn block" data-a="salvarTarefa">Salvar</button>
+    ${t ? blocoAnexos('tarefas', t.id) : ''}
     ${hist.length ? secao('Histórico') + listaOu(hist, linhaFeito) : ''}
     ${t ? `<button class="btn danger block" data-a="excluir" data-col="tarefas" data-id="${t.id}">${ic('trash', 16)} Excluir tarefa</button>${criadoPor(t)}` : ''}`;
 };

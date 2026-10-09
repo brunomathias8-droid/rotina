@@ -1,17 +1,18 @@
 /* acoes.js — o que cada toque faz, login, roteamento e a inicialização do app. */
 'use strict';
 
-const VERSAO_APP = '3.0.0';
+const VERSAO_APP = '3.1.0';
 
 /* ============ desenho ============ */
-const ABAS_APP = [['hoje', 'Hoje', 'sun'], ['agenda', 'Agenda', 'cal'], ['tarefas', 'Tarefas', 'clip'], ['financas', 'Finanças', 'wallet'], ['compras', 'Compras', 'cart']];
-const SCR = { hoje: () => scrHoje(), agenda: () => scrAgenda(), tarefas: () => scrTarefas(), financas: () => scrFin(), compras: () => scrCompras() };
+const ABAS_APP = [['hoje', 'Hoje', 'sun'], ['agenda', 'Agenda', 'cal'], ['tarefas', 'Tarefas', 'clip'], ['financas', 'Finanças', 'wallet'], ['compras', 'Compras', 'cart'], ['arquivos', 'Arquivos', 'pasta']];
+const SCR = { hoje: () => scrHoje(), agenda: () => scrAgenda(), tarefas: () => scrTarefas(), financas: () => scrFin(), compras: () => scrCompras(), arquivos: () => scrArquivos() };
 function renderTop() {
   const t = $('#top'); if (!t) return;
   const marca = `<p class="brand">Rotina<b>.</b></p>`;
   if (!S.sessao) { t.innerHTML = marca; return; }
   const env = S.fila.length, off = !navigator.onLine;
   t.innerHTML = `${marca}${off || env ? `<span class="tag ${off ? 'warn' : 'good'}" title="${env} envio(s) na fila">${off ? ic('wifi', 12, 2.2) + ' sem internet' : 'salvando…'}</span>` : ''}<span class="sp"></span>
+    <button class="ib so-celular${S.tab === 'arquivos' ? ' on' : ''}" data-a="tab" data-v="arquivos" aria-label="Arquivos" title="Arquivos">${ic('pasta', 20)}</button>
     <button class="ib" data-a="sheet" data-k="perfil" aria-label="Perfil e ajustes">${av(S.eu, 34)}${S.pessoas.length < 2 || (pushSuportado() && !lsGet('pushToken')) ? '<span class="dot"></span>' : ''}</button>`;
 }
 function renderNav() {
@@ -24,13 +25,13 @@ function renderNav() {
     tarefas: abertas().filter(t => t.prox && t.prox <= h && quemFaz(t) === S.eu).length
   };
   n.innerHTML = `<p class="brand nav-brand">Rotina<b>.</b></p>`
-    + ABAS_APP.map(([k, l, i], j) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}" aria-current="${S.tab === k ? 'page' : 'false'}" title="${l} (${j + 1})">${ic(i, 22)}${l}${badge[k] ? `<span class="badge">${badge[k]}</span>` : ''}</button>`).join('')
-    + `<p class="nav-dica">Atalhos: <kbd>1</kbd>–<kbd>5</kbd> trocam de tela · <kbd>N</kbd> novo (compromisso, tarefa ou lançamento) · <kbd>/</kbd> buscar ou adicionar · <kbd>Esc</kbd> fecha</p>`;
+    + ABAS_APP.map(([k, l, i], j) => `<button class="${S.tab === k ? 'on' : ''}${k === 'arquivos' ? ' so-largo' : ''}" data-a="tab" data-v="${k}" aria-current="${S.tab === k ? 'page' : 'false'}" title="${l} (${j + 1})">${ic(i, 22)}${l}${badge[k] ? `<span class="badge">${badge[k]}</span>` : ''}</button>`).join('')
+    + `<p class="nav-dica">Atalhos: <kbd>1</kbd>–<kbd>6</kbd> trocam de tela · <kbd>N</kbd> novo (compromisso, tarefa ou lançamento) · <kbd>/</kbd> buscar ou adicionar · <kbd>Esc</kbd> fecha</p>`;
 }
 function render(keep = true) {
   const m = $('#main'); if (!m) return; const y = m.scrollTop;
   $('#app').classList.toggle('logado', !!S.sessao);
-  m.classList.toggle('estreito', !S.sessao || S.tab === 'compras' || (S.tab === 'agenda' && S.ag === 'lista') || (S.tab === 'financas' && S.fv === 'extrato'));
+  m.classList.toggle('estreito', !S.sessao || S.tab === 'compras' || S.tab === 'arquivos' || (S.tab === 'agenda' && S.ag === 'lista') || (S.tab === 'financas' && S.fv === 'extrato'));
   try { m.innerHTML = S.sessao ? SCR[S.tab]() : telaLogin(); }
   catch (e) { console.error(e); m.innerHTML = `<div class="note warn"><span>Algo deu errado nesta tela: ${esc(e.message)}. Toque em outra aba ou feche e abra o app.</span></div>`; }
   m.scrollTop = keep ? y : 0; renderNav(); renderTop();
@@ -44,8 +45,9 @@ function renderSheet() {
   L.innerHTML = `<div class="scrim" data-a="close"></div><div class="sheet" data-k="${k}" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
   const nw = L.querySelector('.sheet'); if (y) nw.scrollTop = y; if (same) nw.style.animation = 'none';
 }
-function openSheet(o) { S.sheet = o; renderSheet(); }
-function closeSheet() { S.sheet = null; renderSheet(); }
+function soltarPrevia() { if (S.sheet && S.sheet.url) { URL.revokeObjectURL(S.sheet.url); S.sheet.url = ''; } }
+function openSheet(o) { if (!(o && o.volta === S.sheet)) soltarPrevia(); S.sheet = o; renderSheet(); }
+function closeSheet() { soltarPrevia(); S.sheet = null; renderSheet(); }
 let tT;
 function toast(msg, ms, acao) {
   const t = $('#toast');
@@ -114,8 +116,9 @@ const focar = id => { const el = $('#' + id); if (el) el.focus({ preventScroll: 
 const A = {
   tab: d => { S.tab = d.v; closeSheet(); render(false); },
   irFin: d => { S.tab = 'financas'; S.fv = d.v; S.mes = N_mes(hoje()); closeSheet(); render(false); },
-  sheet: d => openSheet({ k: d.k, id: d.id, v: d.v }),
-  close: () => closeSheet(),
+  // Abrir um anexo de dentro de um compromisso (ou tarefa, lançamento): ao fechar, volta para ele
+  sheet: d => openSheet({ k: d.k, id: d.id, v: d.v, volta: d.k === 'arquivo' && S.sheet && S.sheet.k !== 'arquivo' ? S.sheet : null }),
+  close: () => { const v = S.sheet && S.sheet.volta; if (v) { soltarPrevia(); S.sheet = v; renderSheet(); } else closeSheet(); },
   filtro: d => { S[d.k] = d.v; render(); },
   loginmodo: d => { S.login = { ...(S.login || {}), modo: d.v, erro: '' }; render(); },
 
@@ -123,7 +126,7 @@ const A = {
   f: d => {
     const s = S.sheet, f = s.f; if (!f) return;
     let v = d.v;
-    if (['alta', 'ativa', 'ativo', 'pago', 'diaTodo'].includes(d.k)) v = !!v;
+    if (['alta', 'ativa', 'ativo', 'pago', 'diaTodo', 'fixo'].includes(d.k)) v = !!v;
     if (d.k === 'forma' && s.k === 'lanc' && f.forma === v) return;
     f[d.k] = v;
     if (s.k === 'tarefa' && d.k === 'freq') { if (v === 'mes' && f.prox) f.dm = +f.prox.slice(8); recalcProx(s); }
@@ -286,6 +289,7 @@ document.addEventListener('submit', async e => {
 function aoDigitar(e) {
   const t = e.target, k = t.dataset.i;
   if (k === 'busca') { S.busca = t.value; const L = $('#extlista'); if (L) { const y = $('#main').scrollTop; render(); const b = $('#busca'); if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(b.value.length, b.value.length); } $('#main').scrollTop = y; } return; }
+  if (k === 'arqbusca') { S.arqBusca = t.value; const y = $('#main').scrollTop; render(); const b = $('#arqbusca'); if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(b.value.length, b.value.length); } $('#main').scrollTop = y; return; }
   if (!k || !S.sheet || !S.sheet.f) return;
   const s = S.sheet, f = s.f;
   if (k.startsWith('met:')) { f.met[k.slice(4)] = t.value; return; }
@@ -301,12 +305,12 @@ document.addEventListener('input', aoDigitar);
 document.addEventListener('change', aoDigitar);
 /* Teclado (computador): Esc fecha, 1–5 trocam de tela, N abre um lançamento, / vai para a busca ou o campo de adicionar */
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { if (S.sheet) closeSheet(); else if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return; }
+  if (e.key === 'Escape') { if (S.sheet) A.close(); else if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return; }
   const alvo = e.target, digitando = alvo && (alvo.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName));
   if (digitando || e.ctrlKey || e.metaKey || e.altKey || !S.sessao || S.sheet) return;
-  if (/^[1-5]$/.test(e.key)) { e.preventDefault(); A.tab({ v: ABAS_APP[+e.key - 1][0] }); return; }
-  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); if (S.tab === 'agenda') A.novoEvento({}); else if (S.tab === 'tarefas') A.sheet({ k: 'tarefa' }); else A.novoLanc({ tipo: 'saida' }); return; }
-  if (e.key === '/') { const c = $('#busca') || $('#comptxt') || $('#tartxt') || $('#evtxt'); if (c) { e.preventDefault(); c.focus(); } }
+  if (/^[1-6]$/.test(e.key)) { e.preventDefault(); A.tab({ v: ABAS_APP[+e.key - 1][0] }); return; }
+  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); if (S.tab === 'agenda') A.novoEvento({}); else if (S.tab === 'arquivos') A.anexar({ abrir: '1' }); else if (S.tab === 'tarefas') A.sheet({ k: 'tarefa' }); else A.novoLanc({ tipo: 'saida' }); return; }
+  if (e.key === '/') { const c = $('#busca') || $('#arqbusca') || $('#comptxt') || $('#tartxt') || $('#evtxt'); if (c) { e.preventDefault(); c.focus(); } }
 });
 /* Ao passar da tela de celular para a de computador (ou girar o tablet), redesenha no novo formato */
 try { window.matchMedia('(min-width: 900px)').addEventListener('change', () => { if (S.sessao) { render(); if (S.sheet) renderSheet(); } }); } catch (e) { /* navegador antigo */ }

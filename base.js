@@ -4,7 +4,7 @@
 const CFG = Object.assign({ api: '', intervaloSincSeg: 30 }, window.ROTINA_CONFIG || {});
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const INSTALADO = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const COLS = ['tarefas', 'feitos', 'eventos', 'perfis', 'lancamentos', 'contas', 'cartoes', 'patrimonio', 'metas', 'compras'];
+const COLS = ['tarefas', 'feitos', 'eventos', 'perfis', 'arquivos', 'lancamentos', 'contas', 'cartoes', 'patrimonio', 'metas', 'compras'];
 
 /* ============================== utilidades ============================== */
 const $ = s => document.querySelector(s);
@@ -86,6 +86,9 @@ const P = {
   flag: '<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>',
   moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
   receipt: '<path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2V3z"/><path d="M9 8h6M9 12h6"/>',
+  clipe: '<path d="m21 11.5-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/>',
+  link: '<path d="M10 13.5a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10.5a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
+  pasta: '<path d="M3 7a2 2 0 0 1 2-2h4.5l2 2.2H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   wifi: '<path d="M2 8.8a15 15 0 0 1 20 0M5 12.6a10 10 0 0 1 14 0M8.5 16.4a5 5 0 0 1 7 0M12 20h.01"/>',
 };
 const ic = (n, s = 20, sw = 1.9) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.check}</svg>`;
@@ -116,6 +119,7 @@ const idb = {
   },
   get(k) { return this.op('readonly', (os, mem) => mem ? mem.get(k) : os.get(k)); },
   set(k, v) { return this.op('readwrite', (os, mem) => mem ? mem.set(k, v) : os.put(v, k)); },
+  del(k) { return this.op('readwrite', (os, mem) => mem ? mem.delete(k) : os.delete(k)); },
   limpar() { return this.op('readwrite', (os, mem) => mem ? mem.clear() : os.clear()); }
 };
 
@@ -129,7 +133,7 @@ const S = {
   // tela
   tab: 'hoje', sheet: null, login: null, tema: lsGet('tema') || 'auto',
   fTar: 'todas', mes: N_mes(hoje()), fCat: null, fv: 'resumo', fExt: 'tudo', busca: '', placar: 'semana',
-  ag: lsGet('agVisao') || 'lista', agDia: hoje(), fPess: ''
+  ag: lsGet('agVisao') || 'lista', agDia: hoje(), fPess: '', fArq: '', arqBusca: ''
 };
 
 /* ============================== consultas ============================== */
@@ -208,6 +212,7 @@ function aplicarLocal(f) {
   const d = f.dados;
   if (f.acao === 'salvar') aplicarSalvar(d.col, d.item);
   if (f.acao === 'lote') d.itens.forEach(it => aplicarSalvar(d.col, it));
+  if (f.acao === 'enviarArquivo') { const a = S.d.arquivos.get(d.item.id); if (!a || !a.drive) aplicarSalvar('arquivos', { ...d.item, enviando: true }); }
   if (f.acao === 'excluir') (d.ids || [d.id]).forEach(id => S.d[d.col].delete(id));
   if (f.acao === 'limparCompras') lista('compras').filter(c => c.comprado).forEach(c => S.d.compras.delete(c.id));
   if (f.acao === 'concluir') {
@@ -252,6 +257,8 @@ function aplicarLocal(f) {
   }
   if (f.acao === 'casa' && S.casa) { if (d.categorias) S.casa.categorias = d.categorias; if (d.metodo) S.casa.metodo = d.metodo; if (d.nome) S.casa.nome = d.nome; }
 }
+/* Formulário aberto (S.sheet.f) não é redesenhado: não atropela o que está sendo digitado. Prévia de arquivo (estavel) também não, para não piscar. */
+function redesenharSheet() { if (S.sheet && !S.sheet.f && !S.sheet.estavel) renderSheet(); }
 function reaplicarFila() { S.fila.forEach(f => { try { aplicarLocal(f); } catch (e) { /* item antigo: ignora */ } }); }
 
 /* ============================== fila offline ============================== */
@@ -264,7 +271,7 @@ function enfileirar(acao, dados) {
   const igual = acao === 'salvar' && S.fila.slice(ini).find(x => x.acao === 'salvar' && x.dados.col === dados.col && x.dados.item.id === dados.item.id);
   if (igual) Object.assign(igual.dados.item, dados.item); else S.fila.push(f);
   aplicarLocal(f);
-  salvarFila(); salvarCache(); render(); if (S.sheet && !S.sheet.f) renderSheet();
+  salvarFila(); salvarCache(); render(); redesenharSheet();
   processarFila();
 }
 function salvarFila() { idb.set('fila', S.fila).catch(() => { }); }
@@ -276,8 +283,11 @@ async function processarFila() {
     while (S.fila.length) {
       const item = S.fila[0];
       try {
-        const r = await api(item.acao, item.dados, { timeout: 90000 });
+        const dados = item.acao === 'enviarArquivo' ? await dadosDoEnvio(item.dados) : item.dados;
+        if (!dados) { S.fila.shift(); salvarFila(); S.d.arquivos.delete(item.dados.item.id); toast('Um arquivo não pôde ser enviado: ele não está mais guardado neste aparelho. Anexe de novo.', 6000); continue; }
+        const r = await api(item.acao, dados, { timeout: item.acao === 'enviarArquivo' ? 300000 : 90000 });
         S.fila.shift(); salvarFila();
+        if (item.acao === 'enviarArquivo') idb.del('env:' + item.dados.item.id).catch(() => { });
         aplicarResposta(r);
       } catch (e) {
         if (ERROS_DEFINITIVOS.includes(e.codigo)) { S.fila.shift(); salvarFila(); toast(e.message, 5000); refazer = true; continue; }
@@ -295,7 +305,53 @@ function aplicarResposta(r) {
   if (r.tarefa) mesclar('tarefas', [r.tarefa]);
   if (r.casa) S.casa = r.casa;
   reaplicarFila();
-  salvarCache(); render(); if (S.sheet && !S.sheet.f) renderSheet();
+  salvarCache(); render(); redesenharSheet();
+}
+
+/* ============================== arquivos no aparelho ============================== */
+/* O arquivo escolhido fica guardado no aparelho ('env:ID') até subir; quem abre um arquivo guarda uma cópia ('arq:ID')
+   para ver sem internet. Cópias guardadas: até ~150 MB; as abertas há mais tempo saem primeiro (as importantes por último). */
+const ARQ_LIMITE = 150 * 1024 * 1024;
+const blobParaBase64 = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+function base64ParaBlob(b64, mime) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: mime || 'application/octet-stream' }); }
+async function dadosDoEnvio(d) {
+  const g = await idb.get('env:' + d.item.id).catch(() => null);
+  if (!g || !g.blob) return null;
+  return { item: d.item, nome: g.nome, mime: g.blob.type || 'application/octet-stream', dados: await blobParaBase64(g.blob) };
+}
+async function guardarCopia(id, blob, nome) {
+  try {
+    await idb.set('arq:' + id, { blob, nome });
+    const idx = ((await idb.get('arqIdx')) || []).filter(x => x.id !== id);
+    idx.push({ id, tam: blob.size, t: Date.now() });
+    let total = idx.reduce((a, x) => a + x.tam, 0);
+    const fixo = x => { const a = S.d.arquivos.get(x.id); return a && a.fixo ? 1 : 0; };
+    idx.sort((a, b) => fixo(a) - fixo(b) || a.t - b.t);
+    while (total > ARQ_LIMITE && idx.length > 1) { const x = idx.shift(); total -= x.tam; await idb.del('arq:' + x.id); }
+    await idb.set('arqIdx', idx);
+  } catch (e) { /* sem espaço: só não guarda a cópia */ }
+}
+/** O arquivo para mostrar: do aparelho, se já tiver; senão, do servidor (e guarda uma cópia). */
+async function pegarArquivo(id) {
+  const c = await idb.get('arq:' + id).catch(() => null) || await idb.get('env:' + id).catch(() => null);
+  if (c && c.blob) return c;
+  const r = await api('baixarArquivo', { id }, { timeout: 120000 });
+  const blob = base64ParaBlob(r.dados, r.mime);
+  guardarCopia(id, blob, r.nome);
+  return { blob, nome: r.nome };
+}
+async function temCopia(id) { const c = await idb.get('arq:' + id).catch(() => null) || await idb.get('env:' + id).catch(() => null); return !!(c && c.blob); }
+/** Arquivos importantes ficam no aparelho para abrir sem internet (no consultório, na portaria…). */
+let _guardando = false;
+async function guardarImportantes() {
+  if (_guardando || !navigator.onLine || !S.sessao) return;
+  _guardando = true;
+  try {
+    for (const a of lista('arquivos').filter(x => x.fixo && x.drive && x.tipo === 'arquivo')) {
+      if (await temCopia(a.id)) continue;
+      try { await pegarArquivo(a.id); } catch (e) { break; }
+    }
+  } finally { _guardando = false; }
 }
 
 /* ============================== sincronização ============================== */
@@ -327,7 +383,8 @@ async function sincronizar(completo) {
   try {
     const r = await api('sync', { desde: completo ? 0 : Math.max(0, S.ultimaSinc - 5000) });
     aplicarSinc(r);
-    render(); if (S.sheet && !S.sheet.f) renderSheet(); // formulário aberto: não atropela o que está sendo digitado
+    render(); redesenharSheet();
+    guardarImportantes();
   } catch (e) { /* tenta de novo no próximo ciclo */ }
   finally { S.sincronizando = false; renderTop(); }
 }

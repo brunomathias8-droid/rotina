@@ -25,7 +25,7 @@ São 3 partes. As partes 1 e 2 levam uns 15 minutos e já deixam o app funcionan
 
    Pelo celular: abra `https://raw.githubusercontent.com/brunomathias8-droid/rotina/main/servidor/Api.gs` no Safari, toque e segure › Selecionar tudo › Copiar. Repita para cada arquivo.
 4. Apague o arquivo `Código.gs` que veio vazio.
-5. No topo, escolha a função **configurar** e toque em **Executar**. Na primeira vez o Google pede autorização: **Revisar permissões › sua conta › Avançado › Acessar Rotina (não seguro) › Permitir**. É o seu próprio script pedindo acesso à sua planilha.
+5. No topo, escolha a função **configurar** e toque em **Executar**. Na primeira vez o Google pede autorização: **Revisar permissões › sua conta › Avançado › Acessar Rotina (não seguro) › Permitir**. É o seu próprio script pedindo acesso à sua planilha e ao seu Google Drive (onde ficam os arquivos que vocês guardarem pelo app, na pasta "Rotina · Arquivos").
 6. O registro de execução mostra o **código de convite** (ex.: `K7X2QM`). Ele também fica na aba **Config** da planilha.
 7. **Implantar › Nova implantação** › tipo **App da Web**:
    - Executar como: **Eu**
@@ -97,6 +97,7 @@ Depois, no Apps Script, execute **ativarAvisos** (cria dois gatilhos: um de hora
 | Lembrete de compromisso (só para quem está envolvido, ou todos) | No horário escolhido em cada compromisso, com até 5 minutos de diferença. Chega mesmo entre 22h e 7h |
 | Compromisso novo, mudado ou com comentário novo | Na hora |
 | Sua agenda e suas tarefas do dia | Às 8h (muda em Config › `hora_avisos`) |
+| Documento perto de vencer (para quem está marcado nele) | Às 8h, 30 dias antes, 7 dias antes e no dia |
 | Conta fixa, boleto agendado ou fatura vencendo | Às 8h, 2 dias antes e no dia |
 | Pedido de troca, troca aceita ou recusada | Na hora |
 | Tarefa passada para você ou concluída | Na hora |
@@ -107,6 +108,14 @@ Depois, no Apps Script, execute **ativarAvisos** (cria dois gatilhos: um de hora
 Entre 22h e 7h nenhum aviso é enviado, a não ser os lembretes de compromisso. Cada pessoa escolhe quais quer receber.
 
 ---
+
+## Atualizar da versão 3.0 para a 3.1 (Arquivos)
+
+1. No Apps Script, troque o conteúdo de `Dados`, `Api` e `Push` pelos novos.
+2. Execute **configurar**. O Google pede autorização de novo, agora também para o **Google Drive**: **Revisar permissões › Avançado › Acessar Rotina › Permitir**. Isso cria a aba Arquivos e a pasta "Rotina · Arquivos" no seu Drive.
+3. **Implantar › Gerenciar implantações › editar › Versão: Nova versão**.
+
+> Faça o passo 2 antes do 3. Sem a autorização do Drive, enviar arquivo dá erro.
 
 ## Atualizar da versão 2 para a 3 (Agenda e Tarefas)
 
@@ -142,4 +151,5 @@ Quem já usa a versão 2:
 | Celular perdido | Rode `encerrarTodasSessoes` |
 | "A casa já está completa" | Aumente `max_pessoas` na aba Config (ou cadastre a pessoa em Agenda › + Família, sem login) |
 | Lembrete de compromisso não chega | Rode `ativarAvisos` de novo e confira em **Acionadores** (relógio) se existe `verificarAgenda` a cada 5 minutos |
+| Enviar arquivo dá erro de autorização | Rode **configurar** no editor e aceite o acesso ao Google Drive; depois publique uma nova versão |
 | Calendário assinado não aparece | O endereço é o /exec com `?agenda=`; a implantação precisa estar como "Qualquer pessoa" |

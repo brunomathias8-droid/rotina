@@ -1,6 +1,6 @@
 # Rotina
 
-Agenda da família, tarefas da casa, finanças e lista de compras, a dois. Funciona no iPhone, no Android e no computador (Windows ou Mac), instalável sem loja.
+Agenda da família, tarefas da casa, finanças, lista de compras e arquivos importantes, a dois. Funciona no iPhone, no Android e no computador (Windows ou Mac), instalável sem loja.
 
 ## Como funciona
 
@@ -25,7 +25,7 @@ Passo a passo para colocar no ar: [IMPLANTAR.md](IMPLANTAR.md).
 | iPhone e Android | Menu embaixo, uma coluna, painéis que sobem de baixo. Instala pela tela de início |
 | Computador (Windows, Mac) e tablet deitado | A partir de 900 px de largura: menu lateral, telas em duas colunas, janelas centralizadas, valores dos gráficos ao passar o mouse. Instala pelo Edge ou Chrome e abre numa janela própria, com atalho no menu Iniciar |
 
-Atalhos de teclado no computador: `1` a `5` trocam de tela, `N` abre um item novo da tela atual (compromisso, tarefa ou lançamento), `/` vai para a busca ou o campo de adicionar, `Esc` fecha. O ícone instalado no Windows tem atalhos (botão direito): Agenda, Novo lançamento, Finanças e Lista de compras.
+Atalhos de teclado no computador: `1` a `6` trocam de tela, `N` abre um item novo da tela atual (compromisso, tarefa ou lançamento), `/` vai para a busca ou o campo de adicionar, `Esc` fecha. O ícone instalado no Windows tem atalhos (botão direito): Agenda, Novo lançamento, Finanças e Lista de compras.
 
 Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome e PIN.
 
@@ -37,6 +37,7 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 | Agenda | Calendário da família: próximos dias, semana ou mês, uma cor por pessoa, filtro por pessoa, "quem leva", lembretes, conversa no compromisso e o combinado da semana |
 | Tarefas | Tudo o que precisa ser feito, numa lista só: o que é de uma vez (renovar o passaporte) e o que se repete (lavar a louça), com responsável ou revezamento, prazo, passos, troca e placar de esforço |
 | Finanças | Sete abas: Resumo, Extrato, Contas, Cartões, Orçamento, Metas e Patrimônio (detalhes abaixo) |
+| Arquivos | Documentos da família num lugar só: carteirinha do plano, receitas, RG das crianças, contratos, manuais. Busca, categorias, validade com aviso e os importantes guardados no aparelho para abrir sem internet. No celular, fica no ícone de pasta no topo |
 | Compras | Lista compartilhada organizada pelos corredores do mercado. "2 leite, pão, café" vira três itens. Depois: lançar o gasto e limpar |
 
 ## Finanças
@@ -72,6 +73,16 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 - **Combinado da semana:** domingo às 19h o app chama os dois para 15 minutos juntos: ver a semana, decidir quem leva e quem faz.
 - **No calendário do celular:** perfil › "Ver a agenda no calendário do celular" dá um endereço para assinar no iPhone, Outlook ou Google Agenda (só leitura, atualiza sozinho). Cada compromisso também baixa como `.ics`.
 
+## Arquivos e anexos
+
+- **Onde ficam:** no Google Drive de quem implantou o servidor, numa pasta "Rotina · Arquivos" criada sozinha. Na planilha (aba Arquivos) fica só a ficha. Quem tem login na casa abre tudo pelo app, sem precisar de conta no Drive nem de compartilhar nada.
+- **Anexos:** em cada compromisso (a receita do pediatra, a guia do plano), tarefa (o boleto do IPVA) e lançamento (comprovante, nota fiscal). O anexo também aparece na tela Arquivos.
+- **Links:** guarde só o endereço de uma pasta ou arquivo do Google Drive (ou de um site). Para a outra pessoa abrir, o arquivo precisa estar compartilhado com ela no Drive.
+- **Fotos:** foto de 3 a 6 MB do celular vira um JPEG de até 2400 px antes de subir: dá para ler uma receita e sobe rápido. Limite: 10 MB por arquivo.
+- **Sem internet:** o arquivo escolhido fica guardado no aparelho e sobe quando a conexão voltar. Os marcados como ⭐ importantes ficam no aparelho dos dois para abrir sem internet (no consultório, na portaria). Cada aparelho guarda até ~150 MB de cópias.
+- **Validade:** passaporte, CNH, carteirinha, apólice. O app avisa 30 dias antes, 7 dias antes e no dia, para as pessoas marcadas no documento.
+- **Excluir:** a ficha some para os dois e o arquivo vai para a lixeira do Drive (dá para recuperar por 30 dias).
+
 ## Tarefas e compras
 
 - **Uma lista só:** o que antes era "afazer" e "pendência" agora é tarefa. A diferença é só se ela repete ou não. Filtros: Minhas, De Ana, Nós dois, Rotina da casa.
@@ -94,6 +105,7 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 | `graficos.js` | Gráficos em SVG (colunas, linha, barra empilhada) com valores no toque e tabela |
 | `telas.js` | Telas Hoje, Tarefas e Compras |
 | `agenda.js` | Tela, painéis e ações da Agenda e da família |
+| `arquivos.js` | Tela Arquivos, anexos, envio e cópias no aparelho |
 | `telas-fin.js` | Telas, painéis e ações de Finanças |
 | `paineis.js` | Painéis de tarefa, troca, item de compra e perfil |
 | `acoes.js` | O que cada toque faz, login e inicialização |
@@ -111,6 +123,7 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 | Feitos | Vez em que uma tarefa foi feita (ou pulada), por quem, quando e quantos pontos |
 | Eventos | Compromisso (data, hora, quem, quem leva, lembretes, repetição, datas tiradas, conversa) |
 | Perfis | Pessoa da família sem login (filho, avó, pet), com cor, emoji e aniversário |
+| Arquivos | Ficha de um arquivo ou link (nome, categoria, de quem, onde está anexado, validade, ID no Google Drive) |
 | Lancamentos | Despesa, receita, pagamento de fatura, aporte, resgate ou transferência. `Valor` em reais com ponto (ex.: `87.50`) |
 | Contas | Conta fixa, receita recorrente ou aporte mensal |
 | Cartoes | Cartão (limite, dia de fechamento e de vencimento) |

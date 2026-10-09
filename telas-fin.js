@@ -274,6 +274,7 @@ SH.lanc = s => {
     ${conta ? `<div class="note"><span>${conta.tipo === 'entrada' ? 'Recebimento' : 'Pagamento'} de <b>${esc(conta.nome)}</b> referente a ${fmtMes(f.ref).toLowerCase()}.</span></div>` : ''}
     <div class="grid2">${campo('Data', inp('dia', f.dia, 'type="date"'))}<span></span></div>
     <details ${f.nota ? 'open' : ''}><summary class="small muted">Observação</summary>${area('nota', f.nota, 'maxlength="300" style="min-height:60px"')}</details>
+    ${l ? `<details ${anexosDe('lancamentos:' + l.id).length ? 'open' : ''}><summary class="small muted">Comprovante, nota fiscal ou boleto${anexosDe('lancamentos:' + l.id).length ? ` (${anexosDe('lancamentos:' + l.id).length})` : ''}</summary>${blocoAnexos('lancamentos', l.id)}</details>` : ''}
     <button class="btn block ${t === 'saida' || t === 'fatura' ? 'warm' : ''}" data-a="salvarLanc">${!l && f.forma === 'cartao' && t === 'saida' && n > 1 ? `Lançar ${n} parcelas` : 'Salvar'}</button>
     ${l ? `<button class="btn danger block" data-a="excluirLanc" data-id="${l.id}">${ic('trash', 16)} Excluir${l.grupo ? '' : ' lançamento'}</button><p class="tiny muted">Lançado por ${l.por === S.eu ? 'você' : esc(nomeDe(l.por))}.</p>` : ''}`;
 };

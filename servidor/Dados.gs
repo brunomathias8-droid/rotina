@@ -11,6 +11,8 @@ var ABAS = {
   Tarefas: ['ID', 'Titulo', 'Icone', 'Nota', 'Area', 'Resp', 'Vez', 'Prazo', 'Freq', 'Dias', 'N', 'DiaMes', 'Peso', 'Alta', 'Itens', 'Troca', 'Feita', 'FeitaPor', 'FeitaEm', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Eventos: ['ID', 'Titulo', 'Tipo', 'Dia', 'Fim', 'DiaTodo', 'Ini', 'FimH', 'Local', 'Pessoas', 'Leva', 'Repete', 'Ate', 'Exc', 'Alertas', 'Avisar', 'Nota', 'Comentarios', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Perfis: ['ID', 'Nome', 'Icone', 'Cor', 'Nasc', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
+  // O arquivo em si fica no Google Drive de quem implantou o script (pasta "Rotina · Arquivos"); aqui só a ficha dele
+  Arquivos: ['ID', 'Titulo', 'Tipo', 'Url', 'Drive', 'Mime', 'Tamanho', 'Categoria', 'Pessoas', 'Liga', 'Fixo', 'Validade', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   // Afazeres e Pendencias são da versão 2: na primeira sincronização da versão 3 viram Tarefas (migrarParaTarefas_)
   Afazeres: ['ID', 'Nome', 'Icone', 'Freq', 'Dias', 'N', 'DiaMes', 'Resp', 'Vez', 'Prox', 'Peso', 'Troca', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Feitos: ['ID', 'Afazer', 'Nome', 'Pessoa', 'Dia', 'Hora', 'Peso', 'Pulou', 'Antes', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
@@ -63,6 +65,7 @@ var CONFIG_PADRAO = [
   ['dias_sessao', '180', 'Quantos dias o login vale no aparelho'],
   ['agenda_ics', '', 'Senha do endereço da agenda para assinar no iPhone, Google ou Outlook. Apague para gerar outra (o endereço antigo para de funcionar)'],
   ['max_pessoas', '2', 'Quantas pessoas podem entrar na casa'],
+  ['pasta_arquivos', '', 'ID da pasta do Google Drive onde ficam os arquivos enviados pelo app (criada sozinha)'],
   ['firebase_web_config', '', 'Notificações: bloco firebaseConfig do console do Firebase (pode ser o mesmo projeto do RM)'],
   ['firebase_vapid_key', '', 'Notificações: chave "Web Push certificates" do Cloud Messaging'],
   ['firebase_service_account', '', 'Notificações: conteúdo do JSON da conta de serviço. Vai para as Propriedades do script e a célula é limpa']
@@ -174,6 +177,7 @@ function configurar() {
   if (!cfg_().convite) cfgSet_('convite', Utilities.getUuid().replace(/[^A-Z0-9]/gi, '').slice(0, 6).toUpperCase());
   PropertiesService.getScriptProperties().setProperty('PLANILHA', ss_().getId());
   icsToken_();
+  pastaArquivos_();
   migrarParaTarefas_();
   var s0 = ss_().getSheetByName('Página1') || ss_().getSheetByName('Sheet1');
   if (s0 && ss_().getSheets().length > 1 && s0.getLastRow() === 0) ss_().deleteSheet(s0);
@@ -200,6 +204,7 @@ function nomeDe_(id) { var p = pessoaPorId_(id); return p ? p.Nome : 'Alguém'; 
  * Toda aba tem também ID, CriadoPor, CriadoEm, Excluido e Atualizado.
  */
 var TIPOS_LANC = ['saida', 'entrada', 'fatura', 'aporte', 'resgate', 'transf'];
+var CATS_ARQ = ['outros', 'saude', 'documentos', 'casa', 'carro', 'escola', 'financas', 'trabalho'];
 var COLECOES = {
   tarefas: { aba: 'Tarefas', exigir: 'titulo', campos: {
     titulo: ['Titulo', 't', 120], ic: ['Icone', 't', 16], nota: ['Nota', 't', 800], area: ['Area', 't', 20], resp: ['Resp', 'r'], vez: ['Vez', 'p'],
@@ -229,6 +234,9 @@ var COLECOES = {
     nome: ['Nome', 't', 60], ic: ['Icone', 't', 16], tipo: ['Tipo', 'e', ['juntar', 'mensal', 'reduzir']], alvo: ['Alvo', 'c'], prazo: ['Prazo', 'd'],
     inicio: ['Inicio', 'd'], itens: ['Itens', 'L'], metrica: ['Metrica', 'e', ['', 'cartao', 'cat', 'divida']], cat: ['Categoria', 't', 30],
     base: ['Base', 'c'], ativa: ['Ativa', 'b'], nota: ['Nota', 't', 300] } },
+  arquivos: { aba: 'Arquivos', exigir: 'titulo', campos: {
+    titulo: ['Titulo', 't', 120], tipo: ['Tipo', 'e', ['link', 'arquivo']], url: ['Url', 'u'], cat: ['Categoria', 'e', CATS_ARQ], pessoas: ['Pessoas', 'L'],
+    liga: ['Liga', 'g'], fixo: ['Fixo', 'b'], validade: ['Validade', 'd'], nota: ['Nota', 't', 500] } },
   compras: { aba: 'Compras', exigir: 'item', campos: {
     item: ['Item', 't', 80], qtd: ['Qtd', 't', 30], setor: ['Setor', 't', 20], comprado: ['Comprado', 'b'], compradoPor: ['CompradoPor', 'p'], compradoEm: ['CompradoEm', 't', 30] } },
   feitos: { aba: 'Feitos', somenteLeitura: true, campos: {
@@ -250,6 +258,8 @@ function valorParaPlanilha_(tipo, op, v, ids) {
     case 'j': { if (v === '') return ''; var t = typeof v === 'string' ? v : JSON.stringify(v); if (t.length > op) throw apiErro_('Dados grandes demais.', 'VALIDACAO'); return t; }
     case 'c': { var c = Math.round(Number(v) || 0); if (Math.abs(c) > 1e13) throw apiErro_('Valor alto demais.', 'VALIDACAO'); return (c / 100).toFixed(2); }
     case 'p': return ids.indexOf(String(v)) >= 0 ? String(v) : '';
+    case 'u': return /^https?:\/\/[^\s]+$/i.test(String(v).trim()) ? String(v).trim().slice(0, 1500) : '';
+    case 'g': return /^(eventos|tarefas|lancamentos):[A-Za-z0-9_-]{6,40}$/.test(String(v)) ? String(v) : '';
     case 'r': return v === 'rodizio' || v === 'ambos' || ids.indexOf(String(v)) >= 0 ? String(v) : 'ambos';
   }
   return String(v);
@@ -272,6 +282,7 @@ function paraApp_(col, r) {
   if (col === 'tarefas') o.troca = json_(r.Troca, null);
   if (col === 'eventos') o.coments = json_(r.Comentarios, []) || [];
   if (col === 'feitos') o.antes = json_(r.Antes, null);
+  if (col === 'arquivos') { o.mime = r.Mime || ''; o.tam = Number(r.Tamanho) || 0; o.drive = r.Drive || ''; }
   return o;
 }
 function colecao_(nome) {
@@ -343,6 +354,7 @@ function excluir_(s, req) {
       var id = validarId_(x), r = porId_(def.aba, id);
       if (!r) return { id: id, excluido: true, up: Date.now() };
       atualizar_(def.aba, r._lin, { Excluido: 'sim', Atualizado: agora });
+      if (col === 'arquivos' && r.Drive) try { DriveApp.getFileById(r.Drive).setTrashed(true); } catch (e) { Logger.log('lixeira ' + r.Drive + ': ' + e); }
       return paraApp_(col, porId_(def.aba, id));
     });
     return { col: col, itens: itens };
@@ -467,6 +479,59 @@ function comentar_(s, req) {
     return { col: 'eventos', item: paraApp_('eventos', porId_('Eventos', id)) };
   });
 }
+/* ------------------------------ arquivos (Google Drive) ------------------------------ */
+var ARQ_MAX = 10 * 1024 * 1024; // 10 MB por arquivo; maior que isso, o app sugere guardar no Drive e colar o link
+/** Pasta "Rotina · Arquivos" no Drive de quem implantou. Se for apagada, outra é criada. */
+function pastaArquivos_() {
+  var id = cfg_().pasta_arquivos;
+  if (id) try { var p = DriveApp.getFolderById(id); if (!p.isTrashed()) return p; } catch (e) { /* apagada: cria outra */ }
+  var nova = DriveApp.createFolder('Rotina · Arquivos');
+  nova.setDescription('Arquivos enviados pelo app Rotina. Para excluir, use o app (assim a ficha também some).');
+  cfgSet_('pasta_arquivos', nova.getId());
+  return nova;
+}
+/** Recebe um arquivo do app (em base64), guarda no Drive e grava a ficha. Reenviar o mesmo ID (fila offline) não duplica. */
+function enviarArquivo_(s, req) {
+  var item = req.item || {}, id = validarId_(item.id), dados = String(req.dados || '');
+  if (!dados) throw apiErro_('Arquivo vazio.', 'VALIDACAO');
+  if (dados.length * 3 / 4 > ARQ_MAX * 1.02) throw apiErro_('Arquivo grande demais (máximo 10 MB). Guarde no Google Drive e cole o link.', 'LIMITE');
+  var mime = /^[\w.+-]+\/[\w.+-]+$/.test(String(req.mime || '')) ? String(req.mime) : 'application/octet-stream';
+  var nome = String(req.nome || item.titulo || 'arquivo').replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 120) || 'arquivo';
+  return comLock_(function () {
+    var r = porId_('Arquivos', id);
+    if (r && (r.Drive || r.Excluido === 'sim')) return { col: 'arquivos', item: paraApp_('arquivos', r) };
+    item.tipo = 'arquivo';
+    var ficha = gravar_(s, 'arquivos', item, idsAtivos_());
+    var bytes = Utilities.base64Decode(dados);
+    var f = pastaArquivos_().createFile(Utilities.newBlob(bytes, mime, nome));
+    f.setDescription('Enviado por ' + nomeDe_(s.pessoa) + ' pelo app Rotina');
+    r = porId_('Arquivos', id);
+    atualizar_('Arquivos', r._lin, { Drive: f.getId(), Mime: mime, Tamanho: String(bytes.length), Atualizado: String(Date.now()) });
+    var depois = paraApp_('arquivos', porId_('Arquivos', id));
+    avisoDeAnexo_(s, ficha, depois);
+    return { col: 'arquivos', item: depois };
+  });
+}
+/** Devolve o conteúdo para o app mostrar. Quem tem login na casa vê todos os arquivos dela, sem precisar de conta no Drive. */
+function baixarArquivo_(s, req) {
+  var r = porId_('Arquivos', validarId_(req.id));
+  if (!r || r.Excluido === 'sim') throw apiErro_('Esse arquivo foi excluído.', 'NAOACHOU');
+  if (!r.Drive) throw apiErro_('Esse arquivo ainda está sendo enviado pelo aparelho de quem anexou.', 'NAOACHOU');
+  var f;
+  try { f = DriveApp.getFileById(r.Drive); } catch (e) { throw apiErro_('O arquivo não está mais no Google Drive.', 'NAOACHOU'); }
+  var b = f.getBlob();
+  return { id: r.ID, mime: r.Mime || b.getContentType(), nome: f.getName(), dados: Utilities.base64Encode(b.getBytes()) };
+}
+function avisoDeAnexo_(s, ficha, a) {
+  var m = String(a.liga || '').split(':');
+  if (m[0] !== 'eventos') return;
+  var ev = porId_('Eventos', m[1]);
+  if (!ev || ev.Excluido === 'sim') return;
+  envolvidos_(paraApp_('eventos', ev)).forEach(function (p) {
+    if (p !== s.pessoa) avisarPessoa_(p, 'agendanovo', { titulo: nomeDe_(s.pessoa) + ' anexou em ' + ev.Titulo, corpo: a.titulo, url: '#agenda', tag: 'ev-' + ev.ID });
+  });
+}
+
 /** Quem recebe os avisos de um compromisso: as pessoas com login marcadas nele e quem leva; se não houver, todo mundo. */
 function envolvidos_(ev) {
   var ids = idsAtivos_();

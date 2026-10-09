@@ -205,6 +205,15 @@ function verificarAvisos() {
       avisarPessoa_(p, 'tarefas', { titulo: titulo, corpo: corpo, url: '#hoje', tag: 'manha' });
     });
 
+    // Documentos com validade (passaporte, CNH, carteirinha do plano): 30 dias antes, 7 dias antes e no dia
+    var vencendo = ativos_('arquivos').filter(function (x) { var n = x.validade ? N_diasEntre(hoje, x.validade) : -1; return n === 30 || n === 7 || n === 0; });
+    vencendo.forEach(function (x) {
+      var n = N_diasEntre(hoje, x.validade), quem = (x.pessoas || []).filter(function (p) { return pessoas.indexOf(p) >= 0; });
+      (quem.length ? quem : pessoas).forEach(function (p) {
+        avisarPessoa_(p, 'tarefas', { titulo: x.titulo + (n ? ' vence em ' + n + ' dias' : ' vence hoje'), corpo: 'Validade ' + dataCurta_(x.validade) + '. Que tal já marcar a renovação?', url: '#arquivos', tag: 'doc-' + x.id });
+      });
+    });
+
     var aPagar = contasAVencer_(hoje);
     if (aPagar.length) {
       var hojeV = aPagar.filter(function (c) { return c.venc === hoje; });

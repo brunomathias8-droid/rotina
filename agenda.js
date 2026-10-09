@@ -39,13 +39,14 @@ function quandoTexto(e, dia) {
 }
 
 /* ============================== linhas ============================== */
+const nAnexos = id => lista('arquivos').filter(a => a.liga === 'eventos:' + id).length;
 function linhaEvento(e, dia) {
   const multi = e.fim && e.fim > e.dia, n = (e.coments || []).length, pessoasEv = (e.pessoas || []).slice(0, 4);
   const sub = [pessoasEv.length ? `<span>${pessoasEv.map(id => av(id, 16)).join('')} ${esc(pessoasEv.map(primeiroNome).join(', '))}</span>` : '',
     e.leva ? `<span>🚗 ${esc(e.leva === S.eu ? 'você leva' : primeiroNome(e.leva) + ' leva')}</span>` : '',
     semQuemLeve(e) ? '<span class="tag warn">quem leva?</span>' : '',
     e.local ? `<span>📍 ${esc(e.local)}</span>` : '', multi ? `<span>até ${fmtCurta(N_somaDias(dia, N_diasEntre(e.dia, e.fim)))}</span>` : '',
-    e.repete ? `<span>${ic('repeat', 12, 2.2)}</span>` : '', n ? `<span>💬 ${n}</span>` : ''].filter(Boolean).join('');
+    e.repete ? `<span>${ic('repeat', 12, 2.2)}</span>` : '', n ? `<span>💬 ${n}</span>` : '', nAnexos(e.id) ? `<span>📎 ${nAnexos(e.id)}</span>` : ''].filter(Boolean).join('');
   return `<button class="it ev${e.pend ? ' pend' : ''}" style="--ec:var(--cor-${corEvento(e)})" data-a="sheet" data-k="evento" data-id="${e.id}" data-v="${dia}">
     <span class="ev-hora">${e.diaTodo || !e.ini ? '<b>dia todo</b>' : `<b>${esc(e.ini)}</b>${e.fimH ? `<small>${esc(e.fimH)}</small>` : ''}`}</span>
     <span class="main"><span class="t">${esc(tipoEv(e.tipo)[0])} ${esc(e.titulo)}</span>${sub ? `<span class="s">${sub}</span>` : ''}</span><span></span></button>`;
@@ -105,11 +106,12 @@ function verEvento(e, dia) {
       ${e.local ? `<div class="hrow" style="gap:10px"><span style="width:18px;text-align:center">📍</span><a href="${maps}" target="_blank" rel="noopener" class="link">${esc(e.local)}</a></div>` : ''}
       ${(e.alertas || []).length ? `<div class="hrow" style="gap:10px">${ic('bell', 18)}<span class="small">${e.alertas.map(m => nomeAlerta(m, e.diaTodo)).join(' · ')}${e.avisar === 'todos' ? ' · avisa todos' : ''}</span></div>` : ''}
     </div>
-    ${e.nota ? `<p class="small" style="white-space:pre-wrap">${esc(e.nota)}</p>` : ''}
+    ${e.nota ? `<p class="small" style="white-space:pre-wrap">${linkar(esc(e.nota))}</p>` : ''}
     <div class="grid2"><button class="btn sm" data-a="editarEvento">${ic('edit', 16)} Editar</button><button class="btn ghost sm" data-a="icsEvento" data-id="${e.id}">${ic('cal', 16)} No meu calendário</button>
       <button class="btn ghost sm" data-a="tarefaDoEvento" data-id="${e.id}" data-v="${dia}">${ic('clip', 16)} Criar tarefa</button><button class="btn ghost sm" data-a="duplicarEvento" data-id="${e.id}">Duplicar</button></div>
+    ${blocoAnexos('eventos', e.id)}
     ${secao('Conversa', `<span class="tiny muted">${(e.coments || []).length}</span>`)}
-    <div class="stack">${(e.coments || []).map(c => `<div class="coment${c.p === S.eu ? ' meu' : ''}">${av(c.p, 24)}<div><p class="small">${esc(c.t)}</p><p class="tiny muted">${esc(nomeDe(c.p))} · ${rotuloDia(isoLocal(c.em))} ${esc(new Date(c.em).toTimeString().slice(0, 5))}</p></div></div>`).join('') || '<p class="small muted">Combinem aqui: quem leva, o que precisa levar, mudança de horário…</p>'}</div>
+    <div class="stack">${(e.coments || []).map(c => `<div class="coment${c.p === S.eu ? ' meu' : ''}">${av(c.p, 24)}<div><p class="small">${linkar(esc(c.t))}</p><p class="tiny muted">${esc(nomeDe(c.p))} · ${rotuloDia(isoLocal(c.em))} ${esc(new Date(c.em).toTimeString().slice(0, 5))}</p></div></div>`).join('') || '<p class="small muted">Combinem aqui: quem leva, o que precisa levar, mudança de horário…</p>'}</div>
     <form data-f="coment" class="inrow"><input class="in" id="comtxt" placeholder="Escreva um comentário" maxlength="500" autocomplete="off"><button class="btn" type="submit" aria-label="Enviar">${ic('up', 18, 2.4)}</button></form>
     ${e.repete ? `<div class="grid2"><button class="btn danger sm" data-a="excluirEvento" data-id="${e.id}" data-v="${dia}" data-modo="um">Excluir só este dia</button><button class="btn danger sm" data-a="excluirEvento" data-id="${e.id}" data-modo="todos">Excluir todos</button></div>`
       : `<button class="btn danger block" data-a="excluirEvento" data-id="${e.id}" data-modo="todos">${ic('trash', 16)} Excluir compromisso</button>`}
