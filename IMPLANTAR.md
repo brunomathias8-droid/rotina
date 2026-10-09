@@ -45,8 +45,9 @@ São 3 partes. As partes 1 e 2 levam uns 15 minutos e já deixam o app funcionan
 1. Abra o endereço no Safari do iPhone.
 2. **Primeiro acesso**: código de convite + seu nome + um PIN.
 3. Instale: **Compartilhar › Adicionar à Tela de Início**. Abra pelo ícone e entre de novo (o app instalado tem um armazenamento separado do Safari).
-4. Em **Casa**, toque nas sugestões (lavar a louça, tirar o lixo…) ou crie os afazeres de vocês.
-5. Em **Finanças › Resumo**, siga o "Comece por aqui" (uns 15 minutos, com o app do banco aberto ao lado):
+4. Em **Tarefas**, toque nas ideias (lavar a louça, tirar o lixo…) ou crie as tarefas de vocês.
+5. Em **Agenda**, toque em **+ Família** para cadastrar filhos (ou quem mais entra na agenda) e escreva o primeiro compromisso, do jeito que se fala: "dentista Ana sexta 14h".
+6. Em **Finanças › Resumo**, siga o "Comece por aqui" (uns 15 minutos, com o app do banco aberto ao lado):
    1. Contas do banco com o saldo de hoje (Patrimônio › + Conta).
    2. Cartões de crédito com o dia de fechamento e de vencimento.
    3. Salários e contas fixas (aluguel, luz, internet, escola, assinaturas).
@@ -61,9 +62,19 @@ São 3 partes. As partes 1 e 2 levam uns 15 minutos e já deixam o app funcionan
 
 ### Chamar sua esposa
 
-No app: toque no seu avatar (canto de cima) › **Convidar**. O link já leva o código. Ela cria o próprio nome e PIN e entra no rodízio dos afazeres na hora.
+No app: toque no seu avatar (canto de cima) › **Convidar**. O link já leva o código. Ela cria o próprio nome e PIN e entra no revezamento das tarefas na hora.
 
-> A casa aceita 2 pessoas. Para mais gente (um filho, por exemplo), mude `max_pessoas` na aba Config.
+> A casa aceita 2 pessoas com login. Filhos e avós não precisam de login para aparecer na agenda: cadastre em **Agenda › + Família**. Para mais gente com login, mude `max_pessoas` na aba Config.
+
+### Agenda no calendário do celular (opcional)
+
+Avatar › **Ver a agenda no calendário do celular** › Copiar. Depois:
+
+- **iPhone:** Ajustes › Calendário › Contas › Adicionar Conta › Outra › Adicionar Calendário Assinado › colar.
+- **Outlook (Windows):** Calendário › Adicionar calendário › Assinar da Web › colar.
+- **Google Agenda (no computador):** Outras agendas › + › Do URL › colar.
+
+É só leitura: compromissos se criam e mudam no Rotina. O iPhone e o Outlook atualizam de tempos em tempos (de minutos a algumas horas); o Google pode levar até um dia. Os lembretes na hora certa são os do Rotina.
 
 ---
 
@@ -79,22 +90,33 @@ Dá para usar o **mesmo projeto Firebase do RM e do RACHA**. Copie da aba Config
 
 > No RM e no RACHA a conta de serviço já saiu da planilha e foi para as Propriedades do script. Se não tiver mais o arquivo JSON, gere uma chave nova no console do Firebase (Contas de serviço › Gerar nova chave privada). A chave antiga continua valendo para os outros apps.
 
-Depois, no Apps Script, execute **ativarAvisos** (cria o gatilho de hora em hora). No app: avatar › **Notificações › Ativar**. No iPhone, só funciona com o app instalado na tela de início.
+Depois, no Apps Script, execute **ativarAvisos** (cria dois gatilhos: um de hora em hora e um a cada 5 minutos, para os lembretes da agenda). No app: avatar › **Notificações › Ativar**. No iPhone, só funciona com o app instalado na tela de início.
 
 | Aviso | Quando |
 |---|---|
-| Seus afazeres do dia | Às 8h (muda em Config › `hora_avisos`) |
-| Pendências com prazo hoje ou amanhã | Às 8h |
+| Lembrete de compromisso (só para quem está envolvido, ou todos) | No horário escolhido em cada compromisso, com até 5 minutos de diferença. Chega mesmo entre 22h e 7h |
+| Compromisso novo, mudado ou com comentário novo | Na hora |
+| Sua agenda e suas tarefas do dia | Às 8h (muda em Config › `hora_avisos`) |
 | Conta fixa, boleto agendado ou fatura vencendo | Às 8h, 2 dias antes e no dia |
 | Pedido de troca, troca aceita ou recusada | Na hora |
-| Pendência passada para você ou concluída | Na hora |
+| Tarefa passada para você ou concluída | Na hora |
 | Itens novos na lista de compras | Na hora, no máximo 1 a cada 10 min (desligado de início) |
-| Resumo da semana (pontos de cada um, pendências resolvidas, gastos) | Domingo às 19h |
+| Hora do combinado da semana (compromissos dos próximos 7 dias, placar das tarefas, gastos) | Domingo às 19h |
 | Fechamento do mês (receitas, despesas, investido e metas de investir) | Dia 1, às 8h |
 
-Entre 22h e 7h nenhum aviso é enviado. Cada pessoa escolhe quais quer receber.
+Entre 22h e 7h nenhum aviso é enviado, a não ser os lembretes de compromisso. Cada pessoa escolhe quais quer receber.
 
 ---
+
+## Atualizar da versão 2 para a 3 (Agenda e Tarefas)
+
+Quem já usa a versão 2:
+
+1. No Apps Script, troque o conteúdo dos 4 arquivos (`Nucleo`, `Dados`, `Api`, `Push`) pelos novos.
+2. Execute **configurar**: cria as abas Tarefas, Eventos e Perfis e copia os afazeres e pendências para Tarefas. As abas antigas ficam intactas.
+3. Execute **ativarAvisos** de novo, para criar o gatilho de 5 minutos dos lembretes da agenda.
+4. **Implantar › Gerenciar implantações › editar › Versão: Nova versão**. O endereço /exec não muda.
+5. Abra o app: ele se atualiza sozinho (se não, feche e abra de novo).
 
 ## Atualizar o app depois
 
@@ -102,7 +124,7 @@ Entre 22h e 7h nenhum aviso é enviado. Cada pessoa escolhe quais quer receber.
 |---|---|
 | Telas (arquivos `.js`, `index.html`) | Trocar `VERSAO` em `sw.js` e enviar. O app se atualiza sozinho na próxima abertura |
 | Servidor (`servidor/*.gs`) | Colar no Apps Script › **Implantar › Gerenciar implantações › editar › Versão: Nova versão**. O endereço /exec não muda |
-| Regras de datas e rodízio (`nucleo.js`) | Rodar `./build.sh` (copia para `servidor/Nucleo.gs`) e atualizar os dois lados |
+| Regras de datas, revezamento e agenda (`nucleo.js`) | Rodar `./build.sh` (copia para `servidor/Nucleo.gs`) e atualizar os dois lados |
 
 ## Rotina mensal sugerida (10 minutos, no dia 1)
 
@@ -118,4 +140,6 @@ Entre 22h e 7h nenhum aviso é enviado. Cada pessoa escolhe quais quer receber.
 | "Resposta inesperada do servidor" | Implantação não está como "Qualquer pessoa", ou o endereço não termina em /exec |
 | Alguém esqueceu o PIN | No Apps Script, edite `redefinirPinAqui` com o nome e um PIN novo e execute |
 | Celular perdido | Rode `encerrarTodasSessoes` |
-| "A casa já está completa" | Aumente `max_pessoas` na aba Config |
+| "A casa já está completa" | Aumente `max_pessoas` na aba Config (ou cadastre a pessoa em Agenda › + Família, sem login) |
+| Lembrete de compromisso não chega | Rode `ativarAvisos` de novo e confira em **Acionadores** (relógio) se existe `verificarAgenda` a cada 5 minutos |
+| Calendário assinado não aparece | O endereço é o /exec com `?agenda=`; a implantação precisa estar como "Qualquer pessoa" |

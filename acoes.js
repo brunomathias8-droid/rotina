@@ -1,11 +1,11 @@
 /* acoes.js — o que cada toque faz, login, roteamento e a inicialização do app. */
 'use strict';
 
-const VERSAO_APP = '1.0.0';
+const VERSAO_APP = '3.0.0';
 
 /* ============ desenho ============ */
-const ABAS_APP = [['hoje', 'Hoje', 'sun'], ['casa', 'Casa', 'home'], ['pendencias', 'Pendências', 'clip'], ['financas', 'Finanças', 'wallet'], ['compras', 'Compras', 'cart']];
-const SCR = { hoje: () => scrHoje(), casa: () => scrCasa(), pendencias: () => scrPend(), financas: () => scrFin(), compras: () => scrCompras() };
+const ABAS_APP = [['hoje', 'Hoje', 'sun'], ['agenda', 'Agenda', 'cal'], ['tarefas', 'Tarefas', 'clip'], ['financas', 'Finanças', 'wallet'], ['compras', 'Compras', 'cart']];
+const SCR = { hoje: () => scrHoje(), agenda: () => scrAgenda(), tarefas: () => scrTarefas(), financas: () => scrFin(), compras: () => scrCompras() };
 function renderTop() {
   const t = $('#top'); if (!t) return;
   const marca = `<p class="brand">Rotina<b>.</b></p>`;
@@ -20,17 +20,17 @@ function renderNav() {
   n.hidden = false;
   const h = hoje();
   const badge = {
-    casa: afazeres().filter(a => a.prox <= h && quemFaz(a) === S.eu).length,
-    pendencias: pendAbertas().filter(p => p.prazo && p.prazo < h && (p.resp === S.eu || p.resp === 'ambos')).length
+    agenda: eventosDoDia(h, true).filter(x => (x.e.pessoas || []).includes(S.eu) || x.e.leva === S.eu).length,
+    tarefas: abertas().filter(t => t.prox && t.prox <= h && quemFaz(t) === S.eu).length
   };
   n.innerHTML = `<p class="brand nav-brand">Rotina<b>.</b></p>`
     + ABAS_APP.map(([k, l, i], j) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}" aria-current="${S.tab === k ? 'page' : 'false'}" title="${l} (${j + 1})">${ic(i, 22)}${l}${badge[k] ? `<span class="badge">${badge[k]}</span>` : ''}</button>`).join('')
-    + `<p class="nav-dica">Atalhos: <kbd>1</kbd>–<kbd>5</kbd> trocam de tela · <kbd>N</kbd> novo lançamento · <kbd>/</kbd> buscar ou adicionar · <kbd>Esc</kbd> fecha</p>`;
+    + `<p class="nav-dica">Atalhos: <kbd>1</kbd>–<kbd>5</kbd> trocam de tela · <kbd>N</kbd> novo (compromisso, tarefa ou lançamento) · <kbd>/</kbd> buscar ou adicionar · <kbd>Esc</kbd> fecha</p>`;
 }
 function render(keep = true) {
   const m = $('#main'); if (!m) return; const y = m.scrollTop;
   $('#app').classList.toggle('logado', !!S.sessao);
-  m.classList.toggle('estreito', !S.sessao || S.tab === 'pendencias' || S.tab === 'compras' || (S.tab === 'financas' && S.fv === 'extrato'));
+  m.classList.toggle('estreito', !S.sessao || S.tab === 'compras' || (S.tab === 'agenda' && S.ag === 'lista') || (S.tab === 'financas' && S.fv === 'extrato'));
   try { m.innerHTML = S.sessao ? SCR[S.tab]() : telaLogin(); }
   catch (e) { console.error(e); m.innerHTML = `<div class="note warn"><span>Algo deu errado nesta tela: ${esc(e.message)}. Toque em outra aba ou feche e abra o app.</span></div>`; }
   m.scrollTop = keep ? y : 0; renderNav(); renderTop();
@@ -68,7 +68,7 @@ function telaLogin() {
   return `<div class="login">
     <img class="logo" src="icones/icone.svg" alt="">
     <h1 class="display" style="text-align:center">A casa em dia,<br>a dois.</h1>
-    <p class="muted" style="text-align:center">Afazeres, pendências, contas e a lista do mercado, num lugar só.</p>
+    <p class="muted" style="text-align:center">Agenda, tarefas, finanças e a lista do mercado da família, num lugar só.</p>
     <div class="seg" role="tablist"><button role="tab" class="${novo ? '' : 'on'}" aria-selected="${!novo}" data-a="loginmodo" data-v="entrar">Entrar</button><button role="tab" class="${novo ? 'on' : ''}" aria-selected="${novo}" data-a="loginmodo" data-v="novo">Primeiro acesso</button></div>
     <form data-f="login" class="stack" autocomplete="on">
       ${novo ? lin('lconvite', 'Código de convite da casa', L.convite, 'autocapitalize="characters" autocomplete="off" placeholder="Ex.: K7X2QM"') : ''}
@@ -118,16 +118,18 @@ const A = {
   close: () => closeSheet(),
   filtro: d => { S[d.k] = d.v; render(); },
   loginmodo: d => { S.login = { ...(S.login || {}), modo: d.v, erro: '' }; render(); },
-  editar: () => { const s = S.sheet; if (s.k === 'afazer') s.f = formAfazer(S.d.afazeres.get(s.id)); renderSheet(); },
 
   // campos de formulário
   f: d => {
     const s = S.sheet, f = s.f; if (!f) return;
     let v = d.v;
-    if (['alta', 'ativa', 'ativo', 'pago'].includes(d.k)) v = !!v;
+    if (['alta', 'ativa', 'ativo', 'pago', 'diaTodo'].includes(d.k)) v = !!v;
     if (d.k === 'forma' && s.k === 'lanc' && f.forma === v) return;
     f[d.k] = v;
-    if (s.k === 'afazer' && d.k === 'freq') recalcProx(s);
+    if (s.k === 'tarefa' && d.k === 'freq') { if (v === 'mes' && f.prox) f.dm = +f.prox.slice(8); recalcProx(s); }
+    if (s.k === 'tarefa' && d.k === 'prox') s.proxManual = true;
+    if (s.k === 'evento' && d.k === 'diaTodo') { f.alertas = alertasPadrao(v, f.tipo).map(String); if (!v && !f.ini) f.ini = '09:00'; }
+    if (s.k === 'evento' && d.k === 'tipo' && !s.id) { f.alertas = alertasPadrao(f.diaTodo, v).map(String); if (v === 'aniversario') { f.diaTodo = true; f.repete = 'ano'; f.alertas = alertasPadrao(true, v).map(String); } }
     if ((s.k === 'lanc' || s.k === 'conta') && d.k === 'tipo') {
       const cats = categorias(v === 'entrada' ? 'entrada' : 'saida');
       if (!cats.some(c => c.id === f.cat)) f.cat = (cats[0] || {}).id || '';
@@ -144,26 +146,34 @@ const A = {
     recalcProx(s); renderSheet();
   },
 
-  // afazeres
+  // tarefas
   concluir: d => {
-    const a = S.d.afazeres.get(d.id); if (!a) return;
+    const a = S.d.tarefas.get(d.id); if (!a || a.feita) return;
     const feito = uidNovo();
     if (d.fechar) closeSheet();
     enfileirar('concluir', { id: a.id, feito, prox: a.prox, dia: hoje() });
-    const nv = S.d.afazeres.get(a.id) || a, q = quemFaz(nv);
-    toast(`${a.nome}: feito. Próxima vez ${rotuloDia(nv.prox)}${nv.resp === 'rodizio' && q ? (q === S.eu ? ', com você' : ', com ' + primeiroNome(q)) : ''}.`, 4500, { rot: 'Desfazer', fn: () => enfileirar('desfazer', { id: feito }) });
+    const nv = S.d.tarefas.get(a.id) || a, q = quemFaz(nv);
+    const msg = a.freq ? `${a.titulo}: feito. Próxima vez ${rotuloDia(nv.prox)}${nv.resp === 'rodizio' && q ? (q === S.eu ? ', com você' : ', com ' + primeiroNome(q)) : ''}.` : `${a.titulo}: concluída.`;
+    toast(msg, 4500, { rot: 'Desfazer', fn: () => enfileirar('desfazer', { id: feito }) });
+  },
+  reabrir: d => {
+    const a = S.d.tarefas.get(d.id); if (!a) return;
+    if (d.fechar) closeSheet();
+    const f = feitosDe(a.id).filter(x => !x.pulou).sort((x, y) => (y.dia + y.hora).localeCompare(x.dia + x.hora))[0];
+    if (f) enfileirar('desfazer', { id: f.id }); else enfileirar('salvar', { col: 'tarefas', item: { id: a.id, feita: false, feitaPor: '', feitaEm: '' } });
+    toast('Tarefa reaberta.');
   },
   desfazer: d => { enfileirar('desfazer', { id: d.id }); toast('Desfeito.'); },
   pular: d => {
-    const a = S.d.afazeres.get(d.id); if (!a) return;
+    const a = S.d.tarefas.get(d.id); if (!a || !a.freq) return;
     const feito = uidNovo(); closeSheet();
     enfileirar('concluir', { id: a.id, feito, prox: a.prox, dia: hoje(), pular: true });
-    toast(`${a.nome}: pulado. Próxima vez ${rotuloDia(S.d.afazeres.get(a.id).prox)}.`, 4500, { rot: 'Desfazer', fn: () => enfileirar('desfazer', { id: feito }) });
+    toast(`${a.titulo}: pulada. Próxima vez ${rotuloDia(S.d.tarefas.get(a.id).prox)}.`, 4500, { rot: 'Desfazer', fn: () => enfileirar('desfazer', { id: feito }) });
   },
   troca: d => {
-    const a = S.d.afazeres.get(d.id); if (!a) return;
+    const a = S.d.tarefas.get(d.id); if (!a) return;
     enfileirar('troca', { id: d.id, op: d.op });
-    if (d.op === 'aceitar') toast(`Combinado: ${a.nome} fica com você desta vez.`);
+    if (d.op === 'aceitar') toast(`Combinado: ${a.titulo} fica com você desta vez.`);
     if (d.op === 'recusar') toast('Troca recusada.');
     if (d.op === 'cancelar' && S.sheet) renderSheet();
   },
@@ -173,66 +183,40 @@ const A = {
     enfileirar('troca', { id: s.id, op: 'pedir', para: f.para, motivo: f.motivo.trim() });
     closeSheet(); toast(`Pedido enviado para ${primeiroNome(f.para)}.`);
   },
-  salvarAfazer: () => {
-    const s = S.sheet, f = s.f, nome = f.nome.trim();
-    if (!nome) { toast('Dê um nome ao afazer.'); focar('f-nome'); return; }
-    if (!N_dataValida(f.prox)) { toast('Escolha a data da próxima vez.'); return; }
-    const item = { id: s.id || uidNovo(), nome, ic: f.ic, freq: f.freq, dias: f.dias, n: clamp(parseInt(f.n, 10) || 1, 1, 365), dm: clamp(parseInt(f.dm, 10) || 1, 1, 31),
-      resp: f.resp, vez: f.resp === 'rodizio' ? f.vez : '', prox: f.prox, peso: clamp(+f.peso || 2, 1, 3), nota: String(f.nota || '').trim() };
-    closeSheet(); enfileirar('salvar', { col: 'afazeres', item });
-    toast(s.id ? 'Afazer atualizado.' : `${nome} adicionado.`);
+  salvarTarefa: () => {
+    const s = S.sheet, f = s.f, titulo = f.titulo.trim();
+    if (!titulo) { toast('Escreva o que precisa ser feito.'); focar('f-titulo'); return; }
+    if (f.prox && !N_dataValida(f.prox)) { toast('Data inválida.'); return; }
+    const item = { id: s.id || uidNovo(), titulo, ic: f.ic || '', nota: String(f.nota || '').trim(), area: f.area || '', resp: f.resp, vez: f.resp === 'rodizio' ? f.vez : '',
+      prox: f.prox || (f.freq ? N_primeira(f, hoje()) : ''), freq: f.freq || '', dias: f.dias, n: clamp(parseInt(f.n, 10) || 1, 1, 365), dm: clamp(parseInt(f.dm, 10) || 1, 1, 31),
+      peso: clamp(+f.peso || 2, 1, 3), alta: !!f.alta, itens: f.itens.map(({ t, ok }) => ({ t, ok })) };
+    const para = f.resp !== 'ambos' && f.resp !== 'rodizio' && f.resp !== S.eu ? primeiroNome(f.resp) : '';
+    closeSheet(); enfileirar('salvar', { col: 'tarefas', item });
+    toast(para && !s.id ? `Tarefa passada para ${para}.` : s.id ? 'Tarefa atualizada.' : 'Tarefa anotada.');
   },
   sugestao: d => {
     const g = SUGESTOES[+d.i]; if (!g) return;
-    // Rodízio mesmo com uma pessoa só: quem entrar depois passa a fazer parte dele sozinho
-    const item = { id: uidNovo(), nome: g.nome, ic: g.ic, freq: g.freq, dias: g.dias || [], n: g.n || 7, dm: g.dm || 1, resp: g.resp, vez: g.resp === 'rodizio' ? S.eu : '', peso: g.peso || 2, nota: '' };
+    // Revezando mesmo com uma pessoa só: quem entrar depois passa a fazer parte do revezamento sozinho
+    const item = { id: uidNovo(), titulo: g.titulo, ic: g.ic, area: 'casa', freq: g.freq, dias: g.dias || [], n: g.n || 7, dm: g.dm || 1, resp: g.resp, vez: g.resp === 'rodizio' ? S.eu : '', peso: g.peso || 2, nota: '', itens: [], alta: false };
     item.prox = N_primeira(item, hoje());
-    enfileirar('salvar', { col: 'afazeres', item });
-    toast(`${g.nome} adicionado. Toque nele para ajustar.`);
-  },
-
-  // pendências
-  pendok: d => {
-    const p = S.d.pendencias.get(d.id); if (!p) return;
-    const feita = !p.feita, item = { id: p.id, feita, feitaPor: feita ? S.eu : '', feitaEm: feita ? new Date().toISOString() : '' };
-    if (d.fechar) closeSheet();
-    // Pendência que repete: ao concluir, a próxima já nasce com o prazo seguinte; ao reabrir, a próxima some
-    let seguinte = null;
-    if (feita && p.repete) {
-      const base = p.prazo || hoje(), passo = { semana: [7, 0], mes: [0, 1], ano: [0, 12] }[p.repete];
-      const prazo = passo[0] ? N_somaDias(base, passo[0]) : N_diaDoMes(N_somaMes(N_mes(base), passo[1]), Number(base.slice(8)));
-      seguinte = { id: uidNovo(), titulo: p.titulo, nota: p.nota || '', area: p.area || '', resp: p.resp, prazo, alta: !!p.alta, repete: p.repete, itens: (p.itens || []).map(x => ({ t: x.t, ok: false })), feita: false };
-      item.seguinte = seguinte.id;
-    }
-    if (!feita && p.seguinte) { const nx = S.d.pendencias.get(p.seguinte); if (nx && !nx.feita) enfileirar('excluir', { col: 'pendencias', id: nx.id }); item.seguinte = ''; }
-    enfileirar('salvar', { col: 'pendencias', item });
-    if (seguinte) enfileirar('salvar', { col: 'pendencias', item: seguinte });
-    toast(feita ? (seguinte ? `Resolvida. A próxima ficou para ${fmtCurta(seguinte.prazo)}.` : 'Pendência resolvida.') : 'Pendência reaberta.', 3500, feita ? { rot: 'Desfazer', fn: () => A.pendok({ id: p.id }) } : null);
+    enfileirar('salvar', { col: 'tarefas', item });
+    toast(`${g.titulo} adicionada. Toque nela para ajustar.`);
   },
   passoPend: d => {
     const s = S.sheet, x = s.f.itens[+d.i]; if (!x) return;
     x.ok = !x.ok; renderSheet();
-    if (s.id) enfileirar('salvar', { col: 'pendencias', item: { id: s.id, itens: s.f.itens.map(({ t, ok }) => ({ t, ok })) } });
+    if (s.id) enfileirar('salvar', { col: 'tarefas', item: { id: s.id, itens: s.f.itens.map(({ t, ok }) => ({ t, ok })) } });
   },
   addPasso: () => {
     const s = S.sheet, t = String(s.f.novoItem || '').trim(); if (!t) { focar('f-novoItem'); return; }
     s.f.itens.push({ t: t.slice(0, 80), ok: false }); s.f.novoItem = ''; renderSheet(); focar('f-novoItem');
-    if (s.id) enfileirar('salvar', { col: 'pendencias', item: { id: s.id, itens: s.f.itens.map(({ t: tt, ok }) => ({ t: tt, ok })) } });
+    if (s.id) enfileirar('salvar', { col: 'tarefas', item: { id: s.id, itens: s.f.itens.map(({ t: tt, ok }) => ({ t: tt, ok })) } });
   },
   rmPasso: d => {
     const s = S.sheet; s.f.itens.splice(+d.i, 1); renderSheet();
-    if (s.id) enfileirar('salvar', { col: 'pendencias', item: { id: s.id, itens: s.f.itens.map(({ t, ok }) => ({ t, ok })) } });
+    if (s.id) enfileirar('salvar', { col: 'tarefas', item: { id: s.id, itens: s.f.itens.map(({ t, ok }) => ({ t, ok })) } });
   },
-  salvarPend: () => {
-    const s = S.sheet, f = s.f, titulo = f.titulo.trim();
-    if (!titulo) { toast('Escreva o que precisa ser resolvido.'); focar('f-titulo'); return; }
-    const item = { id: s.id || uidNovo(), titulo, nota: String(f.nota || '').trim(), area: f.area || '', resp: f.resp, prazo: N_dataValida(f.prazo) ? f.prazo : '', alta: !!f.alta,
-      repete: f.repete || '', itens: f.itens.map(({ t, ok }) => ({ t, ok })) };
-    if (item.repete && !item.prazo) item.prazo = hoje();
-    const resp = f.resp !== 'ambos' && f.resp !== S.eu ? primeiroNome(f.resp) : '';
-    closeSheet(); enfileirar('salvar', { col: 'pendencias', item });
-    toast(resp ? `Pendência passada para ${resp}.` : s.id ? 'Pendência atualizada.' : 'Pendência anotada.');
-  },
+
 
   // compras
   comprado: d => { const c = S.d.compras.get(d.id); if (!c) return; const v = !c.comprado; enfileirar('salvar', { col: 'compras', item: { id: c.id, comprado: v, compradoPor: v ? S.eu : '', compradoEm: v ? new Date().toISOString() : '' } }); },
@@ -247,7 +231,7 @@ const A = {
 
   // genérico
   excluir: d => {
-    const nomes = { afazeres: 'este afazer', pendencias: 'esta pendência', lancamentos: 'este lançamento', contas: 'esta conta fixa' };
+    const nomes = { tarefas: 'esta tarefa', perfis: 'esta pessoa da agenda', lancamentos: 'este lançamento', contas: 'esta conta fixa', cartoes: 'este cartão', patrimonio: 'este item', metas: 'esta meta' };
     if (!confirm(`Excluir ${nomes[d.col] || 'isto'}? Some para os dois.`)) return;
     closeSheet(); enfileirar('excluir', { col: d.col, id: d.id }); toast('Excluído.');
   },
@@ -277,11 +261,20 @@ document.addEventListener('click', e => {
 document.addEventListener('submit', async e => {
   e.preventDefault(); const f = e.target.dataset.f;
   if (f === 'login') { enviarLogin(); return; }
-  if (f === 'pend') {
-    const el = $('#pendtxt'), v = el.value.trim(); if (!v) return;
-    const resp = S.fPend !== 'todas' ? S.fPend : 'ambos';
-    enfileirar('salvar', { col: 'pendencias', item: { id: uidNovo(), titulo: v.slice(0, 120), resp, nota: '', prazo: '', alta: false } });
-    focar('pendtxt'); toast('Anotado. Toque nela para pôr prazo ou responsável.');
+  if (f === 'tarefa') {
+    const el = $('#tartxt'), v = el.value.trim(); if (!v) return;
+    const resp = S.fTar !== 'todas' && S.fTar !== 'casa' ? S.fTar : 'ambos';
+    enfileirar('salvar', { col: 'tarefas', item: { id: uidNovo(), titulo: v.slice(0, 120), resp, nota: '', prox: '', freq: '', alta: false, itens: [], peso: 2 } });
+    focar('tartxt'); toast('Anotada. Toque nela para pôr data, responsável ou repetição.');
+  }
+  if (f === 'evento') {
+    const el = $('#evtxt'), v = el.value.trim(); if (!v) return;
+    const pre = lerEvento(v); el.value = '';
+    openSheet({ k: 'evento', pre }); toast('Confira e salve.');
+  }
+  if (f === 'coment') {
+    const el = $('#comtxt'), v = el.value.trim(); if (!v || !S.sheet) return;
+    enfileirar('comentar', { id: S.sheet.id, cid: uidNovo(), texto: v.slice(0, 500) }); renderSheet(); focar('comtxt');
   }
   if (f === 'compra') { const el = $('#comptxt'), v = el.value.trim(); if (!v) return; addCompras(lerItensCompra(v)); focar('comptxt'); }
   if (f === 'pin') {
@@ -299,7 +292,7 @@ function aoDigitar(e) {
   if (k.startsWith('cnome:')) { f.cats[+k.slice(6)].nome = t.value; return; }
   if (k.startsWith('corc:')) { f.cats[+k.slice(5)].orcTxt = t.value; return; }
   f[k] = t.value;
-  if (s.k === 'afazer') {
+  if (s.k === 'tarefa') {
     if (k === 'prox') s.proxManual = true;
     if (k === 'dm' || k === 'n') { recalcProx(s); const el = $('#f-prox'); if (el) el.value = f.prox; }
   }
@@ -312,8 +305,8 @@ document.addEventListener('keydown', e => {
   const alvo = e.target, digitando = alvo && (alvo.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName));
   if (digitando || e.ctrlKey || e.metaKey || e.altKey || !S.sessao || S.sheet) return;
   if (/^[1-5]$/.test(e.key)) { e.preventDefault(); A.tab({ v: ABAS_APP[+e.key - 1][0] }); return; }
-  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); A.novoLanc({ tipo: 'saida' }); return; }
-  if (e.key === '/') { const c = $('#busca') || $('#comptxt') || $('#pendtxt'); if (c) { e.preventDefault(); c.focus(); } }
+  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); if (S.tab === 'agenda') A.novoEvento({}); else if (S.tab === 'tarefas') A.sheet({ k: 'tarefa' }); else A.novoLanc({ tipo: 'saida' }); return; }
+  if (e.key === '/') { const c = $('#busca') || $('#comptxt') || $('#tartxt') || $('#evtxt'); if (c) { e.preventDefault(); c.focus(); } }
 });
 /* Ao passar da tela de celular para a de computador (ou girar o tablet), redesenha no novo formato */
 try { window.matchMedia('(min-width: 900px)').addEventListener('change', () => { if (S.sessao) { render(); if (S.sheet) renderSheet(); } }); } catch (e) { /* navegador antigo */ }
@@ -326,8 +319,10 @@ function aplicarRota() {
   if (ap) lsSet('api', ap[1]);
   const cv = h.match(/convite=([A-Za-z0-9]+)/);
   if (cv) { if (!S.sessao) S.login = { modo: 'novo', convite: cv[1].toUpperCase() }; history.replaceState(null, '', location.pathname); return; }
-  const [tab, sub] = h.split('/');
+  let [tab, sub] = h.split('/');
+  if (tab === 'casa' || tab === 'pendencias') tab = 'tarefas'; // endereços da versão 2
   if (SCR[tab]) S.tab = tab;
+  if (tab === 'agenda' && sub === 'semana' && S.sessao) setTimeout(() => openSheet({ k: 'semana' }), 300);
   if (tab === 'financas' && sub) S.fv = sub;
   if (tab === 'novo') { S.tab = 'financas'; S.fv = 'resumo'; S.abrirNovo = true; } // atalho do ícone instalado
   history.replaceState(null, '', location.pathname);

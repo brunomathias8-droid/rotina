@@ -4,7 +4,7 @@
 const CFG = Object.assign({ api: '', intervaloSincSeg: 30 }, window.ROTINA_CONFIG || {});
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const INSTALADO = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const COLS = ['afazeres', 'feitos', 'pendencias', 'lancamentos', 'contas', 'cartoes', 'patrimonio', 'metas', 'compras'];
+const COLS = ['tarefas', 'feitos', 'eventos', 'perfis', 'lancamentos', 'contas', 'cartoes', 'patrimonio', 'metas', 'compras'];
 
 /* ============================== utilidades ============================== */
 const $ = s => document.querySelector(s);
@@ -128,28 +128,36 @@ const S = {
   sessao: null, fila: [], ultimaSinc: 0, sincronizando: false,
   // tela
   tab: 'hoje', sheet: null, login: null, tema: lsGet('tema') || 'auto',
-  fCasa: 'todos', fPend: 'todas', mes: N_mes(hoje()), fCat: null, fv: 'resumo', fExt: 'tudo', busca: '', placar: 'semana'
+  fTar: 'todas', mes: N_mes(hoje()), fCat: null, fv: 'resumo', fExt: 'tudo', busca: '', placar: 'semana',
+  ag: lsGet('agVisao') || 'lista', agDia: hoje(), fPess: ''
 };
 
 /* ============================== consultas ============================== */
 const lista = col => [...S.d[col].values()];
-const pessoa = id => S.pessoas.find(p => p.id === id) || { id, nome: 'Alguém', cor: 'a' };
+/* Pessoas: quem entra no app (com nome e PIN) e os perfis sem login da família (filhos, pais, pet), usados na agenda. */
+const perfis = () => lista('perfis').sort((a, b) => a.nome.localeCompare(b.nome));
+const membros = () => [...S.pessoas.map(p => ({ ...p, login: true })), ...perfis().map(p => ({ ...p, cor: p.cor || 'e' }))];
+const pessoa = id => S.pessoas.find(p => p.id === id) || (S.d.perfis && S.d.perfis.get(id)) || { id, nome: 'Alguém', cor: 'a' };
 const nomeDe = id => id === S.eu ? 'Você' : pessoa(id).nome;
 const primeiroNome = id => pessoa(id).nome.split(' ')[0];
 const outros = () => S.pessoas.filter(p => p.id !== S.eu);
 const outro = () => outros()[0] || null;
 const idsAtivos = () => S.pessoas.map(p => p.id);
-const av = (id, s = 28) => { const p = pessoa(id); return `<span class="av cor-${esc(p.cor)}" style="width:${s}px;height:${s}px;font-size:${Math.round(s * .46)}px" aria-hidden="true">${esc((p.nome || '?').trim()[0] || '?').toUpperCase()}</span>`; };
+const av = (id, s = 28) => { const p = pessoa(id); return `<span class="av cor-${esc(p.cor || 'e')}" style="width:${s}px;height:${s}px;font-size:${Math.round(s * (p.ic ? .58 : .46))}px" aria-hidden="true">${p.ic ? esc(p.ic) : esc((p.nome || '?').trim()[0] || '?').toUpperCase()}</span>`; };
 
+/* Tarefas: únicas ou que repetem. Quem faz: uma pessoa, nós dois ('ambos') ou revezando ('rodizio'). */
 const quemFaz = a => N_quemFaz(a);
 const comigo = a => { const q = quemFaz(a); return !q || q === S.eu; };
-const afazeres = () => lista('afazeres').sort((a, b) => (a.prox || '9').localeCompare(b.prox || '9') || a.nome.localeCompare(b.nome));
-const feitosDe = (afz, dia) => lista('feitos').filter(f => f.afazer === afz && (!dia || f.dia === dia));
-const respNome = r => r === 'rodizio' ? 'Rodízio' : r === 'ambos' || !r ? 'Qualquer um' : primeiroNome(r);
+const tarefas = () => lista('tarefas').sort((a, b) => (b.alta - a.alta) || (a.prox || '9999').localeCompare(b.prox || '9999') || a.titulo.localeCompare(b.titulo));
+const abertas = () => tarefas().filter(t => !t.feita);
+const feitosDe = (id, dia) => lista('feitos').filter(f => f.afazer === id && (!dia || f.dia === dia));
+const respNome = r => r === 'rodizio' ? 'Revezando' : r === 'ambos' || !r ? 'Nós dois' : primeiroNome(r);
 function freqTexto(a) {
+  if (!a.freq) return '';
   if (a.freq === 'dia') return 'todo dia';
   if (a.freq === 'cada') return `a cada ${a.n || 1} ${plu(+a.n || 1, 'dia')}`;
   if (a.freq === 'mes') return `todo dia ${a.dm || 1}`;
+  if (a.freq === 'ano') return a.prox ? `todo ano em ${fmtCurta(a.prox)}` : 'todo ano';
   const d = N_diasSemana(a);
   return d.length === 7 ? 'todo dia' : 'toda ' + d.map(x => DIAS[x].toLowerCase()).join(', ');
 }
@@ -188,12 +196,11 @@ async function api(acao, dados, opts) {
  */
 function aplicarSalvar(col, item) {
   const m = S.d[col], atual = m.get(item.id), novo = { ...(atual || { por: S.eu, em: new Date().toISOString() }), ...item, pend: true };
-  if (col === 'afazeres') {
-    if (!novo.prox) novo.prox = N_primeira(novo, hoje());
+  if (col === 'tarefas') {
+    if (novo.freq && !novo.prox) novo.prox = N_primeira(novo, hoje());
     if (novo.resp === 'rodizio' && !novo.vez) novo.vez = S.eu;
     if (atual && item.resp && item.resp !== atual.resp) novo.troca = null;
   }
-  if (col === 'pendencias' && novo.feita && !(atual && atual.feita)) { novo.feitaPor = novo.feitaPor || S.eu; novo.feitaEm = novo.feitaEm || new Date().toISOString(); }
   if (col === 'compras' && novo.comprado && !(atual && atual.comprado)) { novo.compradoPor = novo.compradoPor || S.eu; novo.compradoEm = novo.compradoEm || new Date().toISOString(); }
   m.set(item.id, novo);
 }
@@ -204,27 +211,44 @@ function aplicarLocal(f) {
   if (f.acao === 'excluir') (d.ids || [d.id]).forEach(id => S.d[d.col].delete(id));
   if (f.acao === 'limparCompras') lista('compras').filter(c => c.comprado).forEach(c => S.d.compras.delete(c.id));
   if (f.acao === 'concluir') {
-    const a = S.d.afazeres.get(d.id);
-    if (a && a.prox === d.prox && !S.d.feitos.has(d.feito)) {
-      const prox = N_proxima(a, d.dia);
-      S.d.afazeres.set(a.id, { ...a, prox, vez: a.resp === 'rodizio' && !d.pular ? N_proximaVez(idsAtivos(), S.eu) : a.vez, troca: null, pend: true });
-      S.d.feitos.set(d.feito, { id: d.feito, afazer: a.id, nome: a.nome, quem: S.eu, dia: d.dia, hora: agoraHM(), peso: a.peso || 2, pulou: !!d.pular, por: S.eu, pend: true,
-        antes: { prox: a.prox, vez: a.vez, troca: a.troca ? JSON.stringify(a.troca) : '', depois: prox } });
+    const a = S.d.tarefas.get(d.id);
+    const pode = a && !S.d.feitos.has(d.feito) && (a.freq ? a.prox === d.prox : !a.feita);
+    if (pode) {
+      let antes, nova;
+      if (a.freq) {
+        const prox = N_proxima(a, d.dia);
+        antes = { prox: a.prox, vez: a.vez, troca: a.troca ? JSON.stringify(a.troca) : '', itens: a.itens ? JSON.stringify(a.itens) : '', depois: prox };
+        nova = { ...a, prox, vez: a.resp === 'rodizio' && !d.pular ? N_proximaVez(idsAtivos(), S.eu) : a.vez, troca: null, itens: (a.itens || []).map(x => ({ t: x.t, ok: false })), pend: true };
+      } else {
+        antes = { unica: true, troca: a.troca ? JSON.stringify(a.troca) : '' };
+        nova = { ...a, feita: true, feitaPor: S.eu, feitaEm: new Date().toISOString(), troca: null, pend: true };
+      }
+      S.d.tarefas.set(a.id, nova);
+      S.d.feitos.set(d.feito, { id: d.feito, afazer: a.id, nome: a.titulo, quem: S.eu, dia: d.dia, hora: agoraHM(), peso: a.peso || 2, pulou: !!d.pular, por: S.eu, pend: true, antes });
     }
   }
   if (f.acao === 'desfazer') {
-    const fe = S.d.feitos.get(d.id), an = fe && fe.antes, a = fe && S.d.afazeres.get(fe.afazer);
+    const fe = S.d.feitos.get(d.id), an = fe && fe.antes, a = fe && S.d.tarefas.get(fe.afazer);
     S.d.feitos.delete(d.id);
-    if (an && a && a.prox === an.depois) S.d.afazeres.set(a.id, { ...a, prox: an.prox || a.prox, vez: an.vez || '', troca: an.troca ? JSON.parse(an.troca) : null, pend: true });
+    if (an && a) {
+      const troca = an.troca ? JSON.parse(an.troca) : null;
+      if (an.unica && a.feita) S.d.tarefas.set(a.id, { ...a, feita: false, feitaPor: '', feitaEm: '', troca, pend: true });
+      else if (!an.unica && a.prox === an.depois) S.d.tarefas.set(a.id, { ...a, prox: an.prox || a.prox, vez: an.vez || '', troca, itens: an.itens ? JSON.parse(an.itens) : a.itens, pend: true });
+    }
   }
   if (f.acao === 'troca') {
-    const a = S.d.afazeres.get(d.id); if (!a) return;
+    const a = S.d.tarefas.get(d.id); if (!a) return;
     let t = a.troca;
     if (d.op === 'pedir') t = { de: S.eu, para: d.para, st: 'pedida', motivo: d.motivo || '', prox: a.prox };
     else if (d.op === 'aceitar' && t) t = { ...t, st: 'aceita' };
     else if (d.op === 'recusar' && t) t = { ...t, st: 'recusada' };
     else if (d.op === 'cancelar') t = null;
-    S.d.afazeres.set(a.id, { ...a, troca: t, pend: true });
+    S.d.tarefas.set(a.id, { ...a, troca: t, pend: true });
+  }
+  if (f.acao === 'comentar') {
+    const e = S.d.eventos.get(d.id); if (!e) return;
+    const l = e.coments || [];
+    if (!l.some(c => c.id === d.cid)) S.d.eventos.set(e.id, { ...e, coments: [...l, { id: d.cid, p: S.eu, t: d.texto, em: new Date().toISOString(), pend: true }], pend: true });
   }
   if (f.acao === 'casa' && S.casa) { if (d.categorias) S.casa.categorias = d.categorias; if (d.metodo) S.casa.metodo = d.metodo; if (d.nome) S.casa.nome = d.nome; }
 }
@@ -268,7 +292,7 @@ function aplicarResposta(r) {
   if (r.col && r.item) mesclar(r.col, [r.item]);
   if (r.col && r.itens) mesclar(r.col, r.itens);
   if (r.feito) mesclar('feitos', [r.feito]);
-  if (r.afazer) mesclar('afazeres', [r.afazer]);
+  if (r.tarefa) mesclar('tarefas', [r.tarefa]);
   if (r.casa) S.casa = r.casa;
   reaplicarFila();
   salvarCache(); render(); if (S.sheet && !S.sheet.f) renderSheet();

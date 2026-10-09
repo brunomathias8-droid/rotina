@@ -9,7 +9,7 @@ const _scripts = {};
 
 function pushSuportado() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
 function plataformaPush() { return IOS ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : 'computador'; }
-function pushTiposLocais() { const t = lsGet('pushTipos'); return (t === null ? 'afazeres,pendencias,contas,trocas,atribuidas,resumo' : t).split(',').filter(Boolean); }
+function pushTiposLocais() { const t = lsGet('pushTipos'); return (t === null ? 'tarefas,agenda,agendanovo,contas,trocas,atribuidas,resumo,fechamento' : t.includes('agenda') ? t : t + ',tarefas,agenda,agendanovo').split(',').filter(Boolean); }
 
 function carregarPushConfig() {
   if (PUSH.cfg || PUSH.carregando || !navigator.onLine || !S.sessao) return;
@@ -84,7 +84,7 @@ function secaoPush() {
   }
   if (Notification.permission === 'denied') return `<div class="note warn"><span>As notificações estão bloqueadas para o Rotina neste aparelho. ${IOS ? 'Libere em <b>Ajustes do iPhone › Notificações › Rotina</b>.' : 'Libere nas configurações do app ou do site (cadeado ao lado do endereço).'}</span></div>`;
   if (tok && Notification.permission === 'granted') {
-    const tipos = pushTiposLocais(), nomes = (PUSH.cfg && PUSH.cfg.tipos) || { afazeres: 'Seus afazeres do dia, de manhã', pendencias: 'Pendências com prazo hoje ou amanhã', contas: 'Contas fixas vencendo', trocas: 'Pedidos de troca de afazer', atribuidas: 'Pendência passada para você ou concluída', compras: 'Itens novos na lista de compras', resumo: 'Resumo da semana, domingo às 19h' };
+    const tipos = pushTiposLocais(), nomes = (PUSH.cfg && PUSH.cfg.tipos) || { tarefas: 'Agenda e tarefas do dia, de manhã', agenda: 'Lembretes dos compromissos', agendanovo: 'Compromisso novo, mudado ou comentado', contas: 'Contas e faturas vencendo', trocas: 'Pedidos de troca de tarefa', atribuidas: 'Tarefa passada para você ou concluída', compras: 'Itens novos na lista de compras', resumo: 'Resumo da semana e o combinado de domingo', fechamento: 'Fechamento do mês, no dia 1' };
     if (!PUSH.cfg) carregarPushConfig();
     return `<p class="small"><span class="chip good">ligadas</span> neste aparelho. Escolha o que quer receber:</p>
       <div class="stack">${Object.keys(nomes).map(k => `<div class="between"><span class="small">${esc(nomes[k])}</span><button class="tog ${tipos.includes(k) ? 'on' : ''}" data-a="push-tipo" data-t="${k}" aria-pressed="${tipos.includes(k)}" aria-label="${esc(nomes[k])}"></button></div>`).join('')}</div>
@@ -93,7 +93,7 @@ function secaoPush() {
   if (!navigator.onLine) return '<div class="note"><span>Conecte-se à internet para ativar as notificações.</span></div>';
   if (!PUSH.cfg) { carregarPushConfig(); return PUSH.erro ? `<div class="note warn"><span>${esc(PUSH.erro)}</span></div>` : '<p class="small muted">Carregando…</p>'; }
   if (!PUSH.cfg.ativo) return `<div class="note"><span>As notificações ainda não foram ligadas no servidor da casa. Veja a parte 3 do guia de implantação (uns 10 minutos, uma vez só).</span></div>`;
-  return `<p class="small">Receba no celular: seus afazeres do dia, pendências com prazo perto, contas vencendo e os pedidos de troca. Você escolhe quais depois.</p>
+  return `<p class="small">Receba no celular: lembretes dos compromissos, agenda e tarefas do dia, contas vencendo e pedidos de troca. Você escolhe quais depois.</p>
     <button class="btn block" data-a="push-ativar">${ic('bell', 16)} Ativar notificações</button>`;
 }
 

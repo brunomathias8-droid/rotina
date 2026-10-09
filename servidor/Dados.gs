@@ -8,6 +8,10 @@ var ABAS = {
   Config: ['Chave', 'Valor', 'Para que serve'],
   Pessoas: ['ID', 'Nome', 'PinHash', 'Cor', 'Admin', 'Ativo', 'CriadoEm', 'Atualizado'],
   Sessoes: ['ID', 'TokenHash', 'Pessoa', 'CriadoEm', 'ExpiraEmMs', 'Aparelho', 'UltimoUso', 'Ativa'],
+  Tarefas: ['ID', 'Titulo', 'Icone', 'Nota', 'Area', 'Resp', 'Vez', 'Prazo', 'Freq', 'Dias', 'N', 'DiaMes', 'Peso', 'Alta', 'Itens', 'Troca', 'Feita', 'FeitaPor', 'FeitaEm', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
+  Eventos: ['ID', 'Titulo', 'Tipo', 'Dia', 'Fim', 'DiaTodo', 'Ini', 'FimH', 'Local', 'Pessoas', 'Leva', 'Repete', 'Ate', 'Exc', 'Alertas', 'Avisar', 'Nota', 'Comentarios', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
+  Perfis: ['ID', 'Nome', 'Icone', 'Cor', 'Nasc', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
+  // Afazeres e Pendencias são da versão 2: na primeira sincronização da versão 3 viram Tarefas (migrarParaTarefas_)
   Afazeres: ['ID', 'Nome', 'Icone', 'Freq', 'Dias', 'N', 'DiaMes', 'Resp', 'Vez', 'Prox', 'Peso', 'Troca', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Feitos: ['ID', 'Afazer', 'Nome', 'Pessoa', 'Dia', 'Hora', 'Peso', 'Pulou', 'Antes', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Pendencias: ['ID', 'Titulo', 'Nota', 'Area', 'Resp', 'Prazo', 'Alta', 'Itens', 'Repete', 'Feita', 'FeitaPor', 'FeitaEm', 'Seguinte', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
@@ -47,14 +51,17 @@ var CATEGORIAS_PADRAO = [
 /* Método de orçamento: % da renda para essenciais, estilo de vida e futuro (investimentos e metas). Padrão 50/30/20. */
 var METODO_PADRAO = { essencial: 50, livre: 30, futuro: 20 };
 
+var LEGADO = ['Afazeres', 'Pendencias'];
+
 var CONFIG_PADRAO = [
   ['nome_casa', 'Nossa casa', 'Nome da casa, aparece no app'],
   ['convite', '', 'Código que a outra pessoa digita no primeiro acesso'],
   ['categorias', JSON.stringify(CATEGORIAS_PADRAO), 'Categorias e orçamento do mês. O app muda isto em Finanças › Orçamento'],
   ['metodo', JSON.stringify(METODO_PADRAO), 'Divisão da renda (essenciais / estilo de vida / futuro). O app muda isto em Finanças › Orçamento'],
   ['fuso', 'America/Fortaleza', 'Fuso horário da casa'],
-  ['hora_avisos', '8', 'Hora dos avisos da manhã (afazeres do dia, pendências e contas)'],
+  ['hora_avisos', '8', 'Hora do aviso da manhã (agenda e tarefas do dia, contas a vencer)'],
   ['dias_sessao', '180', 'Quantos dias o login vale no aparelho'],
+  ['agenda_ics', '', 'Senha do endereço da agenda para assinar no iPhone, Google ou Outlook. Apague para gerar outra (o endereço antigo para de funcionar)'],
   ['max_pessoas', '2', 'Quantas pessoas podem entrar na casa'],
   ['firebase_web_config', '', 'Notificações: bloco firebaseConfig do console do Firebase (pode ser o mesmo projeto do RM)'],
   ['firebase_vapid_key', '', 'Notificações: chave "Web Push certificates" do Cloud Messaging'],
@@ -152,12 +159,12 @@ function metodo_() { var m = json_(cfg_().metodo, null); return m && m.essencial
 
 function casaPublica_() {
   var c = cfg_();
-  return { nome: c.nome_casa || 'Nossa casa', convite: c.convite || '', categorias: categorias_(), metodo: metodo_(), fuso: fuso_(), hoje: hoje_() };
+  return { nome: c.nome_casa || 'Nossa casa', convite: c.convite || '', categorias: categorias_(), metodo: metodo_(), fuso: fuso_(), hoje: hoje_(), ics: icsToken_() };
 }
 
 /** Rodar uma vez no editor do Apps Script (e de novo sem medo: não apaga nada). */
 function configurar() {
-  Object.keys(ABAS).forEach(aba_);
+  Object.keys(ABAS).filter(function (n) { return LEGADO.indexOf(n) < 0; }).forEach(aba_);
   var sh = aba_('Config'), atual = cfg_();
   CONFIG_PADRAO.forEach(function (l) {
     if (!(l[0] in atual)) { sh.appendRow([l[0], l[1], l[2]]); }
@@ -166,6 +173,8 @@ function configurar() {
   _cfg = null;
   if (!cfg_().convite) cfgSet_('convite', Utilities.getUuid().replace(/[^A-Z0-9]/gi, '').slice(0, 6).toUpperCase());
   PropertiesService.getScriptProperties().setProperty('PLANILHA', ss_().getId());
+  icsToken_();
+  migrarParaTarefas_();
   var s0 = ss_().getSheetByName('Página1') || ss_().getSheetByName('Sheet1');
   if (s0 && ss_().getSheets().length > 1 && s0.getLastRow() === 0) ss_().deleteSheet(s0);
   var msg = 'Rotina configurado. Código de convite: ' + cfg_().convite + '. Agora implante como app da web (Implantar › Nova implantação).';
@@ -192,13 +201,16 @@ function nomeDe_(id) { var p = pessoaPorId_(id); return p ? p.Nome : 'Alguém'; 
  */
 var TIPOS_LANC = ['saida', 'entrada', 'fatura', 'aporte', 'resgate', 'transf'];
 var COLECOES = {
-  afazeres: { aba: 'Afazeres', exigir: 'nome', campos: {
-    nome: ['Nome', 't', 60], ic: ['Icone', 't', 16], freq: ['Freq', 'e', ['dia', 'semana', 'mes', 'cada']], dias: ['Dias', 'l'],
-    n: ['N', 'n'], dm: ['DiaMes', 'n'], resp: ['Resp', 'r'], vez: ['Vez', 'p'], prox: ['Prox', 'd'], peso: ['Peso', 'n'], nota: ['Nota', 't', 300] } },
-  pendencias: { aba: 'Pendencias', exigir: 'titulo', campos: {
-    titulo: ['Titulo', 't', 120], nota: ['Nota', 't', 800], area: ['Area', 't', 20], resp: ['Resp', 'r'], prazo: ['Prazo', 'd'], alta: ['Alta', 'b'],
-    itens: ['Itens', 'j', 4000], repete: ['Repete', 'e', ['', 'semana', 'mes', 'ano']],
-    feita: ['Feita', 'b'], feitaPor: ['FeitaPor', 'p'], feitaEm: ['FeitaEm', 't', 30], seguinte: ['Seguinte', 't', 40] } },
+  tarefas: { aba: 'Tarefas', exigir: 'titulo', campos: {
+    titulo: ['Titulo', 't', 120], ic: ['Icone', 't', 16], nota: ['Nota', 't', 800], area: ['Area', 't', 20], resp: ['Resp', 'r'], vez: ['Vez', 'p'],
+    prox: ['Prazo', 'd'], freq: ['Freq', 'e', ['', 'dia', 'semana', 'mes', 'ano', 'cada']], dias: ['Dias', 'l'], n: ['N', 'n'], dm: ['DiaMes', 'n'],
+    peso: ['Peso', 'n'], alta: ['Alta', 'b'], itens: ['Itens', 'j', 4000], feita: ['Feita', 'b'], feitaPor: ['FeitaPor', 'p'], feitaEm: ['FeitaEm', 't', 30] } },
+  eventos: { aba: 'Eventos', exigir: 'titulo', campos: {
+    titulo: ['Titulo', 't', 120], tipo: ['Tipo', 't', 20], dia: ['Dia', 'd'], fim: ['Fim', 'd'], diaTodo: ['DiaTodo', 'b'], ini: ['Ini', 'h'], fimH: ['FimH', 'h'],
+    local: ['Local', 't', 200], pessoas: ['Pessoas', 'L'], leva: ['Leva', 'p'], repete: ['Repete', 'e', ['', 'dia', 'semana', 'mes', 'ano']], ate: ['Ate', 'd'],
+    exc: ['Exc', 'L'], alertas: ['Alertas', 'l'], avisar: ['Avisar', 'e', ['envolvidos', 'todos']], nota: ['Nota', 't', 800] } },
+  perfis: { aba: 'Perfis', exigir: 'nome', campos: {
+    nome: ['Nome', 't', 30], ic: ['Icone', 't', 16], cor: ['Cor', 't', 2], nasc: ['Nasc', 'd'] } },
   lancamentos: { aba: 'Lancamentos', exigir: 'dia', campos: {
     dia: ['Dia', 'd'], tipo: ['Tipo', 'e', TIPOS_LANC], v: ['Valor', 'c'], desc: ['Descricao', 't', 120], cat: ['Categoria', 't', 30],
     forma: ['Forma', 't', 20], pago: ['Pago', 'b'], carteira: ['Carteira', 't', 40], cartao: ['Cartao', 't', 40], parc: ['Parcela', 't', 9],
@@ -227,6 +239,7 @@ function valorParaPlanilha_(tipo, op, v, ids) {
   if (v === undefined || v === null) v = '';
   switch (tipo) {
     case 't': return String(v).replace(/\s+/g, ' ').trim().slice(0, op);
+    case 'h': return /^([01]?\d|2[0-3]):[0-5]\d$/.test(String(v)) ? ('0' + v).slice(-5) : '';
     case 'e': return op.indexOf(String(v)) >= 0 ? String(v) : op[0];
     case 'd': return N_dataValida(v) ? String(v) : '';
     case 'n': return isFinite(Number(v)) && v !== '' ? String(Math.round(Number(v))) : '';
@@ -256,7 +269,8 @@ function paraApp_(col, r) {
   var def = COLECOES[col], o = { id: r.ID, por: r.CriadoPor, em: r.CriadoEm, up: Number(r.Atualizado) || 0 };
   if (r.Excluido === 'sim') { o.excluido = true; return o; }
   Object.keys(def.campos).forEach(function (k) { var c = def.campos[k]; o[k] = valorParaApp_(c[1], r[c[0]] === undefined ? '' : r[c[0]]); });
-  if (col === 'afazeres') o.troca = json_(r.Troca, null);
+  if (col === 'tarefas') o.troca = json_(r.Troca, null);
+  if (col === 'eventos') o.coments = json_(r.Comentarios, []) || [];
   if (col === 'feitos') o.antes = json_(r.Antes, null);
   return o;
 }
@@ -294,8 +308,7 @@ function gravar_(s, col, item, ids) {
     if (Object.prototype.hasOwnProperty.call(item, k)) { var c = def.campos[k]; campos[c[0]] = valorParaPlanilha_(c[1], c[2], item[k], ids); }
   });
   var antes = r ? paraApp_(col, r) : null;
-  if (col === 'afazeres') ajustarAfazer_(campos, r, s);
-  if (col === 'pendencias' && campos.Feita === 'sim' && !(r && r.Feita === 'sim')) { campos.FeitaPor = campos.FeitaPor || s.pessoa; campos.FeitaEm = campos.FeitaEm || new Date().toISOString(); }
+  if (col === 'tarefas') ajustarTarefa_(campos, r, s);
   if (col === 'compras' && campos.Comprado === 'sim' && !(r && r.Comprado === 'sim')) { campos.CompradoPor = campos.CompradoPor || s.pessoa; campos.CompradoEm = campos.CompradoEm || new Date().toISOString(); }
   campos.Atualizado = String(Date.now());
   if (r) atualizar_(def.aba, r._lin, campos);
@@ -309,13 +322,12 @@ function gravar_(s, col, item, ids) {
   return depois;
 }
 
-/** Afazer novo ou com regra mudada: garante a próxima data e de quem é a vez no rodízio. */
-function ajustarAfazer_(campos, r, s) {
+/** Tarefa nova ou com regra mudada: tarefa que repete sempre tem a próxima data; no rodízio, sempre tem de quem é a vez. */
+function ajustarTarefa_(campos, r, s) {
   var get = function (c) { return campos[c] !== undefined ? campos[c] : (r ? r[c] : ''); };
-  var a = { freq: get('Freq') || 'dia', dias: get('Dias'), dm: get('DiaMes'), n: get('N') };
-  if (!r && !campos.Freq) campos.Freq = 'dia';
+  var a = { freq: get('Freq'), dias: get('Dias'), dm: get('DiaMes'), n: get('N') };
   if (!r && !campos.Peso) campos.Peso = '2';
-  if (!get('Prox')) campos.Prox = N_primeira(a, hoje_());
+  if (a.freq && !get('Prazo')) campos.Prazo = N_primeira(a, hoje_());
   if (get('Resp') === 'rodizio' && !get('Vez')) campos.Vez = s.pessoa;
   if (r && campos.Resp && campos.Resp !== r.Resp) campos.Troca = '';
 }
@@ -348,45 +360,56 @@ function limparCompras_(s, req) {
   });
 }
 
-/* ------------------------------ afazeres: feito, desfazer e troca ------------------------------ */
-function afazerApp_(r) { return paraApp_('afazeres', r); }
+/* ------------------------------ tarefas: concluir, desfazer, troca ------------------------------ */
+function tarefaApp_(r) { return paraApp_('tarefas', r); }
+function zerarItens_(txt) { var l = json_(txt, null); return Array.isArray(l) && l.length ? JSON.stringify(l.map(function (x) { return { t: x.t, ok: false }; })) : txt; }
 
 /**
- * Marca um afazer como feito. "prox" é a data que o app via; se outra pessoa já marcou antes, nada muda.
- * "feito" é o ID do registro, gerado no app: reenviar o pedido não duplica.
+ * Conclui uma tarefa. Tarefa que repete anda para a próxima data (e, no rodízio, a vez passa para o outro);
+ * tarefa única fica marcada como feita. Toda conclusão gera um registro em Feitos (histórico e placar).
+ * "prox" é a data que o app via: se outra pessoa já concluiu antes, nada muda. "feito" é o ID do registro (reenvio não duplica).
+ * pular = true (só nas que repetem): a data anda, a vez não muda e não conta ponto.
  */
-function concluirAfazer_(s, req) {
+function concluirTarefa_(s, req) {
   var id = validarId_(req.id), fid = validarId_(req.feito);
   return comLock_(function () {
-    var r = porId_('Afazeres', id);
-    if (!r || r.Excluido === 'sim') throw apiErro_('Esse afazer foi excluído.', 'NAOACHOU');
-    var ja = porId_('Feitos', fid);
-    if (ja || (req.prox && r.Prox !== req.prox)) return { col: 'afazeres', item: afazerApp_(r), ja: true, feito: ja ? paraApp_('feitos', ja) : null };
+    var r = porId_('Tarefas', id);
+    if (!r || r.Excluido === 'sim') throw apiErro_('Essa tarefa foi excluída.', 'NAOACHOU');
+    var ja = porId_('Feitos', fid), repete = !!r.Freq;
+    if (ja || (repete && req.prox && r.Prazo !== req.prox) || (!repete && r.Feita === 'sim'))
+      return { col: 'tarefas', item: tarefaApp_(r), ja: true, feito: ja ? paraApp_('feitos', ja) : null };
     var h = hoje_(), dia = N_dataValida(req.dia) && req.dia <= h && req.dia >= N_somaDias(h, -7) ? req.dia : h;
-    // Pular a vez (viagem, não precisou): a data anda, mas a vez continua com quem estava
-    var pulou = !!req.pular, a = afazerApp_(r), prox = N_proxima(a, dia), agora = String(Date.now());
-    var vez = a.resp === 'rodizio' && !pulou ? N_proximaVez(idsAtivos_(), s.pessoa) : r.Vez;
-    inserir_('Feitos', { ID: fid, Afazer: id, Nome: r.Nome, Pessoa: s.pessoa, Dia: dia, Hora: Utilities.formatDate(new Date(), fuso_(), 'HH:mm'),
-      Peso: r.Peso || '2', Pulou: pulou ? 'sim' : '',
-      Antes: JSON.stringify({ prox: r.Prox, vez: r.Vez, troca: r.Troca, depois: prox }), CriadoPor: s.pessoa, CriadoEm: new Date().toISOString(), Excluido: '', Atualizado: agora });
-    atualizar_('Afazeres', r._lin, { Prox: prox, Vez: vez, Troca: '', Atualizado: agora });
+    var pulou = repete && !!req.pular, a = tarefaApp_(r), agora = String(Date.now()), antes, campos;
+    if (repete) {
+      var prox = N_proxima(a, dia), vez = a.resp === 'rodizio' && !pulou ? N_proximaVez(idsAtivos_(), s.pessoa) : r.Vez;
+      antes = { prox: r.Prox || r.Prazo, vez: r.Vez, troca: r.Troca, itens: r.Itens, depois: prox };
+      campos = { Prazo: prox, Vez: vez, Troca: '', Itens: zerarItens_(r.Itens), Atualizado: agora };
+    } else {
+      antes = { unica: true, troca: r.Troca };
+      campos = { Feita: 'sim', FeitaPor: s.pessoa, FeitaEm: new Date().toISOString(), Troca: '', Atualizado: agora };
+    }
+    inserir_('Feitos', { ID: fid, Afazer: id, Nome: r.Titulo, Pessoa: s.pessoa, Dia: dia, Hora: Utilities.formatDate(new Date(), fuso_(), 'HH:mm'),
+      Peso: r.Peso || '2', Pulou: pulou ? 'sim' : '', Antes: JSON.stringify(antes), CriadoPor: s.pessoa, CriadoEm: new Date().toISOString(), Excluido: '', Atualizado: agora });
+    atualizar_('Tarefas', r._lin, campos);
     var t = json_(r.Troca, null);
-    if (!pulou && t && t.st === 'aceita' && t.de && t.de !== s.pessoa) avisarPessoa_(t.de, 'trocas', { titulo: nomeDe_(s.pessoa) + ' fez ' + r.Nome, corpo: 'A troca está cumprida.', url: '#casa', tag: 'troca-' + id });
-    return { col: 'afazeres', item: afazerApp_(porId_('Afazeres', id)), feito: paraApp_('feitos', porId_('Feitos', fid)) };
+    if (!pulou && t && t.st === 'aceita' && t.de && t.de !== s.pessoa) avisarPessoa_(t.de, 'trocas', { titulo: nomeDe_(s.pessoa) + ' fez ' + r.Titulo, corpo: 'A troca está cumprida.', url: '#tarefas', tag: 'troca-' + id });
+    else if (!repete && r.CriadoPor && r.CriadoPor !== s.pessoa) avisarPessoa_(r.CriadoPor, 'atribuidas', { titulo: nomeDe_(s.pessoa) + ' concluiu uma tarefa', corpo: r.Titulo, url: '#tarefas', tag: 'tarefa-' + id });
+    return { col: 'tarefas', item: tarefaApp_(porId_('Tarefas', id)), feito: paraApp_('feitos', porId_('Feitos', fid)) };
   });
 }
 
-/** Desfaz um "feito" (toque sem querer). A data e a vez voltam como estavam, se ninguém mexeu no afazer depois. */
+/** Desfaz uma conclusão (toque sem querer). A tarefa volta como estava, se ninguém mexeu nela depois. */
 function desfazerFeito_(s, req) {
   var fid = validarId_(req.id);
   return comLock_(function () {
     var f = porId_('Feitos', fid);
     if (!f || f.Excluido === 'sim') return { col: 'feitos', item: { id: fid, excluido: true, up: Date.now() } };
-    var agora = String(Date.now()), antes = json_(f.Antes, {}), r = porId_('Afazeres', f.Afazer), out = { col: 'feitos' };
+    var agora = String(Date.now()), antes = json_(f.Antes, {}), r = porId_('Tarefas', f.Afazer), out = { col: 'feitos' };
     atualizar_('Feitos', f._lin, { Excluido: 'sim', Atualizado: agora });
-    if (r && r.Excluido !== 'sim' && r.Prox === antes.depois) {
-      atualizar_('Afazeres', r._lin, { Prox: antes.prox || r.Prox, Vez: antes.vez || '', Troca: antes.troca || '', Atualizado: agora });
-      out.afazer = afazerApp_(porId_('Afazeres', f.Afazer));
+    if (r && r.Excluido !== 'sim') {
+      if (antes.unica && r.Feita === 'sim') atualizar_('Tarefas', r._lin, { Feita: '', FeitaPor: '', FeitaEm: '', Troca: antes.troca || '', Atualizado: agora });
+      else if (!antes.unica && r.Prazo === antes.depois) atualizar_('Tarefas', r._lin, { Prazo: antes.prox || r.Prazo, Vez: antes.vez || '', Troca: antes.troca || '', Itens: antes.itens || r.Itens, Atualizado: agora });
+      out.tarefa = tarefaApp_(porId_('Tarefas', f.Afazer));
     }
     out.item = paraApp_('feitos', porId_('Feitos', fid));
     return out;
@@ -394,36 +417,123 @@ function desfazerFeito_(s, req) {
 }
 
 /**
- * Troca de vez num afazer: op = pedir | aceitar | recusar | cancelar.
+ * Troca de vez numa tarefa: op = pedir | aceitar | recusar | cancelar.
  * Vale só para a vez atual. Quem faz no lugar do outro passa a vez de volta para ele no rodízio.
  */
 function troca_(s, req) {
   var id = validarId_(req.id), op = String(req.op || '');
   return comLock_(function () {
-    var r = porId_('Afazeres', id);
-    if (!r || r.Excluido === 'sim') throw apiErro_('Esse afazer foi excluído.', 'NAOACHOU');
-    var a = afazerApp_(r), t = a.troca, agora = String(Date.now()), novo, aviso = null;
+    var r = porId_('Tarefas', id);
+    if (!r || r.Excluido === 'sim') throw apiErro_('Essa tarefa foi excluída.', 'NAOACHOU');
+    var a = tarefaApp_(r), t = a.troca, agora = String(Date.now()), novo, aviso = null;
     if (op === 'pedir') {
       var dono = N_quemFaz(a);
-      if (dono && dono !== s.pessoa) throw apiErro_('Esse afazer não está com você agora.', 'VALIDACAO');
+      if (dono && dono !== s.pessoa) throw apiErro_('Essa tarefa não está com você agora.', 'VALIDACAO');
       var para = String(req.para || '') || idsAtivos_().filter(function (x) { return x !== s.pessoa; })[0];
       if (!para || para === s.pessoa || idsAtivos_().indexOf(para) < 0) throw apiErro_('Não tem com quem trocar ainda.', 'VALIDACAO');
-      novo = { de: s.pessoa, para: para, st: 'pedida', motivo: String(req.motivo || '').trim().slice(0, 140), em: new Date().toISOString(), prox: r.Prox };
-      aviso = [para, { titulo: nomeDe_(s.pessoa) + ' pediu uma troca', corpo: r.Nome + (novo.motivo ? ': ' + novo.motivo : '') + '. Toque para aceitar ou recusar.', url: '#hoje', tag: 'troca-' + id }];
+      novo = { de: s.pessoa, para: para, st: 'pedida', motivo: String(req.motivo || '').trim().slice(0, 140), em: new Date().toISOString(), prox: r.Prazo };
+      aviso = [para, { titulo: nomeDe_(s.pessoa) + ' pediu uma troca', corpo: r.Titulo + (novo.motivo ? ': ' + novo.motivo : '') + '. Toque para aceitar ou recusar.', url: '#hoje', tag: 'troca-' + id }];
     } else if (op === 'aceitar' || op === 'recusar') {
       if (!t || t.st !== 'pedida' || t.para !== s.pessoa) throw apiErro_('Esse pedido de troca não está mais aberto.', 'VALIDACAO');
       novo = Object.assign({}, t, { st: op === 'aceitar' ? 'aceita' : 'recusada', resp: new Date().toISOString() });
       aviso = [t.de, op === 'aceitar'
-        ? { titulo: nomeDe_(s.pessoa) + ' aceitou a troca', corpo: r.Nome + ' fica com ' + nomeDe_(s.pessoa) + ' desta vez.', url: '#casa', tag: 'troca-' + id }
-        : { titulo: nomeDe_(s.pessoa) + ' recusou a troca', corpo: r.Nome + ' continua com você.', url: '#casa', tag: 'troca-' + id }];
+        ? { titulo: nomeDe_(s.pessoa) + ' aceitou a troca', corpo: r.Titulo + ' fica com ' + nomeDe_(s.pessoa) + ' desta vez.', url: '#tarefas', tag: 'troca-' + id }
+        : { titulo: nomeDe_(s.pessoa) + ' recusou a troca', corpo: r.Titulo + ' continua com você.', url: '#tarefas', tag: 'troca-' + id }];
     } else if (op === 'cancelar') {
       if (!t || (t.de !== s.pessoa && t.para !== s.pessoa)) throw apiErro_('Não há troca para cancelar.', 'VALIDACAO');
       novo = null;
     } else throw apiErro_('Operação de troca desconhecida.', 'VALIDACAO');
-    atualizar_('Afazeres', r._lin, { Troca: novo ? JSON.stringify(novo) : '', Atualizado: agora });
+    atualizar_('Tarefas', r._lin, { Troca: novo ? JSON.stringify(novo) : '', Atualizado: agora });
     if (aviso) avisarPessoa_(aviso[0], 'trocas', aviso[1]);
-    return { col: 'afazeres', item: afazerApp_(porId_('Afazeres', id)) };
+    return { col: 'tarefas', item: tarefaApp_(porId_('Tarefas', id)) };
   });
+}
+
+/* ------------------------------ agenda: comentários ------------------------------ */
+/** Acrescenta um comentário ao compromisso (a conversa fica junto do evento: "quem leva?", "levar o pedido médico"). */
+function comentar_(s, req) {
+  var id = validarId_(req.id), txt = String(req.texto || '').trim().slice(0, 500), cid = validarId_(req.cid);
+  if (!txt) throw apiErro_('Escreva o comentário.', 'VALIDACAO');
+  return comLock_(function () {
+    var r = porId_('Eventos', id);
+    if (!r || r.Excluido === 'sim') throw apiErro_('Esse compromisso foi excluído.', 'NAOACHOU');
+    var l = json_(r.Comentarios, []) || [];
+    if (!l.some(function (c) { return c.id === cid; })) {
+      l.push({ id: cid, p: s.pessoa, t: txt, em: new Date().toISOString() });
+      atualizar_('Eventos', r._lin, { Comentarios: JSON.stringify(l.slice(-200)), Atualizado: String(Date.now()) });
+      var ev = paraApp_('eventos', porId_('Eventos', id));
+      envolvidos_(ev).forEach(function (p) { if (p !== s.pessoa) avisarPessoa_(p, 'agendanovo', { titulo: nomeDe_(s.pessoa) + ' comentou em ' + r.Titulo, corpo: txt, url: '#agenda', tag: 'ev-' + id }); });
+    }
+    return { col: 'eventos', item: paraApp_('eventos', porId_('Eventos', id)) };
+  });
+}
+/** Quem recebe os avisos de um compromisso: as pessoas com login marcadas nele e quem leva; se não houver, todo mundo. */
+function envolvidos_(ev) {
+  var ids = idsAtivos_();
+  if (ev.avisar === 'todos') return ids;
+  var l = (ev.pessoas || []).concat(ev.leva ? [ev.leva] : []).filter(function (x, i, a) { return ids.indexOf(x) >= 0 && a.indexOf(x) === i; });
+  return l.length ? l : ids;
+}
+
+/* ------------------------------ migração da versão 2 ------------------------------ */
+/** Afazeres e Pendências viram Tarefas, com os mesmos IDs (o histórico em Feitos continua ligado). Roda uma vez só. */
+function migrarParaTarefas_() {
+  if (cfg_().tarefas_migradas === 'sim') return 0;
+  return comLock_(function () {
+    _cfg = null; if (cfg_().tarefas_migradas === 'sim') return 0;
+    var ja = {}, n = 0, agora = String(Date.now());
+    ler_('Tarefas').forEach(function (t) { ja[t.ID] = 1; });
+    var sh = function (nome) { return ss_().getSheetByName(nome); };
+    if (sh('Afazeres') && sh('Afazeres').getLastRow() > 1) ler_('Afazeres').forEach(function (r) {
+      if (r.Excluido === 'sim' || ja[r.ID]) return;
+      inserir_('Tarefas', { ID: r.ID, Titulo: r.Nome, Icone: r.Icone, Nota: r.Nota, Area: 'casa', Resp: r.Resp, Vez: r.Vez, Prazo: r.Prox, Freq: r.Freq || 'dia',
+        Dias: r.Dias, N: r.N, DiaMes: r.DiaMes, Peso: r.Peso || '2', Troca: r.Troca, CriadoPor: r.CriadoPor, CriadoEm: r.CriadoEm, Atualizado: agora }); n++;
+    });
+    if (sh('Pendencias') && sh('Pendencias').getLastRow() > 1) ler_('Pendencias').forEach(function (r) {
+      if (r.Excluido === 'sim' || ja[r.ID]) return;
+      inserir_('Tarefas', { ID: r.ID, Titulo: r.Titulo, Nota: r.Nota, Area: r.Area, Resp: r.Resp, Prazo: r.Prazo, Freq: r.Repete || '', Alta: r.Alta, Itens: r.Itens, Peso: '2',
+        Feita: r.Repete ? '' : r.Feita, FeitaPor: r.FeitaPor, FeitaEm: r.FeitaEm, CriadoPor: r.CriadoPor, CriadoEm: r.CriadoEm, Atualizado: agora }); n++;
+    });
+    cfgSet_('tarefas_migradas', 'sim');
+    return n;
+  });
+}
+
+/* ------------------------------ agenda para assinar (iPhone, Google, Outlook) ------------------------------ */
+function icsToken_() {
+  var t = cfg_().agenda_ics;
+  if (!t) { t = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '').slice(0, 32); cfgSet_('agenda_ics', t); }
+  return t;
+}
+function icsTexto_(t) { return String(t || '').replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+function icsDobrar_(l) { var out = [], i = 0; while (l.length - i > 74) { out.push((i ? ' ' : '') + l.slice(i, i + 74)); i += 74; } out.push((i ? ' ' : '') + l.slice(i)); return out.join('\r\n'); }
+/** Calendário no formato iCalendar com todos os compromissos (repetições em RRULE). */
+function agendaIcs_() {
+  var tz = fuso_(), nomes = {}, L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Rotina//Agenda da casa//PT', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    'X-WR-CALNAME:' + icsTexto_((cfg_().nome_casa || 'Nossa casa') + ' · Rotina'), 'X-WR-TIMEZONE:' + tz, 'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H'];
+  ler_('Pessoas').forEach(function (p) { nomes[p.ID] = p.Nome; });
+  ler_('Perfis').forEach(function (p) { if (p.Excluido !== 'sim') nomes[p.ID] = p.Nome; });
+  var d8 = function (iso) { return iso.replace(/-/g, ''); }, stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+  ler_('Eventos').forEach(function (r) {
+    if (r.Excluido === 'sim' || !N_dataValida(r.Dia)) return;
+    var e = paraApp_('eventos', r), quem = (e.pessoas || []).map(function (id) { return nomes[id]; }).filter(Boolean);
+    L.push('BEGIN:VEVENT', 'UID:' + e.id + '@rotina', 'DTSTAMP:' + stamp);
+    if (e.diaTodo || !e.ini) { L.push('DTSTART;VALUE=DATE:' + d8(e.dia), 'DTEND;VALUE=DATE:' + d8(N_somaDias(e.fim && e.fim > e.dia ? e.fim : e.dia, 1))); }
+    else {
+      var fimDia = e.fim && e.fim > e.dia ? e.fim : e.dia, fimH = e.fimH || ('0' + (Math.min(23, Number(e.ini.slice(0, 2)) + 1))).slice(-2) + e.ini.slice(2);
+      L.push('DTSTART;TZID=' + tz + ':' + d8(e.dia) + 'T' + e.ini.replace(':', '') + '00', 'DTEND;TZID=' + tz + ':' + d8(fimDia) + 'T' + fimH.replace(':', '') + '00');
+    }
+    if (e.repete) L.push('RRULE:FREQ=' + { dia: 'DAILY', semana: 'WEEKLY', mes: 'MONTHLY', ano: 'YEARLY' }[e.repete] + (e.ate ? ';UNTIL=' + d8(e.ate) + 'T235959Z' : ''));
+    (e.exc || []).forEach(function (x) { L.push(e.diaTodo || !e.ini ? 'EXDATE;VALUE=DATE:' + d8(x) : 'EXDATE;TZID=' + tz + ':' + d8(x) + 'T' + e.ini.replace(':', '') + '00'); });
+    L.push('SUMMARY:' + icsTexto_(e.titulo + (quem.length ? ' (' + quem.join(', ') + ')' : '')));
+    if (e.local) L.push('LOCATION:' + icsTexto_(e.local));
+    var desc = [e.nota, e.leva ? 'Quem leva: ' + nomes[e.leva] : ''].filter(Boolean).join('\n');
+    if (desc) L.push('DESCRIPTION:' + icsTexto_(desc));
+    (e.alertas || []).forEach(function (m) { L.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsTexto_(e.titulo), 'TRIGGER:' + (m >= 0 ? '-' : '') + 'PT' + Math.abs(m) + 'M', 'END:VALARM'); });
+    L.push('END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  return L.map(icsDobrar_).join('\r\n') + '\r\n';
 }
 
 /* ------------------------------ casa: nome e categorias ------------------------------ */
@@ -459,15 +569,17 @@ function salvarCasa_(s, req) {
 /* ------------------------------ sincronização ------------------------------ */
 /**
  * Tudo o que mudou desde "desde" (ms), incluindo exclusões.
- * desde = 0 traz o retrato completo: lançamentos dos últimos 24 meses (e parcelas futuras), afazeres feitos nos últimos 90 dias
- * e pendências abertas ou concluídas nos últimos 60 dias. Cartões, contas, patrimônio e metas vêm sempre inteiros.
+ * desde = 0 traz o retrato completo: lançamentos dos últimos 24 meses (e parcelas futuras), tarefas concluídas nos últimos 90 dias (histórico)
+ * e nos últimos 60 dias (tarefas únicas), e os compromissos dos últimos 13 meses em diante. Cartões, contas, patrimônio e metas vêm sempre inteiros.
  */
 function sincronizar_(s, desde) {
   var h = hoje_(), out = { agora: Date.now(), casa: casaPublica_(), pessoas: pessoasAtivas_().map(pessoaPublica_), completo: !desde };
+  if (!desde) migrarParaTarefas_();
   var janela = {
     feitos: function (r) { return r.Dia >= N_somaDias(h, -90); },
+    tarefas: function (r) { return r.Feita !== 'sim' || String(r.FeitaEm).slice(0, 10) >= N_somaDias(h, -60); },
+    eventos: function (r) { return !!r.Repete || (r.Fim || r.Dia) >= N_somaMes(N_mes(h), -13) + '-01'; },
     lancamentos: function (r) { return r.Dia >= N_somaMes(N_mes(h), -24) + '-01'; },
-    pendencias: function (r) { return r.Feita !== 'sim' || String(r.FeitaEm).slice(0, 10) >= N_somaDias(h, -60); }
   };
   Object.keys(COLECOES).forEach(function (col) {
     var def = COLECOES[col];
