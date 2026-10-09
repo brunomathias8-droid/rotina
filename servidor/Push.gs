@@ -12,13 +12,14 @@
 var PUSH_TIPOS = {
   afazeres: 'Seus afazeres do dia, de manhã',
   pendencias: 'Pendências com prazo hoje ou amanhã, de manhã',
-  contas: 'Contas fixas vencendo (2 dias antes e no dia)',
+  contas: 'Contas e faturas vencendo (2 dias antes e no dia)',
   trocas: 'Pedidos de troca de afazer',
   atribuidas: 'Pendência passada para você ou concluída',
   compras: 'Itens novos na lista de compras',
-  resumo: 'Resumo da semana, domingo às 19h'
+  resumo: 'Resumo da semana, domingo às 19h',
+  fechamento: 'Fechamento do mês e das metas, no dia 1'
 };
-var PUSH_PADRAO = ['afazeres', 'pendencias', 'contas', 'trocas', 'atribuidas', 'resumo'];
+var PUSH_PADRAO = ['afazeres', 'pendencias', 'contas', 'trocas', 'atribuidas', 'resumo', 'fechamento'];
 
 /* ------------------------------ configuração ------------------------------ */
 function pushWebConfig_() {
@@ -181,28 +182,30 @@ function verificarAvisos() {
         corpo: urg.length === 1 ? (urg[0].prazo < hoje ? 'Está atrasada.' : urg[0].prazo === hoje ? 'O prazo é hoje.' : 'O prazo é amanhã.') : lista_(urg.map(function (x) { return x.titulo; })), url: '#pendencias', tag: 'pendencias' });
     });
 
-    var mes = N_mes(hoje), pagos = {};
-    ativos_('lancamentos').forEach(function (l) { if (l.conta && l.ref === mes) pagos[l.conta] = 1; });
-    var vencendo = ativos_('contas').filter(function (c) {
-      if (!c.ativa || pagos[c.id] || !c.vence) return false;
-      var d = N_diasEntre(hoje, N_diaDoMes(mes, c.vence));
-      return d === 0 || d === 2;
-    });
-    if (vencendo.length) {
-      var hojeV = vencendo.filter(function (c) { return N_diaDoMes(mes, c.vence) === hoje; });
+    var aPagar = contasAVencer_(hoje);
+    if (aPagar.length) {
+      var hojeV = aPagar.filter(function (c) { return c.venc === hoje; });
+      var titulo = hojeV.length ? (hojeV.length === 1 ? hojeV[0].nome + ' vence hoje' : hojeV.length + ' contas vencem hoje') : (aPagar.length === 1 ? aPagar[0].nome + ' vence em 2 dias' : aPagar.length + ' contas vencem em 2 dias');
       pessoas.forEach(function (p) {
-        avisarPessoa_(p, 'contas', { titulo: hojeV.length ? (hojeV.length === 1 ? hojeV[0].nome + ' vence hoje' : hojeV.length + ' contas vencem hoje') : (vencendo.length === 1 ? vencendo[0].nome + ' vence em 2 dias' : vencendo.length + ' contas vencem em 2 dias'),
-          corpo: lista_(vencendo.map(function (c) { return c.nome + (c.v ? ' ' + reais_(c.v) : ''); })), url: '#financas', tag: 'contas' });
+        avisarPessoa_(p, 'contas', { titulo: titulo, corpo: lista_(aPagar.map(function (c) { return c.nome + (c.v ? ' ' + reais_(c.v) : ''); })), url: '#financas/contas', tag: 'contas' });
       });
     }
   }
 
+  if (N_dataObj(hoje).getDate() === 1 && hora === manha && !feito('fechamento')) {
+    var f = fechamentoMes_(N_somaMes(N_mes(hoje), -1));
+    if (f.receitas || f.despesas) pessoas.forEach(function (p) {
+      avisarPessoa_(p, 'fechamento', { titulo: 'Fechamento de ' + f.nomeMes + ': ' + (f.saldo >= 0 ? 'sobraram ' : 'faltaram ') + reais_(Math.abs(f.saldo)),
+        corpo: 'Receitas ' + reais_(f.receitas) + ' · despesas ' + reais_(f.despesas) + ' · investido ' + reais_(f.investido) + '.' + (f.metas ? ' ' + f.metas : ''), url: '#financas', tag: 'fechamento' });
+    });
+  }
+
   if (dow === 0 && hora === 19 && !feito('resumo')) {
     var seg = N_segunda(hoje), cont = {}, gasto = 0, pendOk = 0;
-    ativos_('feitos').forEach(function (f) { if (f.dia >= seg) cont[f.quem] = (cont[f.quem] || 0) + 1; });
+    ativos_('feitos').forEach(function (f) { if (f.dia >= seg && !f.pulou) cont[f.quem] = (cont[f.quem] || 0) + (f.peso || 2); });
     ativos_('lancamentos').forEach(function (l) { if (l.dia >= seg && l.dia <= hoje && l.tipo === 'saida') gasto += l.v; });
     ativos_('pendencias').forEach(function (x) { if (x.feita && String(x.feitaEm).slice(0, 10) >= seg) pendOk++; });
-    var placar = pessoas.map(function (p) { return nomeDe_(p) + ' ' + (cont[p] || 0); }).join(' · ');
+    var placar = pessoas.map(function (p) { var n = cont[p] || 0; return nomeDe_(p) + ' ' + n + (n === 1 ? ' pt' : ' pts'); }).join(' · ');
     pessoas.forEach(function (p) {
       avisarPessoa_(p, 'resumo', { titulo: 'A semana da casa', corpo: 'Afazeres: ' + placar + '. Pendências resolvidas: ' + pendOk + '. Gastos: ' + reais_(gasto) + '.', url: '#hoje', tag: 'resumo' });
     });
@@ -213,6 +216,50 @@ function verificarAvisos() {
     Object.keys(todas).forEach(function (k) { if (k.indexOf('AV_') === 0 && k.slice(-10) < lim) props.deleteProperty(k); });
   }
 }
+
+/** Contas que vencem hoje ou daqui a 2 dias e ainda não foram pagas: contas fixas, lançamentos agendados e faturas de cartão. */
+function contasAVencer_(hoje) {
+  var mes = N_mes(hoje), lancs = ativos_('lancamentos'), pagos = {}, out = [];
+  var alvo = function (d) { var n = N_diasEntre(hoje, d); return n === 0 || n === 2; };
+  lancs.forEach(function (l) { if (l.conta && l.ref === mes && l.pago) pagos[l.conta] = 1; });
+  ativos_('contas').forEach(function (c) {
+    if (!c.ativa || c.tipo !== 'saida' || c.forma === 'cartao' || pagos[c.id] || !c.vence || (c.fim && c.fim < mes)) return;
+    var venc = N_diaDoMes(mes, c.vence);
+    if (alvo(venc)) out.push({ nome: c.nome, v: c.v, venc: venc });
+  });
+  lancs.forEach(function (l) { if (l.tipo === 'saida' && !l.pago && l.forma !== 'cartao' && !l.conta && alvo(l.dia)) out.push({ nome: l.desc || 'Conta agendada', v: l.v, venc: l.dia }); });
+  ativos_('cartoes').forEach(function (k) {
+    if (!k.ativo) return;
+    [mes, N_somaMes(mes, 1)].forEach(function (ref) {
+      var venc = N_vencimento(k, ref); if (!alvo(venc)) return;
+      var total = 0, pago = 0;
+      lancs.forEach(function (l) {
+        if (l.cartao !== k.id) return;
+        if (l.tipo === 'saida' && l.forma === 'cartao' && N_faturaRef(k, l.dia) === ref) total += l.v;
+        if (l.tipo === 'fatura' && l.ref === ref) pago += l.v;
+      });
+      if (total - pago > 0) out.push({ nome: 'Fatura ' + k.nome, v: total - pago, venc: venc });
+    });
+  });
+  return out;
+}
+
+/** Números de um mês fechado e como ficaram as metas de investir por mês. */
+function fechamentoMes_(ref) {
+  var r = { receitas: 0, despesas: 0, investido: 0, nomeMes: MESES_LONGO[+ref.slice(5, 7) - 1] };
+  ativos_('lancamentos').forEach(function (l) {
+    if (N_mes(l.dia) !== ref) return;
+    if (l.tipo === 'entrada') r.receitas += l.v;
+    if (l.tipo === 'saida') r.despesas += l.v;
+    if (l.tipo === 'aporte') r.investido += l.v;
+    if (l.tipo === 'resgate') r.investido -= l.v;
+  });
+  r.saldo = r.receitas - r.despesas;
+  var mensais = ativos_('metas').filter(function (m) { return m.ativa !== false && m.tipo === 'mensal' && m.alvo; });
+  r.metas = mensais.map(function (m) { return m.nome + (r.investido >= m.alvo ? ': cumprida ✓' : ': ' + reais_(Math.max(0, r.investido)) + ' de ' + reais_(m.alvo)); }).join('. ');
+  return r;
+}
+var MESES_LONGO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 /** Rodar uma vez no editor: confere a configuração e cria o gatilho de hora em hora. */
 function ativarAvisos() {

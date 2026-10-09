@@ -45,7 +45,13 @@ São 3 partes. As partes 1 e 2 levam uns 15 minutos e já deixam o app funcionan
 1. Abra o endereço no Safari do iPhone.
 2. **Primeiro acesso**: código de convite + seu nome + um PIN.
 3. Instale: **Compartilhar › Adicionar à Tela de Início**. Abra pelo ícone e entre de novo (o app instalado tem um armazenamento separado do Safari).
-4. Em **Casa**, toque nas sugestões (lavar a louça, tirar o lixo…) ou crie os afazeres de vocês. Em **Finanças**, cadastre as contas fixas e o orçamento.
+4. Em **Casa**, toque nas sugestões (lavar a louça, tirar o lixo…) ou crie os afazeres de vocês.
+5. Em **Finanças › Resumo**, siga o "Comece por aqui" (uns 15 minutos, com o app do banco aberto ao lado):
+   1. Contas do banco com o saldo de hoje (Patrimônio › + Conta).
+   2. Cartões de crédito com o dia de fechamento e de vencimento.
+   3. Salários e contas fixas (aluguel, luz, internet, escola, assinaturas).
+   4. Orçamento por categoria. Depois de 1 a 3 meses de uso, o botão "Preencher com a média" ajuda.
+   5. A primeira meta: comece pela reserva de emergência.
 
 ### Chamar sua esposa
 
@@ -73,11 +79,12 @@ Depois, no Apps Script, execute **ativarAvisos** (cria o gatilho de hora em hora
 |---|---|
 | Seus afazeres do dia | Às 8h (muda em Config › `hora_avisos`) |
 | Pendências com prazo hoje ou amanhã | Às 8h |
-| Conta fixa vencendo | Às 8h, 2 dias antes e no dia |
+| Conta fixa, boleto agendado ou fatura vencendo | Às 8h, 2 dias antes e no dia |
 | Pedido de troca, troca aceita ou recusada | Na hora |
 | Pendência passada para você ou concluída | Na hora |
 | Itens novos na lista de compras | Na hora, no máximo 1 a cada 10 min (desligado de início) |
-| Resumo da semana | Domingo às 19h |
+| Resumo da semana (pontos de cada um, pendências resolvidas, gastos) | Domingo às 19h |
+| Fechamento do mês (receitas, despesas, investido e metas de investir) | Dia 1, às 8h |
 
 Entre 22h e 7h nenhum aviso é enviado. Cada pessoa escolhe quais quer receber.
 
@@ -90,6 +97,13 @@ Entre 22h e 7h nenhum aviso é enviado. Cada pessoa escolhe quais quer receber.
 | Telas (arquivos `.js`, `index.html`) | Trocar `VERSAO` em `sw.js` e enviar. O app se atualiza sozinho na próxima abertura |
 | Servidor (`servidor/*.gs`) | Colar no Apps Script › **Implantar › Gerenciar implantações › editar › Versão: Nova versão**. O endereço /exec não muda |
 | Regras de datas e rodízio (`nucleo.js`) | Rodar `./build.sh` (copia para `servidor/Nucleo.gs`) e atualizar os dois lados |
+
+## Rotina mensal sugerida (10 minutos, no dia 1)
+
+1. Abrir **Finanças › Resumo** do mês que fechou: sobrou ou faltou? A divisão da renda ficou perto do 50/30/20?
+2. **Patrimônio**: atualizar o saldo de cada conta e investimento (está no app do banco).
+3. **Orçamento**: ajustar as categorias que passaram três meses seguidos.
+4. **Metas**: ver o que está em "atenção" e combinar o mês seguinte.
 
 ## Problemas comuns
 

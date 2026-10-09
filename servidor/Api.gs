@@ -35,6 +35,7 @@ function apiRotear_(req) {
   switch (req.acao) {
     case 'sync': return sincronizar_(s, Number(req.desde) || 0);
     case 'salvar': return salvar_(s, req);
+    case 'lote': return salvarLote_(s, req);
     case 'excluir': return excluir_(s, req);
     case 'concluir': return concluirAfazer_(s, req);
     case 'desfazer': return desfazerFeito_(s, req);

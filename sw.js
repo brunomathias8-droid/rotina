@@ -1,6 +1,6 @@
 /* sw.js — faz o app abrir sem internet e mostra as notificações. Troque VERSAO a cada publicação para os aparelhos receberem a nova versão. */
-const VERSAO = 'rotina-v1.0.0';
-const CASCA = ['./', 'index.html', 'config.js', 'nucleo.js', 'base.js', 'telas.js', 'paineis.js', 'acoes.js', 'push.js',
+const VERSAO = 'rotina-v2.0.0';
+const CASCA = ['./', 'index.html', 'config.js', 'nucleo.js', 'base.js', 'financas.js', 'graficos.js', 'telas.js', 'paineis.js', 'acoes.js', 'telas-fin.js', 'push.js',
   'manifest.webmanifest', 'icones/icone.svg', 'icones/icone-192.png', 'icones/apple-touch-icon.png'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSAO).then(c => c.addAll(CASCA))); });

@@ -5,7 +5,7 @@ const VERSAO_APP = '1.0.0';
 
 /* ============ desenho ============ */
 const ABAS_APP = [['hoje', 'Hoje', 'sun'], ['casa', 'Casa', 'home'], ['pendencias', 'Pendências', 'clip'], ['financas', 'Finanças', 'wallet'], ['compras', 'Compras', 'cart']];
-const SCR = { hoje: scrHoje, casa: scrCasa, pendencias: scrPend, financas: scrFin, compras: scrCompras };
+const SCR = { hoje: () => scrHoje(), casa: () => scrCasa(), pendencias: () => scrPend(), financas: () => scrFin(), compras: () => scrCompras() };
 function renderTop() {
   const t = $('#top'); if (!t) return;
   const marca = `<p class="brand">Rotina<b>.</b></p>`;
@@ -101,14 +101,16 @@ function lerItensCompra(txt) {
   });
 }
 function addCompras(itens) {
-  itens.forEach(c => { enfileirar('salvar', { col: 'compras', item: { id: uidNovo(), item: c.item[0].toUpperCase() + c.item.slice(1), qtd: c.qtd, comprado: false } }); lembrarCompra(c.item[0].toUpperCase() + c.item.slice(1)); });
+  const novos = itens.map(c => { const nome = c.item[0].toUpperCase() + c.item.slice(1); lembrarCompra(nome); return { id: uidNovo(), item: nome, qtd: c.qtd, setor: setorDe(nome), comprado: false }; });
+  if (novos.length === 1) enfileirar('salvar', { col: 'compras', item: novos[0] }); else enfileirar('lote', { col: 'compras', itens: novos });
 }
 const focar = id => { const el = $('#' + id); if (el) el.focus({ preventScroll: true }); };
 
 /* ============ ações ============ */
 const A = {
   tab: d => { S.tab = d.v; closeSheet(); render(false); },
-  sheet: d => openSheet({ k: d.k, id: d.id }),
+  irFin: d => { S.tab = 'financas'; S.fv = d.v; S.mes = N_mes(hoje()); closeSheet(); render(false); },
+  sheet: d => openSheet({ k: d.k, id: d.id, v: d.v }),
   close: () => closeSheet(),
   filtro: d => { S[d.k] = d.v; render(); },
   loginmodo: d => { S.login = { ...(S.login || {}), modo: d.v, erro: '' }; render(); },
@@ -118,11 +120,17 @@ const A = {
   f: d => {
     const s = S.sheet, f = s.f; if (!f) return;
     let v = d.v;
-    if (d.k === 'alta' || d.k === 'ativa') v = !!v;
-    if (d.k === 'forma' && f.forma === v) v = '';
+    if (['alta', 'ativa', 'ativo', 'pago'].includes(d.k)) v = !!v;
+    if (d.k === 'forma' && s.k === 'lanc' && f.forma === v) return;
     f[d.k] = v;
     if (s.k === 'afazer' && d.k === 'freq') recalcProx(s);
-    if (s.k === 'lanc' && d.k === 'tipo' && !categorias(v).some(c => c.id === f.cat)) f.cat = (categorias(v)[0] || {}).id || '';
+    if ((s.k === 'lanc' || s.k === 'conta') && d.k === 'tipo') {
+      const cats = categorias(v === 'entrada' ? 'entrada' : 'saida');
+      if (!cats.some(c => c.id === f.cat)) f.cat = (cats[0] || {}).id || '';
+      if ((v === 'aporte' || v === 'resgate') && !investimentos().some(p => p.id === f.destino)) f.destino = (investimentos()[0] || {}).id || '';
+      if (v === 'transf' && (!f.destino || f.destino === f.carteira || !contasBancarias().some(p => p.id === f.destino))) f.destino = (contasBancarias().find(p => p.id !== f.carteira) || {}).id || '';
+    }
+    if (s.k === 'pat' && d.k === 'grupo') f.classe = Object.keys(CLASSES).find(k => CLASSES[k].g === v);
     renderSheet();
   },
   fdia: d => {
@@ -142,6 +150,12 @@ const A = {
     toast(`${a.nome}: feito. Próxima vez ${rotuloDia(nv.prox)}${nv.resp === 'rodizio' && q ? (q === S.eu ? ', com você' : ', com ' + primeiroNome(q)) : ''}.`, 4500, { rot: 'Desfazer', fn: () => enfileirar('desfazer', { id: feito }) });
   },
   desfazer: d => { enfileirar('desfazer', { id: d.id }); toast('Desfeito.'); },
+  pular: d => {
+    const a = S.d.afazeres.get(d.id); if (!a) return;
+    const feito = uidNovo(); closeSheet();
+    enfileirar('concluir', { id: a.id, feito, prox: a.prox, dia: hoje(), pular: true });
+    toast(`${a.nome}: pulado. Próxima vez ${rotuloDia(S.d.afazeres.get(a.id).prox)}.`, 4500, { rot: 'Desfazer', fn: () => enfileirar('desfazer', { id: feito }) });
+  },
   troca: d => {
     const a = S.d.afazeres.get(d.id); if (!a) return;
     enfileirar('troca', { id: d.id, op: d.op });
@@ -160,14 +174,14 @@ const A = {
     if (!nome) { toast('Dê um nome ao afazer.'); focar('f-nome'); return; }
     if (!N_dataValida(f.prox)) { toast('Escolha a data da próxima vez.'); return; }
     const item = { id: s.id || uidNovo(), nome, ic: f.ic, freq: f.freq, dias: f.dias, n: clamp(parseInt(f.n, 10) || 1, 1, 365), dm: clamp(parseInt(f.dm, 10) || 1, 1, 31),
-      resp: f.resp, vez: f.resp === 'rodizio' ? f.vez : '', prox: f.prox, nota: String(f.nota || '').trim() };
+      resp: f.resp, vez: f.resp === 'rodizio' ? f.vez : '', prox: f.prox, peso: clamp(+f.peso || 2, 1, 3), nota: String(f.nota || '').trim() };
     closeSheet(); enfileirar('salvar', { col: 'afazeres', item });
     toast(s.id ? 'Afazer atualizado.' : `${nome} adicionado.`);
   },
   sugestao: d => {
     const g = SUGESTOES[+d.i]; if (!g) return;
     // Rodízio mesmo com uma pessoa só: quem entrar depois passa a fazer parte dele sozinho
-    const item = { id: uidNovo(), nome: g.nome, ic: g.ic, freq: g.freq, dias: g.dias || [], n: g.n || 7, dm: g.dm || 1, resp: g.resp, vez: g.resp === 'rodizio' ? S.eu : '', nota: '' };
+    const item = { id: uidNovo(), nome: g.nome, ic: g.ic, freq: g.freq, dias: g.dias || [], n: g.n || 7, dm: g.dm || 1, resp: g.resp, vez: g.resp === 'rodizio' ? S.eu : '', peso: g.peso || 2, nota: '' };
     item.prox = N_primeira(item, hoje());
     enfileirar('salvar', { col: 'afazeres', item });
     toast(`${g.nome} adicionado. Toque nele para ajustar.`);
@@ -176,71 +190,56 @@ const A = {
   // pendências
   pendok: d => {
     const p = S.d.pendencias.get(d.id); if (!p) return;
-    const feita = !p.feita;
+    const feita = !p.feita, item = { id: p.id, feita, feitaPor: feita ? S.eu : '', feitaEm: feita ? new Date().toISOString() : '' };
     if (d.fechar) closeSheet();
-    enfileirar('salvar', { col: 'pendencias', item: { id: p.id, feita, feitaPor: feita ? S.eu : '', feitaEm: feita ? new Date().toISOString() : '' } });
-    toast(feita ? 'Pendência resolvida.' : 'Pendência reaberta.', 3500, feita ? { rot: 'Desfazer', fn: () => A.pendok({ id: p.id }) } : null);
+    // Pendência que repete: ao concluir, a próxima já nasce com o prazo seguinte; ao reabrir, a próxima some
+    let seguinte = null;
+    if (feita && p.repete) {
+      const base = p.prazo || hoje(), passo = { semana: [7, 0], mes: [0, 1], ano: [0, 12] }[p.repete];
+      const prazo = passo[0] ? N_somaDias(base, passo[0]) : N_diaDoMes(N_somaMes(N_mes(base), passo[1]), Number(base.slice(8)));
+      seguinte = { id: uidNovo(), titulo: p.titulo, nota: p.nota || '', area: p.area || '', resp: p.resp, prazo, alta: !!p.alta, repete: p.repete, itens: (p.itens || []).map(x => ({ t: x.t, ok: false })), feita: false };
+      item.seguinte = seguinte.id;
+    }
+    if (!feita && p.seguinte) { const nx = S.d.pendencias.get(p.seguinte); if (nx && !nx.feita) enfileirar('excluir', { col: 'pendencias', id: nx.id }); item.seguinte = ''; }
+    enfileirar('salvar', { col: 'pendencias', item });
+    if (seguinte) enfileirar('salvar', { col: 'pendencias', item: seguinte });
+    toast(feita ? (seguinte ? `Resolvida. A próxima ficou para ${fmtCurta(seguinte.prazo)}.` : 'Pendência resolvida.') : 'Pendência reaberta.', 3500, feita ? { rot: 'Desfazer', fn: () => A.pendok({ id: p.id }) } : null);
+  },
+  passoPend: d => {
+    const s = S.sheet, x = s.f.itens[+d.i]; if (!x) return;
+    x.ok = !x.ok; renderSheet();
+    if (s.id) enfileirar('salvar', { col: 'pendencias', item: { id: s.id, itens: s.f.itens.map(({ t, ok }) => ({ t, ok })) } });
+  },
+  addPasso: () => {
+    const s = S.sheet, t = String(s.f.novoItem || '').trim(); if (!t) { focar('f-novoItem'); return; }
+    s.f.itens.push({ t: t.slice(0, 80), ok: false }); s.f.novoItem = ''; renderSheet(); focar('f-novoItem');
+    if (s.id) enfileirar('salvar', { col: 'pendencias', item: { id: s.id, itens: s.f.itens.map(({ t: tt, ok }) => ({ t: tt, ok })) } });
+  },
+  rmPasso: d => {
+    const s = S.sheet; s.f.itens.splice(+d.i, 1); renderSheet();
+    if (s.id) enfileirar('salvar', { col: 'pendencias', item: { id: s.id, itens: s.f.itens.map(({ t, ok }) => ({ t, ok })) } });
   },
   salvarPend: () => {
     const s = S.sheet, f = s.f, titulo = f.titulo.trim();
     if (!titulo) { toast('Escreva o que precisa ser resolvido.'); focar('f-titulo'); return; }
-    const item = { id: s.id || uidNovo(), titulo, nota: String(f.nota || '').trim(), resp: f.resp, prazo: N_dataValida(f.prazo) ? f.prazo : '', alta: !!f.alta };
+    const item = { id: s.id || uidNovo(), titulo, nota: String(f.nota || '').trim(), area: f.area || '', resp: f.resp, prazo: N_dataValida(f.prazo) ? f.prazo : '', alta: !!f.alta,
+      repete: f.repete || '', itens: f.itens.map(({ t, ok }) => ({ t, ok })) };
+    if (item.repete && !item.prazo) item.prazo = hoje();
     const resp = f.resp !== 'ambos' && f.resp !== S.eu ? primeiroNome(f.resp) : '';
     closeSheet(); enfileirar('salvar', { col: 'pendencias', item });
     toast(resp ? `Pendência passada para ${resp}.` : s.id ? 'Pendência atualizada.' : 'Pendência anotada.');
-  },
-
-  // finanças
-  mes: d => { S.mes = N_somaMes(S.mes, +d.v); S.fCat = null; render(false); },
-  fcat: d => { S.fCat = S.fCat === d.v ? null : d.v; render(); },
-  novoLanc: d => openSheet({ k: 'lanc', pre: { tipo: d.tipo, dia: S.mes === N_mes(hoje()) ? hoje() : S.mes + '-01' } }),
-  pagar: d => {
-    const c = S.d.contas.get(d.id); if (!c) return;
-    openSheet({ k: 'lanc', pre: { tipo: 'saida', v: c.v, desc: c.nome, cat: c.cat, conta: c.id, ref: d.ref, dia: d.ref === N_mes(hoje()) ? hoje() : N_diaDoMes(d.ref, c.vence) } });
-    setTimeout(() => focar('f-v'), 300);
-  },
-  salvarLanc: () => {
-    const s = S.sheet, f = s.f, v = lerReais(f.v);
-    if (v <= 0) { toast('Digite o valor.'); focar('f-v'); return; }
-    if (!N_dataValida(f.dia)) { toast('Escolha a data.'); return; }
-    const ent = f.tipo === 'entrada';
-    const item = { id: s.id || uidNovo(), tipo: f.tipo, v, dia: f.dia, desc: String(f.desc || '').trim(), cat: f.cat, forma: ent ? '' : f.forma, conta: f.conta || '', ref: f.ref || '' };
-    closeSheet(); enfileirar('salvar', { col: 'lancamentos', item });
-    if (S.tab === 'financas' && N_mes(item.dia) !== S.mes) { S.mes = N_mes(item.dia); render(false); }
-    toast(`${ent ? 'Entrada' : 'Gasto'} de ${reais(v)} lançado.`);
-  },
-  salvarConta: () => {
-    const s = S.sheet, f = s.f, nome = f.nome.trim();
-    if (!nome) { toast('Dê um nome à conta.'); focar('f-nome'); return; }
-    const item = { id: s.id || uidNovo(), nome, v: lerReais(f.v), vence: clamp(parseInt(f.vence, 10) || 1, 1, 31), cat: f.cat, ativa: s.id ? !!f.ativa : true, nota: String(f.nota || '').trim() };
-    closeSheet(); enfileirar('salvar', { col: 'contas', item });
-    toast(s.id ? 'Conta atualizada.' : `${nome} cadastrada. Vence todo dia ${item.vence}.`);
-  },
-  addCat: () => {
-    const f = S.sheet.f, nome = String(f.nnome || '').trim();
-    if (!nome) { toast('Dê um nome à categoria.'); focar('f-nnome'); return; }
-    const id = nome.normalize('NFD').replace(/[^A-Za-z0-9]/g, '').toLowerCase().slice(0, 12) + uidNovo().slice(-4);
-    f.cats.push({ id, nome, ic: f.nic, tipo: f.ntipo, orc: 0, orcTxt: '' });
-    f.nnome = ''; renderSheet();
-  },
-  rmCat: d => {
-    const f = S.sheet.f, c = f.cats[+d.i]; if (!c) return;
-    if (f.cats.filter(x => x.tipo === c.tipo).length < 2) { toast('Precisa ficar pelo menos uma categoria.'); return; }
-    const usos = lista('lancamentos').filter(l => l.cat === c.id).length;
-    if (usos && !confirm(`${c.nome} tem ${usos} ${plu(usos, 'lançamento')}. Eles vão aparecer como "Sem categoria". Remover mesmo assim?`)) return;
-    f.cats.splice(+d.i, 1); renderSheet();
-  },
-  salvarOrc: () => {
-    const cats = S.sheet.f.cats.map(c => ({ id: c.id, nome: String(c.nome || '').trim() || 'Sem nome', ic: c.ic, tipo: c.tipo, orc: c.tipo === 'saida' ? lerReais(c.orcTxt) : 0 }));
-    closeSheet(); enfileirar('casa', { categorias: cats }); toast('Orçamento salvo.');
   },
 
   // compras
   comprado: d => { const c = S.d.compras.get(d.id); if (!c) return; const v = !c.comprado; enfileirar('salvar', { col: 'compras', item: { id: c.id, comprado: v, compradoPor: v ? S.eu : '', compradoEm: v ? new Date().toISOString() : '' } }); },
   rmCompra: d => { const c = S.d.compras.get(d.id); if (!c) return; enfileirar('excluir', { col: 'compras', id: d.id }); toast(`${c.item} saiu da lista.`, 3500, { rot: 'Desfazer', fn: () => addCompras([{ item: c.item, qtd: c.qtd }]) }); },
   readd: d => { addCompras([{ item: d.v, qtd: '' }]); },
+  salvarCompra: () => {
+    const s = S.sheet, f = s.f, item = f.item.trim(); if (!item) { toast('Escreva o item.'); return; }
+    closeSheet(); enfileirar('salvar', { col: 'compras', item: { id: s.id, item, qtd: f.qtd.trim(), setor: f.setor } });
+  },
   limparCompras: () => { const n = lista('compras').filter(c => c.comprado).length; enfileirar('limparCompras', {}); toast(`${n} ${plu(n, 'item saiu', 'itens saíram')} da lista.`); },
-  gastoCompras: () => openSheet({ k: 'lanc', pre: { tipo: 'saida', cat: categorias('saida').some(c => c.id === 'mercado') ? 'mercado' : '', desc: 'Mercado', dia: hoje() } }),
+  gastoCompras: () => { openSheet({ k: 'lanc', pre: { tipo: 'saida', cat: categorias('saida').some(c => c.id === 'mercado') ? 'mercado' : '', desc: 'Mercado', dia: hoje() } }); setTimeout(() => focar('f-v'), 280); },
 
   // genérico
   excluir: d => {
@@ -288,8 +287,11 @@ document.addEventListener('submit', async e => {
   }
 });
 function aoDigitar(e) {
-  const t = e.target, k = t.dataset.i; if (!k || !S.sheet || !S.sheet.f) return;
+  const t = e.target, k = t.dataset.i;
+  if (k === 'busca') { S.busca = t.value; const L = $('#extlista'); if (L) { const y = $('#main').scrollTop; render(); const b = $('#busca'); if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(b.value.length, b.value.length); } $('#main').scrollTop = y; } return; }
+  if (!k || !S.sheet || !S.sheet.f) return;
   const s = S.sheet, f = s.f;
+  if (k.startsWith('met:')) { f.met[k.slice(4)] = t.value; return; }
   if (k.startsWith('cnome:')) { f.cats[+k.slice(6)].nome = t.value; return; }
   if (k.startsWith('corc:')) { f.cats[+k.slice(5)].orcTxt = t.value; return; }
   f[k] = t.value;
@@ -310,8 +312,9 @@ function aplicarRota() {
   if (ap) lsSet('api', ap[1]);
   const cv = h.match(/convite=([A-Za-z0-9]+)/);
   if (cv) { if (!S.sessao) S.login = { modo: 'novo', convite: cv[1].toUpperCase() }; history.replaceState(null, '', location.pathname); return; }
-  const tab = h.split('/')[0];
+  const [tab, sub] = h.split('/');
   if (SCR[tab]) S.tab = tab;
+  if (tab === 'financas' && sub) S.fv = sub;
   history.replaceState(null, '', location.pathname);
 }
 window.addEventListener('hashchange', () => { aplicarRota(); closeSheet(); render(false); });

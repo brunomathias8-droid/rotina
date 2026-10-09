@@ -34,6 +34,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   --cor-a:#C8643C; --cor-b:#3B6EA5; --cor-c:#7B5BA6; --cor-d:#2E7D6F;
   --sh:0 1px 2px rgba(42,37,32,.06),0 4px 14px rgba(42,37,32,.05);
   --scrim:rgba(30,26,22,.42); --nav:#FFFFFF;
+  --viz-1:#2a78d6; --viz-2:#eb6834; --viz-3:#1baf7a; --grade:#ECE6DC; --bad-soft:#F8DED8;
 }
 .app[data-theme="escuro"]{
   color-scheme: dark;
@@ -45,6 +46,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   --cor-a:#E8916A; --cor-b:#79A7DC; --cor-c:#B49AE0; --cor-d:#6CC3B4;
   --sh:none;
   --scrim:rgba(0,0,0,.6); --nav:#1C1A16;
+  --viz-1:#3987e5; --viz-2:#d95926; --viz-3:#199e70; --grade:#302C26; --bad-soft:#3E2420;
 }
 .app{--r:18px;--r-sm:13px;--fd:'Fraunces',Georgia,serif;--fb:'Figtree',system-ui,sans-serif}
 
@@ -172,6 +174,58 @@ textarea.in{min-height:80px;resize:vertical;line-height:1.4}
 .orc.on .t{color:var(--accent)}
 .dia-h{font-size:12px;font-weight:800;color:var(--mut);letter-spacing:.06em;text-transform:uppercase;padding:6px 2px 0}
 
+
+/* gráficos */
+.grid3 .stat b{font-size:16px}
+.grid3 .stat{padding:9px 10px}
+.graf{width:100%;height:auto;display:block;overflow:visible;touch-action:pan-y}
+.graf.mini{max-width:180px}
+.g-grade{stroke:var(--grade);stroke-width:1}
+.g-base{stroke:var(--s3);stroke-width:1}
+.g-eixo{fill:var(--mut);font-size:10px;font-family:var(--fb);font-variant-numeric:tabular-nums}
+.g-cruzl{stroke:var(--mut);stroke-width:1}
+.g-alvoln{stroke:var(--fg);stroke-width:1;opacity:.45}
+.g-alvo:hover,.g-alvo:focus{fill:var(--fg);fill-opacity:.04;outline:none}
+.leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--mut)}
+.leg span{display:inline-flex;align-items:center;gap:6px}
+.leg i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.g-tab summary{font-size:12px;color:var(--mut);font-weight:700}
+table.tb{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;margin-top:6px}
+.tb th,.tb td{padding:6px 4px;text-align:right;border-top:1px solid var(--line)}
+.tb th:first-child,.tb td:first-child{text-align:left}
+.tb th{font-size:11px;color:var(--mut);font-weight:700}
+.dica{position:absolute;z-index:45;background:var(--s1);color:var(--fg);border-radius:12px;padding:8px 10px;box-shadow:0 8px 24px rgba(0,0,0,.18);font-size:12px;pointer-events:none;min-width:120px;display:flex;flex-direction:column;gap:3px}
+.dica .dica-t{font-weight:700;color:var(--mut)}
+.dica div{display:flex;align-items:center;gap:6px}
+.dica i{width:10px;height:2px;border-radius:1px;flex:none}
+.dica b{font-size:13px;font-variant-numeric:tabular-nums}
+.dica span{color:var(--mut)}
+.pilha{display:flex;height:14px;border-radius:999px;overflow:hidden;gap:2px;background:var(--s1)}
+.pilha i{display:block;height:100%;min-width:2px}
+.pilha-leg{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.pilha-leg div{display:grid;grid-template-columns:minmax(0,1fr) auto 64px;gap:8px;align-items:center}
+.pilha-leg i{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}
+.pilha-leg .tiny{text-align:right}
+/* finanças */
+.note.bad{background:var(--bad-soft);color:var(--fg)}
+.passo{display:flex;align-items:center;gap:10px;background:none;border:0;padding:6px 0;color:inherit;font:inherit;text-align:left;cursor:pointer;width:100%}
+.passo span:nth-child(2){flex:1;font-weight:600}
+.passo.ok span:nth-child(2){color:var(--mut);text-decoration:line-through}
+.passo:disabled{cursor:default}
+.presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.preset{display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left;background:var(--s1);border:0;box-shadow:var(--sh), inset 0 0 0 1.5px var(--line);border-radius:var(--r-sm);padding:12px;cursor:pointer;color:inherit;font:inherit}
+.preset .em{font-size:24px;line-height:1}
+.cartao{box-shadow:var(--sh), inset 4px 0 0 var(--cc)}
+.cc-chip{width:26px;height:18px;border-radius:4px;background:var(--cc);display:inline-block}
+.fatbox{display:flex;flex-direction:column;gap:4px;background:var(--s2);border:0;border-radius:var(--r-sm);padding:12px 14px;text-align:left;color:inherit;font:inherit;cursor:pointer}
+.cor{width:36px;height:36px;border-radius:50%;border:0;cursor:pointer;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+.cor.on{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--fg)}
+.chip.sm{padding:5px 9px;font-size:11.5px}
+.orc-ed{display:grid;grid-template-columns:28px minmax(0,1fr) 104px 32px;gap:6px 8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.orc-ed.ent{grid-template-columns:28px minmax(0,1fr) 32px}
+.orc-ed .chip{justify-self:start}
+.em-c{font-size:22px;text-align:center}
+
 /* trocas */
 .troca{background:var(--warm-soft);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px}
 .troca .between{align-items:flex-start}
@@ -215,9 +269,12 @@ ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;f
 <script src="config.js"></script>
 <script src="nucleo.js"></script>
 <script src="base.js"></script>
+<script src="financas.js"></script>
+<script src="graficos.js"></script>
 <script src="telas.js"></script>
 <script src="paineis.js"></script>
 <script src="acoes.js"></script>
+<script src="telas-fin.js"></script>
 <script src="push.js"></script>
 <script>iniciar();</script>
 </body>

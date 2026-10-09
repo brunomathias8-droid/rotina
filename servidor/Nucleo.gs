@@ -88,3 +88,35 @@ function N_proximaVez(ids, quemFez) {
   var i = ids.indexOf(quemFez);
   return ids[(i + 1) % ids.length];
 }
+
+/* ------------------------------ cartão de crédito ------------------------------ */
+/*
+ * Um cartão tem fecha (dia do fechamento) e vence (dia do vencimento).
+ * A fatura é identificada pelo mês do vencimento (AAAA-MM).
+ * Compra feita no dia do fechamento ou depois entra na fatura seguinte (regra dos bancos brasileiros).
+ */
+function N_faturaRef(cartao, dia) {
+  var mes = N_mes(dia), fecha = Number(cartao.fecha) || 1, vence = Number(cartao.vence) || 10;
+  var mesFecha = dia >= N_diaDoMes(mes, fecha) ? N_somaMes(mes, 1) : mes;
+  return vence > fecha ? mesFecha : N_somaMes(mesFecha, 1);
+}
+/** Data de fechamento da fatura "ref". */
+function N_fechamento(cartao, ref) {
+  var fecha = Number(cartao.fecha) || 1, vence = Number(cartao.vence) || 10;
+  return N_diaDoMes(vence > fecha ? ref : N_somaMes(ref, -1), fecha);
+}
+function N_vencimento(cartao, ref) { return N_diaDoMes(ref, Number(cartao.vence) || 10); }
+
+/** Datas das parcelas de uma compra feita em "dia": mesmo dia nos meses seguintes (31 vira o último dia do mês). */
+function N_datasParcelas(dia, n) {
+  var out = [], d = Number(dia.slice(8, 10));
+  for (var i = 0; i < n; i++) out.push(N_diaDoMes(N_somaMes(N_mes(dia), i), d));
+  return out;
+}
+/** Divide um valor em centavos em n parcelas; a diferença dos centavos fica na primeira. */
+function N_valoresParcelas(total, n) {
+  var base = Math.floor(total / n), out = [];
+  for (var i = 0; i < n; i++) out.push(base);
+  out[0] += total - base * n;
+  return out;
+}

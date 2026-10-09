@@ -1,7 +1,6 @@
 /* telas.js — as cinco telas: Hoje, Casa (afazeres), Pendências, Finanças e Compras. */
 'use strict';
 
-const isoLocal = ts => ts ? N_iso(new Date(ts)) : '';
 function saudacao() { const h = new Date().getHours(); return h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'; }
 const secao = (titulo, extra = '') => `<div class="sec"><h2 class="h2">${titulo}</h2>${extra}</div>`;
 const vazio = (em, txt) => `<div class="vazio"><span class="em">${em}</span><span>${txt}</span></div>`;
@@ -24,7 +23,7 @@ function linhaAfazer(a) {
 function linhaFeito(f) {
   const a = S.d.afazeres.get(f.afazer);
   return `<div class="it feito${f.pend ? ' pend' : ''}"><span class="em-tile">${esc(a ? a.ic : '🏠')}</span>
-    <div class="main"><span class="t">${esc(f.nome)}</span><span class="s">${av(f.quem, 16)} ${esc(nomeDe(f.quem))} · ${rotuloDia(f.dia)}${f.hora ? ' às ' + esc(f.hora) : ''}</span></div>
+    <div class="main"><span class="t">${esc(f.nome)}</span><span class="s">${av(f.quem, 16)} ${esc(nomeDe(f.quem))} ${f.pulou ? 'pulou esta vez' : ''} · ${rotuloDia(f.dia)}${f.hora ? ' às ' + esc(f.hora) : ''}${!f.pulou ? ` · ${f.peso || 2} ${plu(f.peso || 2, 'pt', 'pts')}` : ''}</span></div>
     ${f.quem === S.eu ? `<button class="mini" data-a="desfazer" data-id="${f.id}" aria-label="Desfazer">${ic('undo', 18)}</button>` : '<span></span>'}</div>`;
 }
 function linhaPend(p) {
@@ -32,27 +31,13 @@ function linhaPend(p) {
   if (p.feita) tags.push(`Feita por ${esc(nomeDe(p.feitaPor))} ${rotuloDia(isoLocal(p.feitaEm))}`);
   else {
     if (p.alta) tags.push('<span class="tag warm">importante</span>');
+    const it = p.itens || []; if (it.length) tags.push(`<span class="tag">${ic('check', 12, 2.4)} ${it.filter(x => x.ok).length}/${it.length}</span>`);
+    if (p.repete) tags.push(`<span class="tag">${ic('repeat', 12, 2.2)} ${REPETE[p.repete]}</span>`);
     if (p.prazo) tags.push(`<span class="tag ${p.prazo < h ? 'bad' : p.prazo === h ? 'warn' : ''}">${ic('cal', 12, 2.2)} ${p.prazo < h ? 'venceu ' : ''}${rotuloDia(p.prazo)}</span>`);
     tags.push(p.resp === 'ambos' || !p.resp ? '<span>Nós dois</span>' : `<span>${av(p.resp, 16)} ${esc(nomeDe(p.resp))}</span>`);
   }
   return `<div class="it${p.feita ? ' feito' : ''}${p.pend ? ' pend' : ''}"><button class="ck${p.feita ? ' on' : ''}" data-a="pendok" data-id="${p.id}" aria-label="${p.feita ? 'Reabrir' : 'Concluir'} ${esc(p.titulo)}">${ic('check', 18, 2.4)}</button>
-    <button class="main" data-a="sheet" data-k="pend" data-id="${p.id}"><span class="t">${esc(p.titulo)}</span><span class="s">${tags.join('')}</span></button><span></span></div>`;
-}
-function linhaConta(c, ref) {
-  const n = N_diasEntre(hoje(), c.venc);
-  const st = c.pago ? `<span class="tag good">${ic('check', 12, 2.6)} paga</span>`
-    : n < 0 ? `<span class="tag bad">venceu ${rotuloDia(c.venc)}</span>`
-    : n === 0 ? '<span class="tag warn">vence hoje</span>'
-    : `<span class="tag">vence ${n < 7 ? rotuloDia(c.venc) : 'dia ' + N_dataObj(c.venc).getDate()}</span>`;
-  return `<div class="it${c.pend ? ' pend' : ''}"><span class="em-tile">${esc(categoria(c.cat).ic)}</span>
-    <button class="main" data-a="sheet" data-k="conta" data-id="${c.id}"><span class="t">${esc(c.nome)}</span><span class="s">${st}${!c.pago && c.v ? `<span>${reais(c.v)}</span>` : ''}</span></button>
-    ${c.pago ? `<span class="v">${reais(c.pago.v)}</span>` : `<button class="btn sm" data-a="pagar" data-id="${c.id}" data-ref="${ref}">Pagar</button>`}</div>`;
-}
-function linhaLanc(l) {
-  const c = categoria(l.cat), ent = l.tipo === 'entrada';
-  return `<button class="it${l.pend ? ' pend' : ''}" data-a="sheet" data-k="lanc" data-id="${l.id}"><span class="em-tile">${esc(c.ic)}</span>
-    <span class="main"><span class="t">${esc(l.desc || c.nome)}</span><span class="s"><span>${av(l.por, 15)} ${[l.desc ? c.nome : '', l.forma].filter(Boolean).map(esc).join(' · ')}</span></span></span>
-    <span class="v ${ent ? 'c-good' : ''}">${ent ? '+' : '−'} ${reais(l.v)}</span></button>`;
+    <button class="main" data-a="sheet" data-k="pend" data-id="${p.id}"><span class="t">${p.area && AREAS[p.area] ? AREAS[p.area][0] + ' ' : ''}${esc(p.titulo)}</span><span class="s">${tags.join('')}</span></button><span></span></div>`;
 }
 const listaOu = (itens, fn, vz) => itens.length ? `<div class="lst">${itens.map(fn).join('')}</div>` : vz || '';
 
@@ -65,9 +50,11 @@ function scrHoje() {
   const meus = doDia.filter(comigo), doOutro = o ? doDia.filter(a => quemFaz(a) === o.id) : [];
   const feitosHoje = lista('feitos').filter(f => f.dia === h).sort((a, b) => String(b.hora).localeCompare(String(a.hora)));
   const pend = pendAbertas().filter(p => p.prazo && p.prazo <= N_somaDias(h, 2) && (p.resp === 'ambos' || p.resp === S.eu || !p.resp));
-  const ref = N_mes(h), contas = contasMes(ref).filter(c => !c.pago && c.venc <= N_somaDias(h, 5));
-  const t = totaisMes(ref), comOrc = categorias('saida').filter(c => c.orc), orc = comOrc.reduce((a, c) => a + c.orc, 0);
-  const gastoOrc = lancMes(ref).filter(l => l.tipo !== 'entrada' && comOrc.some(c => c.id === l.cat)).reduce((a, l) => a + l.v, 0);
+  const ref = N_mes(h), limite = N_somaDias(h, 5);
+  const contas = agendaMes(ref).concat(agendaMes(N_somaMes(ref, 1))).filter(x => !x.entrada && x.status !== 'pago' && x.venc <= limite);
+  const t = resumoMes(ref), comOrc = categorias('saida').filter(c => c.orc), orc = comOrc.reduce((a, c) => a + c.orc, 0);
+  const gastoOrc = comOrc.reduce((a, c) => a + (t.porCat[c.id] || 0), 0);
+  const ms = metas().map(m => [m, progressoMeta(m)]).slice(0, 2);
   const nCompras = lista('compras').filter(c => !c.comprado).length;
 
   let resumo = meus.length ? `Você tem ${meus.length} ${plu(meus.length, 'afazer', 'afazeres')} hoje` : 'Nada da casa com você hoje';
@@ -86,28 +73,31 @@ function scrHoje() {
     ${o && doOutro.length ? `<p class="small muted">Com ${esc(primeiroNome(o.id))} hoje: ${doOutro.map(a => esc(a.nome)).join(', ')}.</p>` : ''}
 
     ${pend.length ? secao('Pendências urgentes', `<button class="link" data-a="tab" data-v="pendencias">Ver todas</button>`) + listaOu(pend, linhaPend) : ''}
-    ${contas.length ? secao('Contas a pagar') + listaOu(contas, c => linhaConta(c, ref)) : ''}
+    ${contas.length ? secao('Contas a pagar', `<button class="link" data-a="irFin" data-v="contas">Ver todas</button>`) + listaOu(contas, linhaAgenda) : ''}
 
-    <button class="panel" data-a="tab" data-v="financas" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit">
+    <button class="panel" data-a="irFin" data-v="resumo" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit">
       <div class="between"><p class="eb">${fmtMes(ref)} até agora</p><span class="muted">${ic('chev', 18)}</span></div>
-      <div class="grid2"><div class="stat"><span class="tiny muted">Gastos</span><b>${reais(t.sai)}</b></div><div class="stat"><span class="tiny muted">Saldo</span><b class="${t.saldo < 0 ? 'c-bad' : ''}">${reais(t.saldo)}</b></div></div>
+      <div class="grid2"><div class="stat"><span class="tiny muted">Despesas</span><b>${reais(t.desp)}</b></div><div class="stat"><span class="tiny muted">Saldo do mês</span><b class="${t.saldo < 0 ? 'c-bad' : ''}">${reais(t.saldo)}</b></div></div>
       ${orc ? `<div class="stack" style="gap:6px">${bar(gastoOrc, orc, gastoOrc > orc ? 'var(--bad)' : gastoOrc > orc * .85 ? 'var(--warn)' : 'var(--accent)')}<span class="tiny muted">${reais(gastoOrc)} de ${reais(orc)} nas categorias com orçamento</span></div>` : ''}
     </button>
+    ${ms.length ? `<div class="lst">${ms.map(([m]) => linhaMeta(m)).join('')}</div>` : ''}
     ${nCompras ? `<button class="panel soft" data-a="tab" data-v="compras" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit;flex-direction:row;align-items:center"><span class="em-tile" style="background:var(--s1)">🛒</span><span style="flex:1"><b>${nCompras} ${plu(nCompras, 'item', 'itens')}</b> na lista de compras</span>${ic('chev', 18)}</button>` : ''}`;
 }
 
 /* ============================== Casa (afazeres) ============================== */
 const SUGESTOES = [
-  { nome: 'Lavar a louça', ic: '🍽️', freq: 'dia', resp: 'rodizio' },
-  { nome: 'Tirar o lixo', ic: '🗑️', freq: 'semana', dias: [1, 3, 5], resp: 'rodizio' },
-  { nome: 'Lavar roupa', ic: '🧺', freq: 'semana', dias: [6], resp: 'rodizio' },
-  { nome: 'Limpar o banheiro', ic: '🛁', freq: 'semana', dias: [6], resp: 'rodizio' },
-  { nome: 'Aspirar e passar pano', ic: '🧹', freq: 'semana', dias: [0], resp: 'rodizio' },
-  { nome: 'Trocar a roupa de cama', ic: '🛏️', freq: 'cada', n: 14, resp: 'rodizio' },
-  { nome: 'Regar as plantas', ic: '🪴', freq: 'cada', n: 3, resp: 'ambos' },
-  { nome: 'Fazer o mercado', ic: '🛒', freq: 'semana', dias: [6], resp: 'ambos' },
-  { nome: 'Limpar a geladeira', ic: '🧊', freq: 'mes', dm: 1, resp: 'rodizio' }
+  { nome: 'Lavar a louça', ic: '🍽️', freq: 'dia', resp: 'rodizio', peso: 2 },
+  { nome: 'Tirar o lixo', ic: '🗑️', freq: 'semana', dias: [1, 3, 5], resp: 'rodizio', peso: 1 },
+  { nome: 'Lavar roupa', ic: '🧺', freq: 'semana', dias: [6], resp: 'rodizio', peso: 2 },
+  { nome: 'Limpar o banheiro', ic: '🛁', freq: 'semana', dias: [6], resp: 'rodizio', peso: 3 },
+  { nome: 'Aspirar e passar pano', ic: '🧹', freq: 'semana', dias: [0], resp: 'rodizio', peso: 3 },
+  { nome: 'Trocar a roupa de cama', ic: '🛏️', freq: 'cada', n: 14, resp: 'rodizio', peso: 2 },
+  { nome: 'Regar as plantas', ic: '🪴', freq: 'cada', n: 3, resp: 'ambos', peso: 1 },
+  { nome: 'Fazer o mercado', ic: '🛒', freq: 'semana', dias: [6], resp: 'ambos', peso: 3 },
+  { nome: 'Limpar a geladeira', ic: '🧊', freq: 'mes', dm: 1, resp: 'rodizio', peso: 2 },
+  { nome: 'Pagar as contas da semana', ic: '💡', freq: 'semana', dias: [1], resp: 'rodizio', peso: 1 }
 ];
+const PESOS = [[1, 'Leve'], [2, 'Médio'], [3, 'Pesado']];
 function scrCasa() {
   const h = hoje(), todos = afazeres(), seg = N_segunda(h), f = S.fCasa;
   const afz = todos.filter(a => f === 'todos' ? true : f === 'eu' ? comigo(a) : quemFaz(a) === f);
@@ -118,15 +108,18 @@ function scrCasa() {
     ['Nos próximos dias', afz.filter(a => a.prox > N_somaDias(h, 1) && a.prox <= N_somaDias(h, 7))],
     ['Mais pra frente', afz.filter(a => a.prox > N_somaDias(h, 7))]
   ].filter(g => g[1].length);
-  const semana = lista('feitos').filter(x => x.dia >= seg), total = semana.length;
+  const desde = S.placar === 'mes' ? N_mes(h) + '-01' : seg;
+  const semana = lista('feitos').filter(x => x.dia >= desde && !x.pulou), pts = id => semana.filter(x => x.quem === id).reduce((a, x) => a + (x.peso || 2), 0);
+  const total = semana.reduce((a, x) => a + (x.peso || 2), 0);
   const recentes = lista('feitos').filter(x => x.dia >= N_somaDias(h, -6)).sort((a, b) => (b.dia + b.hora).localeCompare(a.dia + a.hora)).slice(0, 12);
   const usadas = new Set(todos.map(a => a.nome.toLowerCase()));
   const sug = SUGESTOES.map((s, i) => ({ ...s, i })).filter(s => !usadas.has(s.nome.toLowerCase()));
 
   return `<div class="between"><h1 class="display">Afazeres</h1><button class="btn sm" data-a="sheet" data-k="afazer">${ic('plus', 16, 2.4)} Novo</button></div>
-    ${S.pessoas.length > 1 ? `<div class="panel"><div class="between"><p class="eb">Esta semana</p><span class="tiny muted">${total} ${plu(total, 'feito')}</span></div>
-      <div class="grid2">${S.pessoas.slice(0, 4).map(p => { const n = semana.filter(x => x.quem === p.id).length; return `<div class="hrow" style="gap:10px">${av(p.id, 34)}<div><b class="num" style="font-size:20px;font-family:var(--fd)">${n}</b><p class="tiny muted">${esc(p.id === S.eu ? 'Você' : primeiroNome(p.id))}</p></div></div>`; }).join('')}</div>
-      ${total ? `<div class="split">${S.pessoas.map(p => { const n = semana.filter(x => x.quem === p.id).length; return n ? `<i class="cor-${esc(p.cor)}" style="flex:${n}"></i>` : ''; }).join('')}</div>` : ''}</div>` : ''}
+    ${S.pessoas.length > 1 ? `<div class="panel"><div class="between"><div class="seg" style="flex:1;max-width:220px">${[['semana', 'Esta semana'], ['mes', 'Este mês']].map(([k, l]) => `<button class="${S.placar === k ? 'on' : ''}" data-a="filtro" data-k="placar" data-v="${k}">${l}</button>`).join('')}</div><span class="tiny muted">${total} ${plu(total, 'ponto')}</span></div>
+      <div class="grid2">${S.pessoas.slice(0, 4).map(p => `<div class="hrow" style="gap:10px">${av(p.id, 34)}<div><b class="num" style="font-size:20px;font-family:var(--fd)">${pts(p.id)}</b><p class="tiny muted">${esc(p.id === S.eu ? 'Você' : primeiroNome(p.id))} · ${semana.filter(x => x.quem === p.id).length} ${plu(semana.filter(x => x.quem === p.id).length, 'feito')}</p></div></div>`).join('')}</div>
+      ${total ? `<div class="split">${S.pessoas.map(p => pts(p.id) ? `<i class="cor-${esc(p.cor)}" style="flex:${pts(p.id)}"></i>` : '').join('')}</div>` : ''}
+      <p class="tiny muted">Pontos pelo esforço: leve 1, médio 2, pesado 3. O objetivo é equilíbrio, não competição.</p></div>` : ''}
     ${todos.length ? `<div class="chips scroll">${[['todos', 'Todos'], ['eu', 'Comigo'], ...outros().map(p => [p.id, 'Com ' + primeiroNome(p.id)])].map(([k, l]) => `<button class="chip ${f === k ? 'on' : ''}" data-a="filtro" data-k="fCasa" data-v="${k}">${esc(l)}</button>`).join('')}</div>` : ''}
     ${grupos.map(([t, l]) => secao(t, `<span class="tiny muted">${l.length}</span>`) + listaOu(l, linhaAfazer)).join('')}
     ${todos.length && !afz.length ? `<div class="panel">${vazio('🌿', 'Nada neste filtro.')}</div>` : ''}
@@ -136,6 +129,8 @@ function scrCasa() {
 }
 
 /* ============================== Pendências ============================== */
+const AREAS = { casa: ['🏠', 'Casa'], saude: ['🩺', 'Saúde'], docs: ['📄', 'Documentos'], carro: ['🚗', 'Carro'], dinheiro: ['💰', 'Finanças'], filhos: ['👶', 'Filhos'], pets: ['🐾', 'Pets'], trabalho: ['💼', 'Trabalho'], outros: ['📌', 'Outros'] };
+const REPETE = { semana: 'semanal', mes: 'mensal', ano: 'anual' };
 const pendAbertas = () => lista('pendencias').filter(p => !p.feita).sort((a, b) => (b.alta - a.alta) || (a.prazo || '9999').localeCompare(b.prazo || '9999') || String(a.em).localeCompare(String(b.em)));
 function scrPend() {
   const h = hoje(), f = S.fPend;
@@ -157,38 +152,31 @@ function scrPend() {
     ${feitas.length ? `<details><summary>${secao('Concluídas', `<span class="tiny muted">${feitas.length}</span>`)}</summary>${listaOu(feitas, linhaPend)}</details>` : ''}`;
 }
 
-/* ============================== Finanças ============================== */
-function scrFin() {
-  const ref = S.mes, h = hoje(), atual = N_mes(h), t = totaisMes(ref), contas = contasMes(ref);
-  const aPagar = contas.filter(c => !c.pago).reduce((a, c) => a + (c.v || 0), 0);
-  const ls = lancMes(ref), porCat = {};
-  ls.filter(l => l.tipo !== 'entrada').forEach(l => { porCat[l.cat] = (porCat[l.cat] || 0) + l.v; });
-  const cats = categorias('saida').filter(c => c.orc || porCat[c.id]).sort((a, b) => (porCat[b.id] || 0) - (porCat[a.id] || 0));
-  const semCat = Object.keys(porCat).filter(k => !categorias('saida').some(c => c.id === k));
-  const temOrc = categorias('saida').some(c => c.orc);
-  const vis = ls.filter(l => !S.fCat || l.cat === S.fCat).sort((a, b) => b.dia.localeCompare(a.dia) || String(b.em).localeCompare(String(a.em)));
-  const dias = [...new Set(vis.map(l => l.dia))];
-  const corOrc = (g, o) => g > o ? 'var(--bad)' : g > o * .85 ? 'var(--warn)' : 'var(--accent)';
-  const orcLinha = c => { const g = porCat[c.id] || 0; return `<button class="orc ${S.fCat === c.id ? 'on' : ''}" data-a="fcat" data-v="${esc(c.id)}"><div class="between"><span class="t"><b>${esc(c.ic)} ${esc(c.nome)}</b></span><span class="num ${c.orc && g > c.orc ? 'c-bad' : 'muted'}">${reais(g)}${c.orc ? ` <span class="tiny">de ${reais(c.orc)}</span>` : ''}</span></div>${c.orc ? bar(g, c.orc, corOrc(g, c.orc)) : ''}</button>`; };
-
-  return `<div class="mesnav"><button class="x" data-a="mes" data-v="-1" aria-label="Mês anterior">${ic('chevl', 18)}</button><h1 class="h1">${fmtMes(ref)}</h1><button class="x" data-a="mes" data-v="1" aria-label="Próximo mês" ${ref > atual ? 'disabled style="opacity:.3"' : ''}>${ic('chev', 18)}</button></div>
-    <div class="panel hero"><p class="eb" style="color:inherit;opacity:.8">Saldo do mês</p><p class="saldo">${reais(t.saldo)}</p>
-      <div class="grid2"><div class="stat"><span class="tiny muted">Entradas</span><b>${reais(t.ent)}</b></div><div class="stat"><span class="tiny muted">Saídas</span><b>${reais(t.sai)}</b></div></div>
-      ${aPagar ? `<p class="small muted">Ainda faltam ${reais(aPagar)} em contas fixas. Saldo previsto: <b>${reais(t.saldo - aPagar)}</b>.</p>` : ''}</div>
-    <div class="grid2"><button class="btn warm" data-a="novoLanc" data-tipo="saida">${ic('down', 16, 2.4)} Gasto</button><button class="btn" data-a="novoLanc" data-tipo="entrada">${ic('up', 16, 2.4)} Entrada</button></div>
-
-    ${secao('Orçamento', `<button class="link" data-a="sheet" data-k="orcamento">${temOrc ? 'Editar' : 'Definir'}</button>`)}
-    <div class="panel">${cats.length || semCat.length ? cats.map(orcLinha).join('') + semCat.map(k => orcLinha(categoria(k))).join('') : `<p class="small muted">Nenhum gasto neste mês ainda.</p>`}
-      ${!temOrc ? `<div class="note"><span>Definam quanto querem gastar por categoria (mercado, delivery…) e o app avisa quando estiver chegando perto.</span></div>` : ''}</div>
-
-    ${secao('Contas fixas', `<button class="link" data-a="sheet" data-k="conta">+ Nova</button>`)}
-    ${listaOu(contas, c => linhaConta(c, ref), `<div class="panel">${vazio('🧾', 'Cadastre aluguel, luz, internet, escola… O app lembra antes de vencer.')}</div>`)}
-
-    ${secao('Lançamentos', S.fCat ? `<button class="chip on" data-a="fcat" data-v="${esc(S.fCat)}">${esc(categoria(S.fCat).ic)} ${esc(categoria(S.fCat).nome)} ${ic('x', 12, 2.6)}</button>` : `<span class="tiny muted">${ls.length}</span>`)}
-    ${dias.length ? dias.map(d => `<p class="dia-h">${rotuloDia(d) === fmtCurta(d) ? fmtData(d) : rotuloDia(d) + ' · ' + fmtCurta(d)}</p>${listaOu(vis.filter(l => l.dia === d), linhaLanc)}`).join('') : `<div class="panel">${vazio('💸', S.fCat ? 'Nada nessa categoria neste mês.' : 'Nenhum lançamento neste mês.')}</div>`}`;
-}
-
 /* ============================== Compras ============================== */
+function historicoCompras() { try { return JSON.parse(lsGet('histCompras') || '[]'); } catch (e) { return []; } }
+function lembrarCompra(nome) {
+  const h = historicoCompras().filter(x => x.toLowerCase() !== nome.toLowerCase());
+  h.unshift(nome); lsSet('histCompras', JSON.stringify(h.slice(0, 40)));
+}
+/* Setores na ordem em que se anda num mercado. O setor é adivinhado pelo nome e dá para trocar tocando no item. */
+const SETORES = [['horti', '🥬', 'Hortifrúti'], ['padaria', '🥖', 'Padaria'], ['acougue', '🥩', 'Açougue e peixaria'], ['frios', '🧀', 'Frios e laticínios'],
+  ['mercearia', '🍝', 'Mercearia'], ['bebidas', '🥤', 'Bebidas'], ['congelados', '🧊', 'Congelados'], ['limpeza', '🧽', 'Limpeza'], ['higiene', '🧴', 'Higiene'],
+  ['pet', '🐾', 'Pet'], ['bebe', '👶', 'Bebê'], ['outros', '🛒', 'Outros']];
+const PALAVRAS_SETOR = [
+  [/leite condensado|creme de leite|leite de coco|leite em po/, 'mercearia'], [/agua sanitaria|papel toalha|saco de lixo|sabao|detergente|amaciante|desinfetante|esponja|vassoura|multiuso|alvejante|lustra|limpa|rodo|pano de chao|lava.?roupa/, 'limpeza'],
+  [/papel higienico|creme dental|pasta de dente|escova de dente|fio dental|sabonete|shampoo|xampu|condicionador|desodorante|absorvente|algodao|cotonete|protetor solar|hidratante|barbeador/, 'higiene'],
+  [/fralda|lenco umedecido|pomada|mamadeira/, 'bebe'], [/racao|areia|petisco|sache/, 'pet'],
+  [/sorvete|congelad|nuggets|lasanha|polpa|hamburguer|batata palito/, 'congelados'],
+  [/agua|refrigerante|refri|suco|cerveja|vinho|energetico|kombucha|agua de coco/, 'bebidas'],
+  [/pao|bisnaguinha|bolo|torrada|broa|croissant|sonho/, 'padaria'],
+  [/carne|frango|peixe|linguica|bife|picanha|alcatra|patinho|moida|costela|salmao|tilapia|camarao|file|coxa|sobrecoxa|peito de frango|acem|musculo|porco|lombo/, 'acougue'],
+  [/leite|queijo|iogurte|manteiga|requeijao|presunto|mortadela|peito de peru|nata|bacon|salame|margarina|ricota/, 'frios'],
+  [/banana|maca|laranja|limao|tomate|alface|cebola|alho|batata|cenoura|abacate|mamao|uva|morango|fruta|verdura|legume|pepino|abobrinha|brocolis|couve|manga|melancia|melao|pera|kiwi|cheiro.verde|salsa|coentro|pimentao|beterraba|mandioca|inhame|ovo|rucula|espinafre|abacaxi|maracuja|gengibre/, 'horti'],
+  [/arroz|feijao|macarrao|acucar|sal|oleo|azeite|cafe|farinha|molho|biscoito|bolacha|aveia|granola|achocolatado|milho|ervilha|atum|sardinha|tempero|vinagre|fermento|cereal|pipoca|chocolate|geleia|mel|cha|lentilha|grao de bico|tapioca|ketchup|maionese|mostarda|extrato|palmito|azeitona/, 'mercearia']
+];
+const semAcento = t => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function setorDe(nome) { const n = semAcento(nome); const x = PALAVRAS_SETOR.find(([re]) => re.test(n)); return x ? x[1] : 'outros'; }
+const setor = id => SETORES.find(x => x[0] === id) || SETORES[SETORES.length - 1];
 function historicoCompras() { try { return JSON.parse(lsGet('histCompras') || '[]'); } catch (e) { return []; } }
 function lembrarCompra(nome) {
   const h = historicoCompras().filter(x => x.toLowerCase() !== nome.toLowerCase());
@@ -196,17 +184,18 @@ function lembrarCompra(nome) {
 }
 function linhaCompra(c) {
   return `<div class="it${c.comprado ? ' feito' : ''}${c.pend ? ' pend' : ''}"><button class="ck${c.comprado ? ' on' : ''}" data-a="comprado" data-id="${c.id}" aria-label="${c.comprado ? 'Desmarcar' : 'Marcar'} ${esc(c.item)}">${ic('check', 18, 2.4)}</button>
-    <div class="main"><span class="t">${esc(c.item)}${c.qtd ? ` <span class="muted" style="font-weight:600">· ${esc(c.qtd)}</span>` : ''}</span>${c.comprado ? `<span class="s">${esc(nomeDe(c.compradoPor))} pegou</span>` : c.por && c.por !== S.eu ? `<span class="s">${av(c.por, 14)} ${esc(primeiroNome(c.por))} pediu</span>` : ''}</div>
+    <button class="main" data-a="sheet" data-k="compra" data-id="${c.id}"><span class="t">${esc(c.item)}${c.qtd ? ` <span class="muted" style="font-weight:600">· ${esc(c.qtd)}</span>` : ''}</span>${c.comprado ? `<span class="s">${esc(nomeDe(c.compradoPor))} pegou</span>` : c.por && c.por !== S.eu ? `<span class="s">${av(c.por, 14)} ${esc(primeiroNome(c.por))} pediu</span>` : ''}</button>
     <button class="mini" data-a="rmCompra" data-id="${c.id}" aria-label="Tirar ${esc(c.item)} da lista">${ic('x', 18)}</button></div>`;
 }
 function scrCompras() {
   const todas = compras(), falta = todas.filter(c => !c.comprado), ok = todas.filter(c => c.comprado);
   const naLista = new Set(todas.map(c => c.item.toLowerCase()));
   const hist = historicoCompras().filter(x => !naLista.has(x.toLowerCase())).slice(0, 14);
+  const porSetor = SETORES.map(([id, e, n]) => [e, n, falta.filter(c => (c.setor || setorDe(c.item)) === id)]).filter(x => x[2].length);
   return `<div class="between"><h1 class="display">Compras</h1>${falta.length ? `<span class="tag">${falta.length} ${plu(falta.length, 'item', 'itens')}</span>` : ''}</div>
     <form data-f="compra" class="inrow"><input class="in" id="comptxt" placeholder="Ex.: 2 leite, pão, café" maxlength="200" autocomplete="off" enterkeyhint="done"><button class="btn" type="submit" aria-label="Adicionar">${ic('plus', 20, 2.4)}</button></form>
     ${hist.length ? `<div class="chips scroll">${hist.map(x => `<button class="chip" data-a="readd" data-v="${esc(x)}">+ ${esc(x)}</button>`).join('')}</div>` : ''}
-    ${listaOu(falta, linhaCompra, `<div class="panel">${vazio('🛒', ok.length ? 'Tudo pego. Bom trabalho!' : 'A lista está vazia. Separe vários itens com vírgula.')}</div>`)}
+    ${porSetor.length ? porSetor.map(([e, n, l]) => `<p class="dia-h">${e} ${n}</p>${listaOu(l, linhaCompra)}`).join('') : `<div class="panel">${vazio('🛒', ok.length ? 'Tudo pego. Bom trabalho!' : 'A lista está vazia. Separe vários itens com vírgula. Ela se organiza pelos corredores do mercado.')}</div>`}
     ${ok.length ? secao('No carrinho', `<span class="tiny muted">${ok.length}</span>`) + listaOu(ok, linhaCompra) +
       `<div class="grid2"><button class="btn ghost" data-a="gastoCompras">${ic('receipt', 16)} Lançar o gasto</button><button class="btn ghost" data-a="limparCompras">${ic('trash', 16)} Limpar</button></div>` : ''}`;
 }

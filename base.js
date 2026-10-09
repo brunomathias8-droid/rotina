@@ -4,7 +4,7 @@
 const CFG = Object.assign({ api: '', intervaloSincSeg: 30 }, window.ROTINA_CONFIG || {});
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const INSTALADO = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const COLS = ['afazeres', 'feitos', 'pendencias', 'lancamentos', 'contas', 'compras'];
+const COLS = ['afazeres', 'feitos', 'pendencias', 'lancamentos', 'contas', 'cartoes', 'patrimonio', 'metas', 'compras'];
 
 /* ============================== utilidades ============================== */
 const $ = s => document.querySelector(s);
@@ -22,6 +22,7 @@ const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const DIAS_LONGO = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const hoje = () => N_iso(new Date());
+const isoLocal = ts => ts ? N_iso(new Date(ts)) : '';
 const fmtData = iso => { const d = N_dataObj(iso); return `${DIAS_LONGO[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]}`; };
 const fmtCurta = iso => { const d = N_dataObj(iso); return `${d.getDate()}/${String(d.getMonth() + 1).padStart(2, '0')}`; };
 const fmtMes = ref => { const m = MESES[+ref.slice(5, 7) - 1]; return m[0].toUpperCase() + m.slice(1) + (ref.slice(0, 4) === hoje().slice(0, 4) ? '' : ' de ' + ref.slice(0, 4)); };
@@ -123,7 +124,7 @@ const S = {
   sessao: null, fila: [], ultimaSinc: 0, sincronizando: false,
   // tela
   tab: 'hoje', sheet: null, login: null, tema: lsGet('tema') || 'auto',
-  fCasa: 'todos', fPend: 'todas', mes: N_mes(hoje()), fCat: null
+  fCasa: 'todos', fPend: 'todas', mes: N_mes(hoje()), fCat: null, fv: 'resumo', fExt: 'tudo', busca: '', placar: 'semana'
 };
 
 /* ============================== consultas ============================== */
@@ -150,19 +151,7 @@ function freqTexto(a) {
 }
 
 const categorias = tipo => ((S.casa && S.casa.categorias) || []).filter(c => !tipo || c.tipo === tipo);
-const categoria = id => categorias().find(c => c.id === id) || { id, nome: id ? 'Sem categoria' : 'Sem categoria', ic: '📦', orc: 0 };
-const lancMes = ref => lista('lancamentos').filter(l => N_mes(l.dia) === ref);
-function totaisMes(ref) {
-  const ls = lancMes(ref);
-  const ent = ls.filter(l => l.tipo === 'entrada').reduce((a, l) => a + l.v, 0), sai = ls.filter(l => l.tipo !== 'entrada').reduce((a, l) => a + l.v, 0);
-  return { ent, sai, saldo: ent - sai, n: ls.length };
-}
-/** Contas fixas ativas no mês "ref", com vencimento e o lançamento que pagou cada uma. */
-function contasMes(ref) {
-  const pagos = new Map(lista('lancamentos').filter(l => l.conta && l.ref === ref).map(l => [l.conta, l]));
-  return lista('contas').filter(c => c.ativa !== false).map(c => ({ ...c, venc: N_diaDoMes(ref, c.vence || 1), pago: pagos.get(c.id) || null }))
-    .sort((a, b) => a.venc.localeCompare(b.venc));
-}
+const categoria = id => categorias().find(c => c.id === id) || { id, nome: 'Sem categoria', ic: '📦', orc: 0, grupo: 'livre' };
 const compras = () => lista('compras').sort((a, b) => (a.comprado - b.comprado) || String(b.em || '').localeCompare(String(a.em || '')));
 
 /* ============================== API ============================== */
@@ -193,27 +182,29 @@ async function api(acao, dados, opts) {
  * aplicarLocal é idempotente: depois de cada sincronização, os itens ainda na fila são aplicados de novo
  * por cima do que veio do servidor, para nada "piscar" de volta.
  */
+function aplicarSalvar(col, item) {
+  const m = S.d[col], atual = m.get(item.id), novo = { ...(atual || { por: S.eu, em: new Date().toISOString() }), ...item, pend: true };
+  if (col === 'afazeres') {
+    if (!novo.prox) novo.prox = N_primeira(novo, hoje());
+    if (novo.resp === 'rodizio' && !novo.vez) novo.vez = S.eu;
+    if (atual && item.resp && item.resp !== atual.resp) novo.troca = null;
+  }
+  if (col === 'pendencias' && novo.feita && !(atual && atual.feita)) { novo.feitaPor = novo.feitaPor || S.eu; novo.feitaEm = novo.feitaEm || new Date().toISOString(); }
+  if (col === 'compras' && novo.comprado && !(atual && atual.comprado)) { novo.compradoPor = novo.compradoPor || S.eu; novo.compradoEm = novo.compradoEm || new Date().toISOString(); }
+  m.set(item.id, novo);
+}
 function aplicarLocal(f) {
   const d = f.dados;
-  if (f.acao === 'salvar') {
-    const m = S.d[d.col], atual = m.get(d.item.id), novo = { ...(atual || { por: S.eu, em: new Date().toISOString() }), ...d.item, pend: true };
-    if (d.col === 'afazeres') {
-      if (!novo.prox) novo.prox = N_primeira(novo, hoje());
-      if (novo.resp === 'rodizio' && !novo.vez) novo.vez = S.eu;
-      if (atual && d.item.resp && d.item.resp !== atual.resp) novo.troca = null;
-    }
-    if (d.col === 'pendencias' && novo.feita && !(atual && atual.feita)) { novo.feitaPor = novo.feitaPor || S.eu; novo.feitaEm = novo.feitaEm || new Date().toISOString(); }
-    if (d.col === 'compras' && novo.comprado && !(atual && atual.comprado)) { novo.compradoPor = novo.compradoPor || S.eu; novo.compradoEm = novo.compradoEm || new Date().toISOString(); }
-    m.set(d.item.id, novo);
-  }
-  if (f.acao === 'excluir') S.d[d.col].delete(d.id);
+  if (f.acao === 'salvar') aplicarSalvar(d.col, d.item);
+  if (f.acao === 'lote') d.itens.forEach(it => aplicarSalvar(d.col, it));
+  if (f.acao === 'excluir') (d.ids || [d.id]).forEach(id => S.d[d.col].delete(id));
   if (f.acao === 'limparCompras') lista('compras').filter(c => c.comprado).forEach(c => S.d.compras.delete(c.id));
   if (f.acao === 'concluir') {
     const a = S.d.afazeres.get(d.id);
     if (a && a.prox === d.prox && !S.d.feitos.has(d.feito)) {
       const prox = N_proxima(a, d.dia);
-      S.d.afazeres.set(a.id, { ...a, prox, vez: a.resp === 'rodizio' ? N_proximaVez(idsAtivos(), S.eu) : a.vez, troca: null, pend: true });
-      S.d.feitos.set(d.feito, { id: d.feito, afazer: a.id, nome: a.nome, quem: S.eu, dia: d.dia, hora: agoraHM(), por: S.eu, pend: true,
+      S.d.afazeres.set(a.id, { ...a, prox, vez: a.resp === 'rodizio' && !d.pular ? N_proximaVez(idsAtivos(), S.eu) : a.vez, troca: null, pend: true });
+      S.d.feitos.set(d.feito, { id: d.feito, afazer: a.id, nome: a.nome, quem: S.eu, dia: d.dia, hora: agoraHM(), peso: a.peso || 2, pulou: !!d.pular, por: S.eu, pend: true,
         antes: { prox: a.prox, vez: a.vez, troca: a.troca ? JSON.stringify(a.troca) : '', depois: prox } });
     }
   }
@@ -231,7 +222,7 @@ function aplicarLocal(f) {
     else if (d.op === 'cancelar') t = null;
     S.d.afazeres.set(a.id, { ...a, troca: t, pend: true });
   }
-  if (f.acao === 'casa' && S.casa) { if (d.categorias) S.casa.categorias = d.categorias; if (d.nome) S.casa.nome = d.nome; }
+  if (f.acao === 'casa' && S.casa) { if (d.categorias) S.casa.categorias = d.categorias; if (d.metodo) S.casa.metodo = d.metodo; if (d.nome) S.casa.nome = d.nome; }
 }
 function reaplicarFila() { S.fila.forEach(f => { try { aplicarLocal(f); } catch (e) { /* item antigo: ignora */ } }); }
 
