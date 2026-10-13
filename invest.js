@@ -21,7 +21,7 @@ function serieInvest(pos) {
   for (let i = 11; i >= 0; i--) { const m = N_somaMes(ref, -i), D = i ? N_diaDoMes(m, 31) : hoje(); out.push({ ref: m, v: pos.reduce((a, x) => a + valorEm(x.p, D), 0) }); }
   // Só desenha com saldos informados em pelo menos dois meses diferentes (senão a linha seria só a mesma posição repetida)
   const meses = new Set(pos.flatMap(x => (x.p.hist || []).map(h => h[0].slice(0, 7))));
-  const ini = out.findIndex(x => x.v); return ini < 0 || meses.size < 2 ? [] : out.slice(ini);
+  const ini = out.findIndex(x => x.v); return ini < 0 || meses.size < 2 ? [] : aparaSerie(out.slice(ini), pos.map(x => x.p));
 }
 function alertasInvest(pos, total) {
   const out = [], porInst = {};
@@ -68,7 +68,7 @@ function finInvestimentos() {
     ${secao('Por emissor', `<span class="tiny muted">3 maiores: ${fmt(top3 / total * 100, 0)}%</span>`)}<div class="panel">${barras(insts.slice(0, 10).map(([n, v]) => [esc(n), v, coberturaFgc(pos.find(x => x.inst === n).p) && v > FGC_LIMITE ? ' <span class="tag warn">acima do FGC</span>' : '']), total, 'var(--viz-3)')}
       ${insts.length > 10 ? `<p class="tiny muted">E mais ${insts.length - 10}: ${reais(insts.slice(10).reduce((a, x) => a + x[1], 0))}</p>` : ''}</div>
     ${COL_MEIO}
-    ${secao('Evolução')}<div class="panel">${serie.length > 1 ? grafLinha(serie, 'Total investido mês a mês') : '<p class="small muted">O gráfico mês a mês aparece quando houver saldos de pelo menos dois meses. Atualize os saldos todo mês (Patrimônio › item › Atualizar saldo).</p>'}</div>
+    ${secao('Evolução')}<div class="panel">${serie.length > 1 ? grafLinha(serie, 'Total investido mês a mês', 'investido') : '<p class="small muted">O gráfico mês a mês aparece quando houver saldos de pelo menos dois meses. Atualize os saldos todo mês (Patrimônio › item › Atualizar saldo).</p>'}</div>
     ${secao('Posições', `<span class="tiny muted">${pos.length}</span>`)}
     <div class="chips scroll">${ORD_INV.map(([k, n]) => `<button class="chip ${ord === k ? 'on' : ''}" data-a="filtro" data-k="invOrd" data-v="${k}">${n}</button>`).join('')}</div>
     <div class="lst">${lista.map(x => linhaPosicao(x, total)).join('')}</div>

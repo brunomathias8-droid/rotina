@@ -213,13 +213,19 @@ function seriePatrimonio(n) {
     const m = N_somaMes(ref, -i); if (ini && m < N_mes(ini)) continue; // antes do primeiro registro não há o que mostrar
     out.push({ ref: m, v: patrimonioEm(i === 0 ? h : N_diaDoMes(m, 31)).liquido });
   }
-  return out;
+  return aparaSerie(out, lista('patrimonio').filter(p => classe(p.classe).g === 'invest'));
 }
 /** Data do primeiro saldo informado (ou da primeira compra no cartão): o começo da história do patrimônio. */
 function inicioPatrimonio() {
   const datas = lista('patrimonio').filter(p => classe(p.classe).g === 'invest').flatMap(p => (p.hist || []).map(x => x[0]));
   return datas.length ? datas.sort()[0] : '';
 }
+/** Último mês com saldo informado ou movimento: depois dele a linha seria só o mesmo valor repetido, então o gráfico para ali. */
+function fimDaHistoria(ps) {
+  const h = hoje(), datas = ps.flatMap(p => (p.hist || []).map(x => x[0]).concat(movimentos(p.id).map(x => x[0]))).filter(d => d && d <= h);
+  return datas.length ? N_mes(datas.sort().pop()) : N_mes(h);
+}
+const aparaSerie = (serie, ps) => { const fim = fimDaHistoria(ps); return serie.filter(x => x.ref <= fim); };
 /** Rendimento estimado de um investimento no mês: variação do valor menos o que entrou e saiu. */
 function rendimentoMes(p, ref) {
   const fim = N_diaDoMes(ref, 31), ini = N_diaDoMes(N_somaMes(ref, -1), 31);

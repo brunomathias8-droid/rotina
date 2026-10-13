@@ -416,6 +416,7 @@ SH.pat = s => {
 function verPat(p) {
   const v = valorAtual(p), g = classe(p.classe).g, u = ultimaAtualizacao(p), ref = N_mes(hoje());
   const serie = []; for (let i = 11; i >= 0; i--) { const m = N_somaMes(ref, -i); serie.push({ ref: m, v: valorEm(p, i ? N_diaDoMes(m, 31) : hoje()) }); }
+  serie.splice(0, serie.length, ...aparaSerie(serie, [p]));
   const comHist = serie.filter(x => x.v).length > 1;
   const movs = movimentos(p.id).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 8).map(x => x[3]);
   const rend = g === 'invest' ? [1, 2, 3].map(i => { const m = N_somaMes(ref, -i); return [m, rendimentoMes(p, m)]; }).filter(x => x[1] != null) : [];
@@ -425,7 +426,7 @@ function verPat(p) {
     ${g === 'invest' && (p.hist || []).length ? (() => { const a = aplicadoEm(p, hoje()), r = v - a; return `<div class="grid2"><div class="stat"><span class="tiny muted">Aplicado</span><b>${reais(a)}</b></div><div class="stat"><span class="tiny muted">Rendimento bruto</span><b class="${r < 0 ? 'c-bad' : 'c-good'}">${r >= 0 ? '+' : '−'}${reais(Math.abs(r))}${a > 0 ? ` <span class="tiny">${pctVar(r / a)}</span>` : ''}</b></div></div>`; })() : ''}
     <div class="grid2"><button class="btn sm" data-a="saldoPat">Atualizar saldo</button>
       ${g === 'invest' ? `<button class="btn ghost sm" data-a="novoLanc" data-tipo="aporte" data-destino="${p.id}">Aplicar / resgatar</button>` : g === 'contas' ? `<button class="btn ghost sm" data-a="novoLanc" data-tipo="transf" data-carteira="${p.id}">Transferir</button>` : g === 'dividas' ? `<button class="btn ghost sm" data-a="novoLanc" data-tipo="saida" data-cat="dividas" data-destino="${p.id}">Registrar pagamento</button>` : '<span></span>'}</div>
-    ${comHist ? grafLinha(serie, 'Valor nos últimos 12 meses').replace(/patrimônio/g, 'valor') : ''}
+    ${comHist ? grafLinha(serie, 'Valor mês a mês', 'valor') : ''}
     ${rend.length ? `<p class="small muted">Rendimento estimado: ${rend.map(([m, r]) => `${mesCurto(m)} ${r >= 0 ? '+' : '−'}${reais(Math.abs(r))}`).join(' · ')}</p>` : ''}
     ${movs.length ? secao('Movimentos') + listaOu(movs, linhaLanc) : ''}
     ${p.nota ? `<p class="small">${esc(p.nota)}</p>` : ''}

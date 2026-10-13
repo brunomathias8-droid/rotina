@@ -83,24 +83,32 @@ function grafEmpilhado(meses, series, { sel, depoisDe, acao, rotulo, alt } = {})
 }
 
 /** Linha de uma série só (patrimônio). pontos: [{ ref, v }]. Toque mostra o valor do mês mais perto. */
-function grafLinha(pontos, rotulo) {
-  const W = 340, H = 150, esq = 52, dir = 10, base = H - 22, topo = 14;
+function grafLinha(pontos, rotulo, nome = 'patrimônio') {
+  const n = pontos.length, poucos = n <= 4, W = 340, H = poucos ? 168 : 156, esq = 60, dir = 10, base = H - 24, topo = poucos ? 30 : 14;
   // Linha não precisa começar no zero: o eixo abraça os valores para a variação aparecer
   const vals = pontos.map(p => p.v), mn = Math.min(...vals), mx = Math.max(...vals), { passo } = eixo(Math.max(mx - mn, Math.abs(mx) * .1, 100000));
   const lo = Math.floor(mn / passo) * passo, hi = Math.max(Math.ceil(mx / passo) * passo, lo + passo);
-  const x = i => esq + (pontos.length < 2 ? 0 : i * (W - esq - dir) / (pontos.length - 1));
+  // Meio passo de folga nas pontas: todo mês ganha rótulo centralizado embaixo do seu ponto
+  const folga = n < 2 ? 0 : Math.min(18, (W - esq - dir) / (n - 1) / 2), larg = W - esq - dir - 2 * folga;
+  const x = i => esq + folga + (n < 2 ? larg / 2 : i * larg / (n - 1));
   const y = v => base - (v - lo) / (hi - lo || 1) * (base - topo);
   let svg = '';
-  [lo, (lo + hi) / 2, hi].forEach(t => { svg += `<line x1="${esq}" x2="${W}" y1="${y(t)}" y2="${y(t)}" class="g-grade"/><text x="${esq - 6}" y="${y(t) + 4}" class="g-eixo" text-anchor="end">${compacto(t)}</text>`; });
+  const marcas = []; for (let t = lo; t <= hi + 1; t += passo) marcas.push(t);
+  (marcas.length <= 4 ? marcas : [lo, hi]).forEach(t => { svg += `<line x1="${esq}" x2="${W}" y1="${y(t)}" y2="${y(t)}" class="g-grade"/><text x="${esq - 6}" y="${y(t) + 4}" class="g-eixo" text-anchor="end">${compacto(t)}</text>`; });
   const d = pontos.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
   svg += `<path d="${d}V${base}H${x(0)}Z" fill="var(--viz-1)" opacity=".1"/><path d="${d}" fill="none" stroke="var(--viz-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-  pontos.forEach((p, i) => { if (i === 0 || i === pontos.length - 1 || i % 3 === 0) svg += `<text x="${x(i)}" y="${H - 6}" class="g-eixo" text-anchor="${i === 0 ? 'start' : i === pontos.length - 1 ? 'end' : 'middle'}">${mesCurto(p.ref)}</text>`; });
-  const u = pontos.length - 1;
-  svg += `<circle cx="${x(u)}" cy="${y(pontos[u].v)}" r="4" fill="var(--viz-1)" stroke="var(--s1)" stroke-width="2"/>`;
+  // Rótulo de todos os meses (com mais de 12, um sim um não); o ano aparece no toque e na tabela
+  const cada = n > 12 ? 2 : 1;
+  pontos.forEach((p, i) => {
+    const ult = i === n - 1;
+    svg += `<circle cx="${x(i)}" cy="${y(p.v)}" r="${ult ? 4 : 2.5}" fill="${ult ? 'var(--viz-1)' : 'var(--s1)'}" stroke="var(--viz-1)" stroke-width="${ult ? 2 : 1.5}"/>`;
+    if (i % cada === 0 || ult) svg += `<text x="${x(i)}" y="${H - 8}" class="g-eixo${ult ? ' g-eixo-sel' : ''}" text-anchor="middle">${mesCurto(p.ref)}</text>`;
+    if (poucos) svg += `<text x="${Math.min(W - 24, Math.max(esq + 24, x(i)))}" y="${y(p.v) - 9}" class="g-eixo${ult ? ' g-eixo-sel' : ''}" text-anchor="middle">${compacto(p.v)}</text>`;
+  });
   svg += `<g class="g-cruz" hidden><line y1="${topo}" y2="${base}" class="g-cruzl"/><circle r="4" fill="var(--viz-1)" stroke="var(--s1)" stroke-width="2"/></g>`;
   const pts = pontos.map((p, i) => [x(i), y(p.v), fmtMes(p.ref), reais(p.v)]);
-  svg += `<rect x="${esq}" y="0" width="${W - esq}" height="${base}" fill="transparent" class="g-linha" data-pts="${esc(JSON.stringify(pts))}"/>`;
-  const tabela = `<details class="g-tab"><summary>Ver em tabela</summary><table class="tb">${pontos.map(p => `<tr><td>${fmtMes(p.ref)}</td><td>${reais(p.v)}</td></tr>`).join('')}</table></details>`;
+  svg += `<rect x="${esq}" y="0" width="${W - esq}" height="${base}" fill="transparent" class="g-linha" data-nome="${esc(nome)}" data-pts="${esc(JSON.stringify(pts))}"/>`;
+  const tabela = `<details class="g-tab"><summary>Ver em tabela</summary><table class="tb">${pontos.map((p, i) => { const dv = i ? p.v - pontos[i - 1].v : null; return `<tr><td>${fmtMes(p.ref)}</td><td>${reais(p.v)}</td><td class="${dv > 0 ? 'c-good' : dv < 0 ? 'c-bad' : 'muted'}">${dv == null ? '' : (dv >= 0 ? '+' : '−') + reais(Math.abs(dv))}</td></tr>`; }).join('')}</table></details>`;
   return `<svg class="graf" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(rotulo || 'Evolução')}">${svg}</svg>${tabela}`;
 }
 
@@ -159,7 +167,7 @@ function aoApontar(e) {
     const g = svg.querySelector('.g-cruz'); g.removeAttribute('hidden');
     g.querySelector('line').setAttribute('x1', pts[k][0]); g.querySelector('line').setAttribute('x2', pts[k][0]);
     g.querySelector('circle').setAttribute('cx', pts[k][0]); g.querySelector('circle').setAttribute('cy', pts[k][1]);
-    mostrarDica(el, [pts[k][2], ['var(--viz-1)', 'patrimônio', pts[k][3]]], sr.left + pts[k][0] / sx, sr.top + pts[k][1] / sx);
+    mostrarDica(el, [pts[k][2], ['var(--viz-1)', el.dataset.nome || 'patrimônio', pts[k][3]]], sr.left + pts[k][0] / sx, sr.top + pts[k][1] / sx);
     return;
   }
   mostrarDica(el, JSON.parse(el.dataset.tip), e.clientX || r.left + r.width / 2, r.top);
