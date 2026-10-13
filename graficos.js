@@ -52,6 +52,36 @@ function grafColunas(meses, series, rotulo) {
   return `${series.length > 1 ? legenda(series.map(s => [s.cor, s.nome])) : ''}<svg class="graf" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(rotulo || 'Gráfico por mês')}">${svg}</svg>${tabela}`;
 }
 
+/**
+ * Colunas empilhadas por mês (ex.: faturas de cada cartão). series: [{ nome, cor, vals }].
+ * sel: mês em destaque; depoisDe: meses depois dele aparecem mais claros (futuro já comprometido); acao: data-a ao tocar na coluna.
+ */
+function grafEmpilhado(meses, series, { sel, depoisDe, acao, rotulo } = {}) {
+  const W = 340, H = 170, esq = 52, base = H - 22, topo = 10, larg = W - esq - 4;
+  const tot = meses.map((m, i) => series.reduce((a, s) => a + Math.max(0, s.vals[i]), 0));
+  const { max, passo } = eixo(Math.max(1, ...tot));
+  const y = v => base - (v / max) * (base - topo), banda = larg / meses.length, bw = Math.min(18, banda - 8);
+  let svg = '';
+  for (let t = 0; t <= max + 1; t += passo) svg += `<line x1="${esq}" x2="${W}" y1="${y(t)}" y2="${y(t)}" class="g-grade"/><text x="${esq - 6}" y="${y(t) + 4}" class="g-eixo" text-anchor="end">${compacto(t)}</text>`;
+  meses.forEach((m, i) => {
+    const x0 = esq + i * banda, xb = x0 + (banda - bw) / 2, fut = depoisDe && m > depoisDe;
+    if (m === sel) svg += `<rect x="${x0 + 1}" y="${topo - 6}" width="${banda - 2}" height="${base - topo + 6}" rx="6" class="g-sel"/>`;
+    let acc = 0;
+    const vis = series.filter(s => s.vals[i] > 0);
+    vis.forEach((s, j) => {
+      const v = s.vals[i], y1 = y(acc + v), h = y(acc) - y1;
+      svg += j === vis.length - 1 ? `<path d="${colunaPath(xb, y1, bw, h)}" fill="${s.cor}"${fut ? ' fill-opacity=".45"' : ''}/>` : `<rect x="${xb}" y="${y1}" width="${bw}" height="${Math.max(0, h - 1)}" fill="${s.cor}"${fut ? ' fill-opacity=".45"' : ''}/>`;
+      acc += v;
+    });
+    svg += `<text x="${x0 + banda / 2}" y="${H - 6}" class="g-eixo${m === sel ? ' g-eixo-sel' : ''}" text-anchor="middle">${mesCurto(m)}</text>`;
+    const linhas = [fmtMes(m) + (fut ? ' · já comprometido' : ''), ...series.filter(s => s.vals[i]).map(s => [s.cor, s.nome, reais(s.vals[i])]), ['', 'Total', reais(tot[i])]];
+    svg += `<rect x="${x0}" y="0" width="${banda}" height="${base}" fill="transparent" class="g-alvo" tabindex="0"${acao ? ` data-a="${acao}" data-v="${m}" style="cursor:pointer"` : ''} data-tip="${dica(linhas)}" aria-label="${esc(fmtMes(m))}: ${reais(tot[i])}"/>`;
+  });
+  svg += `<line x1="${esq}" x2="${W}" y1="${base}" y2="${base}" class="g-base"/>`;
+  const tabela = `<details class="g-tab"><summary>Ver em tabela</summary><table class="tb"><tr><th>Mês</th>${series.map(s => `<th>${esc(s.nome)}</th>`).join('')}<th>Total</th></tr>${meses.map((m, i) => `<tr><td>${fmtMes(m)}</td>${series.map(s => `<td>${reais(s.vals[i])}</td>`).join('')}<td><b>${reais(tot[i])}</b></td></tr>`).join('')}</table></details>`;
+  return `${series.length > 1 ? legenda(series.map(s => [s.cor, s.nome])) : ''}<svg class="graf" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(rotulo || 'Gráfico por mês')}">${svg}</svg>${tabela}`;
+}
+
 /** Linha de uma série só (patrimônio). pontos: [{ ref, v }]. Toque mostra o valor do mês mais perto. */
 function grafLinha(pontos, rotulo) {
   const W = 340, H = 150, esq = 52, dir = 10, base = H - 22, topo = 14;

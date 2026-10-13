@@ -124,13 +124,32 @@ function finContas() {
 
 /* ---------- Cartões ---------- */
 const STATUS_FATURA = { aberta: ['', 'aberta'], fechada: ['warn', 'fechada'], paga: ['good', 'paga'], vencida: ['bad', 'vencida'] };
+/* Mês de vencimento mais comum entre as faturas "da vez" dos cartões */
+function refFaturaDaVez() {
+  const c = {}; cartoes().forEach(k => { const r = faturaDaVez(k).ref; c[r] = (c[r] || 0) + 1; });
+  return Object.entries(c).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || N_mes(hoje());
+}
 function finCartoes() {
   const ks = cartoes(), atual = N_mes(hoje());
   if (!ks.length) return `<div class="panel">${vazio('💳', 'Cadastre os cartões de crédito com o dia de fechamento e de vencimento. O app monta as faturas sozinho, inclusive das compras parceladas.')}<button class="btn block" data-a="sheet" data-k="cartao">Cadastrar cartão</button></div>`;
-  const doMes = faturasDoMes(atual);
-  return `<p class="small muted">Faturas que vencem em ${MESES[+atual.slice(5) - 1]}: <b>${reais(doMes)}</b></p>
+  // Mês das faturas (pelo vencimento). Sem escolha: o da fatura "da vez" (a fechada ainda não paga ou a aberta)
+  const daVez = refFaturaDaVez(), ref = S.fatMes || daVez, doMes = faturasDoMes(ref);
+  // Evolução: total das faturas de todos os cartões, 8 meses antes da fatura da vez até 3 depois (parcelas já lançadas)
+  const meses = []; for (let i = -8; i <= 3; i++) meses.push(N_somaMes(daVez, i));
+  if (!meses.includes(ref)) { const d = ref < meses[0] ? -1 : 1; while (!meses.includes(ref)) { if (d < 0) { meses.unshift(N_somaMes(meses[0], -1)); meses.pop(); } else { meses.push(N_somaMes(meses[meses.length - 1], 1)); meses.shift(); } } }
+  const PAL = ['var(--viz-1)', 'var(--viz-2)', 'var(--viz-3)', 'var(--cor-c)', 'var(--cor-e)', 'var(--cor-g)'];
+  const series = ks.map((k, i) => ({ nome: k.nome, cor: PAL[i % PAL.length], vals: meses.map(m => fatura(k, m).total) }));
+  const passados = meses.filter(m => m <= daVez).map(m => series.reduce((a, s) => a + s.vals[meses.indexOf(m)], 0)).filter(v => v > 0).slice(-6);
+  const media = passados.length ? Math.round(passados.reduce((a, v) => a + v, 0) / passados.length) : 0;
+  const grafico = `<div class="panel"><div class="between"><p class="eb">Faturas mês a mês · todos os cartões</p>${media ? `<span class="tiny muted">média ${compacto(media)}</span>` : ''}</div>
+    ${grafEmpilhado(meses, series, { sel: ref, depoisDe: daVez, acao: 'fatMesIr', rotulo: 'Total das faturas por mês' })}
+    <p class="tiny muted">Toque numa coluna para ver as faturas daquele mês. Os meses mais claros são parcelas já lançadas que ainda vão vencer.</p></div>`;
+  return `${COL_INI}<div class="mesnav"><button class="x" data-a="fatMes" data-v="-1" aria-label="Faturas do mês anterior">${ic('chevl', 18)}</button>
+      <p class="h2" style="text-align:center;flex:1">Faturas de ${fmtMes(ref).toLowerCase()}${ref !== daVez ? ` <button class="link" data-a="fatMesHoje">voltar à atual</button>` : ''}</p>
+      <button class="x" data-a="fatMes" data-v="1" aria-label="Faturas do próximo mês">${ic('chev', 18)}</button></div>
+    <p class="small muted">Total das faturas que vencem em ${MESES[+ref.slice(5) - 1]}${ref.slice(0, 4) !== atual.slice(0, 4) ? ' de ' + ref.slice(0, 4) : ''}: <b>${reais(doMes)}</b></p>
     <div class="grade-cards">${ks.map(k => {
-      const f = faturaDaVez(k), usado = limiteUsado(k), st = STATUS_FATURA[f.status] || STATUS_FATURA.aberta, fut = parcelasFuturas(k, 3);
+      const f = fatura(k, ref), usado = limiteUsado(k), st = STATUS_FATURA[f.status] || STATUS_FATURA.aberta, fut = parcelasFuturas(k, 3);
       return `<div class="panel cartao" style="--cc:${esc(k.cor || CORES_CARTAO[0])}">
         <button class="between" data-a="sheet" data-k="cartao" data-id="${k.id}" style="border:0;background:none;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left"><span class="hrow"><span class="cc-chip"></span><b>${esc(k.nome)}</b></span><span class="muted">${ic('edit', 16)}</span></button>
         <button class="fatbox" data-a="sheet" data-k="fatura" data-id="${k.id}" data-v="${f.ref}"><span class="between"><span class="small muted">Fatura de ${MESES[+f.ref.slice(5) - 1]}</span><span class="tag ${st[0]}">${st[1]}</span></span>
@@ -142,7 +161,7 @@ function finCartoes() {
         <button class="btn ghost sm block" data-a="importarFatura" data-id="${k.id}">${ic('up', 15, 2.2)} Importar fatura (planilha do banco)</button>
         <p class="tiny muted">Melhor dia de compra: dia ${k.fecha}. Compras a partir dele só entram na fatura seguinte.</p></div>`;
     }).join('')}</div>
-    <button class="btn ghost block" data-a="sheet" data-k="cartao">${ic('plus', 16, 2.4)} Novo cartão</button>`;
+    <button class="btn ghost block" data-a="sheet" data-k="cartao">${ic('plus', 16, 2.4)} Novo cartão</button>${COL_MEIO}${grafico}${COL_FIM}`;
 }
 
 /* ---------- Orçamento ---------- */
@@ -511,6 +530,9 @@ Object.assign(A, {
   fcat: d => { S.fCat = S.fCat === d.v ? null : d.v; S.fv = 'extrato'; S.fExt = 'tudo'; render(false); },
   fext: d => { S.fExt = d.v; render(); },
   fl: d => { const f = S.sheet.f, l = f[d.k] || []; f[d.k] = l.includes(d.v) ? l.filter(x => x !== d.v) : [...l, d.v]; renderSheet(); },
+  fatMes: d => { S.fatMes = N_somaMes(S.fatMes || refFaturaDaVez(), +d.v); render(); },
+  fatMesIr: d => { S.fatMes = d.v === refFaturaDaVez() ? null : d.v; render(); },
+  fatMesHoje: () => { S.fatMes = null; render(); },
   fref: d => { S.sheet.v = N_somaMes(S.sheet.v, +d.v); renderSheet(); },
   novoLanc: d => {
     const pre = { tipo: d.tipo, dia: S.tab === 'financas' && S.mes !== N_mes(hoje()) ? S.mes + '-01' : hoje() };
