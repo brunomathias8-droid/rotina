@@ -112,11 +112,12 @@ const ehCompraCartao = (l, k) => l.tipo === 'saida' && l.forma === 'cartao' && l
 /** A fatura "ref" (mês do vencimento) de um cartão. */
 function fatura(k, ref) {
   const h = hoje(), compras = lancs().filter(l => ehCompraCartao(l, k) && N_faturaDe(k, l) === ref).sort((a, b) => b.dia.localeCompare(a.dia));
-  const pagamentos = lancs().filter(l => l.tipo === 'fatura' && l.cartao === k.id && l.ref === ref);
+  // Pagamento de fatura marcado como "não pago" fica agendado: não abate a fatura até ser marcado como pago
+  const todos = lancs().filter(l => l.tipo === 'fatura' && l.cartao === k.id && l.ref === ref), pagamentos = todos.filter(l => l.pago), agendados = todos.filter(l => !l.pago);
   const total = compras.reduce((a, l) => a + l.v, 0), pago = pagamentos.reduce((a, l) => a + l.v, 0);
   const fecha = N_fechamento(k, ref), venc = N_vencimento(k, ref), resta = Math.max(0, total - pago);
   const status = total > 0 && resta === 0 ? 'paga' : h < fecha ? 'aberta' : h > venc ? (resta ? 'vencida' : 'paga') : 'fechada';
-  return { ref, compras, pagamentos, total, pago, resta, fecha, venc, status };
+  return { ref, compras, pagamentos, agendados, total, pago, resta, fecha, venc, status };
 }
 const faturaAtual = k => fatura(k, N_faturaRef(k, hoje()));
 /** Fatura que precisa de atenção agora: a fechada ainda não paga ou, se não houver, a aberta. */
@@ -127,7 +128,7 @@ function faturaDaVez(k) {
 /** Limite usado: tudo o que foi comprado (inclusive parcelas futuras) menos o que já foi pago. */
 function limiteUsado(k) {
   let c = 0, p = 0;
-  lancs().forEach(l => { if (ehCompraCartao(l, k)) c += l.v; if (l.tipo === 'fatura' && l.cartao === k.id) p += l.v; });
+  lancs().forEach(l => { if (ehCompraCartao(l, k)) c += l.v; if (l.tipo === 'fatura' && l.cartao === k.id && l.pago) p += l.v; });
   return Math.max(0, c - p);
 }
 /** Parcelas já compradas que caem nas próximas faturas (compromisso futuro). */
@@ -147,7 +148,7 @@ function movimentos(id) {
     let d = 0;
     if (l.tipo === 'entrada' && l.carteira === id && l.pago) d = l.v;
     else if (l.tipo === 'saida' && l.forma !== 'cartao' && l.pago && l.carteira === id) d = -l.v;
-    else if (l.tipo === 'fatura' && l.carteira === id) d = -l.v;
+    else if (l.tipo === 'fatura' && l.pago && l.carteira === id) d = -l.v;
     else if (l.tipo === 'aporte') d = l.carteira === id ? -l.v : l.destino === id ? l.v : 0;
     else if (l.tipo === 'resgate') d = l.carteira === id ? l.v : l.destino === id ? -l.v : 0;
     else if (l.tipo === 'transf') d = l.carteira === id ? -l.v : l.destino === id ? l.v : 0;
@@ -190,7 +191,7 @@ function dividaCartaoEm(k, D) {
   let c = 0;
   lancs().forEach(l => {
     if (ehCompraCartao(l, k) && (l.grupo ? compraEm[l.grupo] : l.dia) <= D) c += l.v;
-    if (l.tipo === 'fatura' && l.cartao === k.id && l.dia <= D) c -= l.v;
+    if (l.tipo === 'fatura' && l.cartao === k.id && l.pago && l.dia <= D) c -= l.v;
   });
   return Math.max(0, c);
 }

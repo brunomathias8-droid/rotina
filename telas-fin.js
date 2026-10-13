@@ -101,12 +101,19 @@ function extratoLista(ls, dias, sai, ent) {
 
 /* ---------- Contas (a pagar e a receber) ---------- */
 const anexosAgenda = x => x.k === 'rec' ? anexosDe(`contas:${x.id}:${x.ref}`).length : x.k === 'lanc' ? anexosDe('lancamentos:' + x.id).length + (x.conta && x.ref ? anexosDe(`contas:${x.conta}:${x.ref}`).length : 0) : 0;
+/* Dá para desmarcar o que saiu (ou entrou) de uma conta: não as compras no cartão nem os aportes */
+function podeDespagar(x) {
+  if (x.k === 'fatura') return x.fatura && x.fatura.pagamentos.length > 0;
+  if (x.k === 'lanc') return true;
+  const r = recorrentesMes(x.ref).find(c => c.id === x.id);
+  return !!(r && r.lanc && r.lanc.pago && r.lanc.forma !== 'cartao' && ['saida', 'entrada'].includes(r.lanc.tipo));
+}
 function linhaAgenda(x) {
   const n = N_diasEntre(hoje(), x.venc), quando = x.status === 'pago' ? statusTag('pago') : x.status === 'vencido' ? (x.entrada ? `<span class="tag warn">esperado dia ${N_dataObj(x.venc).getDate()}</span>` : `<span class="tag bad">venceu ${rotuloDia(x.venc)}</span>`) : n === 0 ? '<span class="tag warn">vence hoje</span>' : `<span class="tag">${x.entrada ? 'dia' : 'vence'} ${n > 0 && n < 7 ? rotuloDia(x.venc) : fmtCurta(x.venc)}</span>`;
   const rot = x.k === 'fatura' ? (x.status === 'pago' ? 'Ver' : 'Pagar') : x.entrada ? 'Receber' : x.aporte ? 'Investir' : x.cartao ? 'Lançar' : 'Pagar';
   const abrir = x.k === 'fatura' ? `data-a="sheet" data-k="fatura" data-id="${x.id}" data-v="${x.ref}"` : x.k === 'rec' ? `data-a="sheet" data-k="conta" data-id="${x.id}" data-v="${x.ref || ''}"` : `data-a="sheet" data-k="lanc" data-id="${x.id}"`;
   return `<div class="it"><span class="em-tile">${esc(x.ic)}</span><button class="main" ${abrir}><span class="t">${esc(x.nome)}</span><span class="s">${quando}${x.cartao ? '<span>no cartão</span>' : ''}${anexosAgenda(x) ? `<span>📎 ${anexosAgenda(x)}</span>` : ''}</span></button>
-    ${x.status === 'pago' ? `<span class="v ${x.entrada ? 'c-good' : ''}">${reais(x.v)}</span>` : `<span class="stack" style="gap:4px;align-items:flex-end"><span class="v ${x.entrada ? 'c-good' : ''}">${reais(x.resta != null ? x.resta : x.v)}</span><button class="btn sm ${x.entrada ? '' : 'warm'}" style="padding:7px 12px" data-a="pagar" data-k="${x.k}" data-id="${x.id}" data-ref="${x.ref || ''}">${rot}</button></span>`}</div>`;
+    ${x.status === 'pago' ? `<span class="stack" style="gap:4px;align-items:flex-end"><span class="v ${x.entrada ? 'c-good' : ''}">${reais(x.v)}</span>${podeDespagar(x) ? `<button class="btn ghost sm" style="padding:6px 10px" data-a="despagar" data-k="${x.k}" data-id="${x.id}" data-ref="${x.ref || ''}">Não foi ${x.entrada ? 'recebido' : 'pago'}</button>` : ''}</span>` : `<span class="stack" style="gap:4px;align-items:flex-end"><span class="v ${x.entrada ? 'c-good' : ''}">${reais(x.resta != null ? x.resta : x.v)}</span><button class="btn sm ${x.entrada ? '' : 'warm'}" style="padding:7px 12px" data-a="pagar" data-k="${x.k}" data-id="${x.id}" data-ref="${x.ref || ''}">${rot}</button></span>`}</div>`;
 }
 function finContas() {
   const ag = agendaMes(S.mes), pagar = ag.filter(x => !x.entrada && x.status !== 'pago'), receber = ag.filter(x => x.entrada && x.status !== 'pago'), ok = ag.filter(x => x.status === 'pago');
@@ -273,7 +280,6 @@ SH.lanc = s => {
       if (l && l.parc) corpo += `<div class="note"><span>Parcela ${esc(l.parc)}. Mudanças aqui valem só para esta parcela.</span></div>`;
     } else {
       if (contas.length > 1) corpo += grupo('Saiu de qual conta', escolha('carteira', f.carteira, contas));
-      corpo += toggle('pago', f.pago, 'Já foi pago', f.pago ? '' : 'Fica em "Contas › A pagar" até você marcar');
     }
     if (f.cat === 'dividas' && passivos.length) corpo += grupo('Abate de qual dívida (opcional)', escolha('destino', f.destino, [['', 'Nenhuma'], ...passivos.map(p => [p.id, esc(p.nome)])]));
   } else if (t === 'entrada') {
@@ -282,7 +288,6 @@ SH.lanc = s => {
     const destinosEnt = f.cat === 'rendimentos' ? [...contas, ...investimentos().map(p => [p.id, `${esc(p.ic || classe(p.classe).ic)} ${esc(p.nome)}`])] : contas;
     if (destinosEnt.length > 1) corpo += grupo(f.cat === 'rendimentos' ? 'Entrou onde' : 'Entrou em qual conta', escolha('carteira', f.carteira, destinosEnt));
     if (f.cat === 'rendimentos') corpo += '<p class="tiny muted">Renda passiva (dividendos, juros, aluguel de FII): escolha o investimento se o dinheiro ficou nele. Aí ela soma no patrimônio como rendimento.</p>';
-    corpo += toggle('pago', f.pago, 'Já recebeu', f.pago ? '' : 'Fica em "Contas › A receber"');
   } else if (inv) {
     corpo += segm('tipo', t, [['aporte', 'Aplicar'], ['resgate', 'Resgatar']]);
     const invs = investimentos();
@@ -302,6 +307,7 @@ SH.lanc = s => {
   return `${head(l ? 'Editar' : 'Novo', titulo)}
     ${!l && !fixo && !s.pre?.travado ? segm('tipo', inv ? 'aporte' : t, [['saida', 'Despesa'], ['entrada', 'Receita'], ['aporte', 'Investir'], ['transf', 'Transferir']]) : ''}
     ${valorInp('v', f.v)}
+    ${(t === 'saida' && f.forma !== 'cartao') || t === 'entrada' || t === 'fatura' ? `<div class="panel soft pagobox">${toggle('pago', f.pago, t === 'entrada' ? 'Já recebeu' : t === 'fatura' ? 'Já foi paga' : 'Já foi pago', f.pago ? 'Desligue se ainda não saiu da conta' : `Fica em "Contas › ${t === 'entrada' ? 'A receber' : 'A pagar'}" até você marcar`)}</div>` : ''}
     ${corpo}
     ${conta ? `<div class="note"><span>${conta.tipo === 'entrada' ? 'Recebimento' : 'Pagamento'} de <b>${esc(conta.nome)}</b> referente a ${fmtMes(f.ref).toLowerCase()}.</span></div>` : ''}
     <div class="grid2">${campo('Data', inp('dia', f.dia, 'type="date"'))}<span></span></div>
@@ -322,7 +328,8 @@ SH.fatura = s => {
       ${f.pago ? `<p class="small">Pago: <b>${reais(f.pago)}</b>${f.resta ? ` · falta ${reais(f.resta)}` : ''}</p>` : ''}</div>
     ${f.resta ? `<button class="btn warm block" data-a="pagar" data-k="fatura" data-id="${k.id}" data-ref="${f.ref}">Pagar ${reais(f.resta)}</button>` : ''}
     ${secao('Compras', `<button class="link" data-a="importarFatura" data-id="${k.id}" data-v="${f.ref}">Importar planilha</button>`)}${listaOu(f.compras, linhaLanc, '<p class="small muted">Nenhuma compra nesta fatura.</p>')}
-    ${f.pagamentos.length ? secao('Pagamentos') + listaOu(f.pagamentos, linhaLanc) : ''}`;
+    ${f.pagamentos.length ? secao('Pagamentos') + listaOu(f.pagamentos, linhaLanc) : ''}
+    ${f.agendados.length ? secao('Pagamento agendado', '<span class="tag warn">ainda não pago</span>') + listaOu(f.agendados, linhaLanc) : ''}`;
 };
 
 /* ---------- cartão ---------- */
@@ -541,6 +548,18 @@ Object.assign(A, {
     if (d.cartao) pre.forma = 'cartao';
     openSheet({ k: 'lanc', pre }); setTimeout(() => focar('f-v'), 280);
   },
+  // "Não foi pago": volta para A pagar (ou A receber), com Desfazer
+  despagar: d => {
+    const ref = d.ref || N_mes(hoje()), ls = [];
+    if (d.k === 'lanc') ls.push(S.d.lancamentos.get(d.id));
+    if (d.k === 'fatura') { const k = S.d.cartoes.get(d.id); if (k) ls.push(...fatura(k, ref).pagamentos); }
+    if (d.k === 'rec') { const r = recorrentesMes(ref).find(x => x.id === d.id); if (r && r.lanc) ls.push(r.lanc); }
+    const alvo = ls.filter(l => l && l.pago && l.forma !== 'cartao' && ['saida', 'entrada', 'fatura'].includes(l.tipo));
+    if (!alvo.length) { toast('Aqui não dá para desmarcar: abra o lançamento para editar.'); return; }
+    alvo.forEach(l => enfileirar('salvar', { col: 'lancamentos', item: { id: l.id, pago: false } }));
+    const ent = alvo[0].tipo === 'entrada';
+    toast(`Marcado como não ${ent ? 'recebido' : 'pago'}: volta para "${ent ? 'A receber' : 'A pagar'}".`, 4500, { rot: 'Desfazer', fn: () => alvo.forEach(l => enfileirar('salvar', { col: 'lancamentos', item: { id: l.id, pago: true } })) });
+  },
   pagar: d => {
     const ref = d.ref || N_mes(hoje()), h = hoje();
     if (d.k === 'lanc') {
@@ -552,6 +571,7 @@ Object.assign(A, {
     if (d.k === 'fatura') {
       const k = S.d.cartoes.get(d.id); if (!k) return;
       const f = fatura(k, ref);
+      if (f.agendados.length) { f.agendados.forEach(l => A.pagar({ k: 'lanc', id: l.id })); return; }
       openSheet({ k: 'lanc', pre: { tipo: 'fatura', v: f.resta, cartao: k.id, ref, carteira: k.carteira || (contasBancarias()[0] || {}).id || '', desc: 'Fatura ' + k.nome, dia: h, pago: true, travado: true } });
       return;
     }
@@ -573,7 +593,7 @@ Object.assign(A, {
     const cartao = t === 'saida' && f.forma === 'cartao';
     const base = { tipo: t, v, dia: f.dia, desc: String(f.desc || '').trim(), nota: String(f.nota || '').trim(),
       cat: t === 'saida' || t === 'entrada' ? f.cat : '', forma: t === 'saida' ? f.forma : '', cartao: cartao || t === 'fatura' ? f.cartao : '',
-      carteira: cartao ? '' : f.carteira || '', pago: cartao || ['aporte', 'resgate', 'transf', 'fatura'].includes(t) ? true : !!f.pago,
+      carteira: cartao ? '' : f.carteira || '', pago: cartao || ['aporte', 'resgate', 'transf'].includes(t) ? true : !!f.pago,
       destino: ['aporte', 'resgate', 'transf'].includes(t) || (t === 'saida' && f.cat === 'dividas') ? f.destino || '' : '', meta: t === 'aporte' || t === 'resgate' ? f.meta || '' : '',
       conta: f.conta || '', ref: f.conta || t === 'fatura' ? f.ref : '' };
     const n = Math.max(1, Math.min(72, parseInt(f.parcelas, 10) || 1));
