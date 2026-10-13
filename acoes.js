@@ -1,7 +1,7 @@
 /* acoes.js — o que cada toque faz, login, roteamento e a inicialização do app. */
 'use strict';
 
-const VERSAO_APP = '3.5.0';
+const VERSAO_APP = '3.5.1';
 
 /* ============ desenho ============ */
 const ABAS_APP = [['hoje', 'Hoje', 'sun'], ['agenda', 'Agenda', 'cal'], ['tarefas', 'Tarefas', 'clip'], ['financas', 'Finanças', 'wallet'], ['compras', 'Compras', 'cart'], ['arquivos', 'Arquivos', 'pasta']];
@@ -47,7 +47,7 @@ function renderSheet() {
 }
 function soltarPrevia() { if (S.sheet && S.sheet.url) { URL.revokeObjectURL(S.sheet.url); S.sheet.url = ''; } }
 function openSheet(o) { if (!(o && o.volta === S.sheet)) soltarPrevia(); S.sheet = o; renderSheet(); }
-function closeSheet() { soltarPrevia(); S.sheet = null; renderSheet(); }
+function closeSheet() { soltarPrevia(); S.sheet = null; renderSheet(); if (S.recarregarAoFechar) location.reload(); } // versão nova chegou com um painel aberto: recarrega ao fechar
 let tT;
 function toast(msg, ms, acao) {
   const t = $('#toast');
@@ -370,8 +370,12 @@ window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); S.inst
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('sw.js').then(reg => {
     reg.addEventListener('updatefound', () => { const w = reg.installing; w && w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) w.postMessage('ativar'); }); });
+    // No computador a janela fica aberta por dias: procura versão nova ao voltar para ela e a cada hora
+    const procurar = () => reg.update().catch(() => { });
+    setInterval(procurar, 3600e3);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') procurar(); });
   }).catch(() => { });
   let recarregou = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (recarregou) return; recarregou = true; if (!S.sheet) location.reload(); });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (recarregou) return; recarregou = true; if (!S.sheet) location.reload(); else S.recarregarAoFechar = true; });
 }
 /* iniciar() é chamado no fim do index.html, depois de carregar todos os arquivos. */
