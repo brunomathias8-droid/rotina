@@ -405,7 +405,7 @@ const PRESETS_META = [
 function presetMeta(k) {
   const h = hoje(), ref = N_mes(h), daqui = n => N_diaDoMes(N_somaMes(ref, n), 28);
   const reservas = investimentos().filter(p => p.classe === 'reserva').map(p => p.id);
-  const fat3 = mediaMeses(ref, 3, r => r.cartao);
+  const fat3 = [1, 2, 3].reduce((a, i) => a + faturasDoMes(N_somaMes(ref, -i)), 0) / 3;
   const delivery = mediaCategoria(ref, 'delivery'), divs = dividas();
   const base = { nome: '', ic: '🎯', tipo: 'juntar', alvo: '', prazo: '', itens: [], metrica: '', cat: '', nota: '' };
   const m = {
@@ -442,6 +442,12 @@ SH.meta = s => {
     <button class="btn block" data-a="salvarMeta">Salvar meta</button>
     ${m ? `<button class="btn ghost block" data-a="arquivarMeta" data-id="${m.id}">${m.ativa === false ? 'Reativar' : 'Arquivar'}</button><button class="btn danger block" data-a="excluir" data-col="metas" data-id="${m.id}">${ic('trash', 16)} Excluir meta</button>` : ''}`;
 };
+/* Meta do cartão: quais faturas entram na conta deste mês */
+function faturasDaMeta() {
+  const ref = N_mes(hoje()), fs = cartoes().map(k => ({ k, f: fatura(k, ref) })).filter(x => x.f.total);
+  return `<div class="panel"><p class="small muted" style="margin:0">Soma das faturas que vencem em ${MESES[+ref.slice(5) - 1]}, de todos os cartões:</p>
+    ${fs.length ? `<div class="lst">${fs.map(({ k, f }) => `<button class="it" data-a="sheet" data-k="fatura" data-id="${k.id}" data-v="${f.ref}"><span class="em-tile">💳</span><span class="main"><span class="t">${esc(k.nome)}</span><span class="s">vence ${fmtCurta(f.venc)} · ${STATUS_FATURA[f.status] ? STATUS_FATURA[f.status][1] : ''}</span></span><span class="v">${reais(f.total)}</span></button>`).join('')}</div>` : '<p class="small muted" style="margin:0">Nenhuma fatura vence este mês.</p>'}</div>`;
+}
 function verMeta(m) {
   const p = progressoMeta(m), st = STATUS_META[p.status];
   const desc = m.tipo === 'mensal' ? `Investir ${reais(m.alvo)} por mês` : m.tipo === 'juntar' ? `Juntar ${reais(m.alvo)}${m.prazo ? ' até ' + fmtCurta(m.prazo) + '/' + m.prazo.slice(2, 4) : ''}` : m.metrica === 'divida' ? 'Quitar dívida' : `${METRICAS[m.metrica] || 'Gasto'}: até ${reais(m.alvo)}${m.metrica === 'cat' ? ' em ' + categoria(m.cat).nome : ''}`;
@@ -449,6 +455,7 @@ function verMeta(m) {
     <div class="panel soft"><div class="between"><p class="saldo" style="font-size:30px">${m.tipo === 'juntar' || m.tipo === 'mensal' ? Math.round(p.pct * 100) + '%' : reais(p.atual)}</p><span class="tag ${st[0]}">${st[1]}</span></div>
       ${bar(p.pct, 1, p.status === 'atencao' ? 'var(--warn)' : 'var(--accent)')}<p class="small">${esc(p.linha)}</p>
       ${m.tipo !== 'reduzir' || m.metrica === 'divida' ? `<p class="small muted">${reais(p.atual)} ${m.metrica === 'divida' ? 'de saldo devedor' : 'de ' + reais(p.alvo)}</p>` : ''}</div>
+    ${m.metrica === 'cartao' ? faturasDaMeta() : ''}
     ${p.serie ? `<div class="panel"><p class="small muted">Últimos 6 meses ${m.tipo === 'mensal' ? '(investido no mês)' : ''}</p>${grafMini(p.serie, m.alvo, v => m.tipo === 'mensal' ? v >= m.alvo : v <= m.alvo)}</div>` : ''}
     ${m.tipo === 'juntar' || m.tipo === 'mensal' ? `<button class="btn block" data-a="novoLanc" data-tipo="aporte" data-meta="${m.id}"${m.itens && m.itens[0] ? ` data-destino="${m.itens[0]}"` : ''}>📈 Registrar aporte</button>` : ''}
     ${m.nota ? `<div class="note"><span>“${esc(m.nota)}”</span></div>` : ''}

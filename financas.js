@@ -229,7 +229,7 @@ function alertasOrcamento(ref) {
 /* ============================== metas ============================== */
 const metas = () => lista('metas').filter(m => m.ativa !== false).sort((a, b) => String(a.em).localeCompare(String(b.em)));
 const META_TIPOS = { juntar: 'Juntar um valor', mensal: 'Investir todo mês', reduzir: 'Reduzir' };
-const METRICAS = { cartao: 'Gasto no cartão por mês', cat: 'Gasto de uma categoria por mês', divida: 'Saldo de dívidas' };
+const METRICAS = { cartao: 'Fatura do cartão por mês', cat: 'Gasto de uma categoria por mês', divida: 'Saldo de dívidas' };
 /** Aportes líquidos do mês que contam para a meta (se ela não tiver investimentos escolhidos, conta tudo). */
 function aportesMeta(m, ref) {
   return lancs().reduce((a, l) => {
@@ -240,7 +240,9 @@ function aportesMeta(m, ref) {
 }
 /** Valor medido de uma meta "reduzir" num mês. */
 function valorReduzir(m, ref) {
-  if (m.metrica === 'cartao') return resumoMes(ref).cartao; // compras no cartão feitas no mês (cada parcela no seu mês)
+  // Soma das faturas que vencem no mês (todos os cartões): é o valor que se vê no banco e que sai da conta.
+  // (Compras feitas no mês dariam outro número: a fatura de outubro é quase toda de compras de setembro.)
+  if (m.metrica === 'cartao') return faturasDoMes(ref);
   if (m.metrica === 'cat') return resumoMes(ref).porCat[m.cat] || 0;
   const fim = ref === N_mes(hoje()) ? hoje() : N_diaDoMes(ref, 31);
   return (m.itens || []).reduce((a, id) => { const p = S.d.patrimonio.get(id); return a + (p ? valorEm(p, fim) : 0); }, 0);

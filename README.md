@@ -49,7 +49,7 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 | Contas | O que falta pagar e receber no mês (contas fixas, boletos agendados e faturas), o que já foi pago e o cadastro das contas fixas e receitas recorrentes |
 | Cartões | Fatura atual de cada cartão (aberta, fechada, paga ou vencida), limite usado e disponível, parcelas já comprometidas nos próximos meses, pagar fatura |
 | Orçamento | Limite por categoria com média dos últimos 3 meses, alertas aos 85% e ao passar, e a divisão da renda entre essenciais, estilo de vida e futuro |
-| Metas | Juntar um valor até uma data, investir um valor todo mês, ou reduzir (gasto no cartão, uma categoria, uma dívida). Modelos prontos: reserva de emergência, investir todo mês, reduzir o cartão, quitar dívida, sonho |
+| Metas | Juntar um valor até uma data, investir um valor todo mês, ou reduzir (a fatura do cartão, uma categoria, uma dívida). A meta do cartão mede a soma das faturas que vencem no mês, o mesmo valor que aparece no banco. Modelos prontos: reserva de emergência, investir todo mês, reduzir o cartão, quitar dívida, sonho |
 | Patrimônio | Patrimônio líquido e sua evolução, onde está investido, contas, investimentos, bens, dívidas e cartões a pagar |
 
 ### Regras de cálculo
