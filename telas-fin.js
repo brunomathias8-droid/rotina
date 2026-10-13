@@ -141,13 +141,13 @@ function finCartoes() {
   const series = ks.map((k, i) => ({ nome: k.nome, cor: PAL[i % PAL.length], vals: meses.map(m => fatura(k, m).total) }));
   const passados = meses.filter(m => m <= daVez).map(m => series.reduce((a, s) => a + s.vals[meses.indexOf(m)], 0)).filter(v => v > 0).slice(-6);
   const media = passados.length ? Math.round(passados.reduce((a, v) => a + v, 0) / passados.length) : 0;
-  const grafico = `<div class="panel"><div class="between"><p class="eb">Faturas mês a mês · todos os cartões</p>${media ? `<span class="tiny muted">média ${compacto(media)}</span>` : ''}</div>
-    ${grafEmpilhado(meses, series, { sel: ref, depoisDe: daVez, acao: 'fatMesIr', rotulo: 'Total das faturas por mês' })}
-    <p class="tiny muted">Toque numa coluna para ver as faturas daquele mês. Os meses mais claros são parcelas já lançadas que ainda vão vencer.</p></div>`;
-  return `${COL_INI}<div class="mesnav"><button class="x" data-a="fatMes" data-v="-1" aria-label="Faturas do mês anterior">${ic('chevl', 18)}</button>
+  const grafico = `<div class="panel graf-fat"><div class="between"><p class="eb">Faturas mês a mês · todos os cartões</p>${media ? `<span class="tiny muted">média ${compacto(media)}</span>` : ''}</div>
+    ${grafEmpilhado(meses, series, { sel: ref, depoisDe: daVez, acao: 'fatMesIr', rotulo: 'Total das faturas por mês. Toque numa coluna para abrir o mês; os meses mais claros são parcelas que ainda vão vencer.', alt: 112 })}</div>`;
+  return `<div class="cart-topo"><div class="stack" style="gap:10px"><div class="mesnav"><button class="x" data-a="fatMes" data-v="-1" aria-label="Faturas do mês anterior">${ic('chevl', 18)}</button>
       <p class="h2" style="text-align:center;flex:1">Faturas de ${fmtMes(ref).toLowerCase()}${ref !== daVez ? ` <button class="link" data-a="fatMesHoje">voltar à atual</button>` : ''}</p>
       <button class="x" data-a="fatMes" data-v="1" aria-label="Faturas do próximo mês">${ic('chev', 18)}</button></div>
     <p class="small muted">Total das faturas que vencem em ${MESES[+ref.slice(5) - 1]}${ref.slice(0, 4) !== atual.slice(0, 4) ? ' de ' + ref.slice(0, 4) : ''}: <b>${reais(doMes)}</b></p>
+    <p class="tiny muted">Toque numa coluna do gráfico para abrir as faturas daquele mês. Os meses mais claros são parcelas que ainda vão vencer.</p></div>${grafico}</div>
     <div class="grade-cards">${ks.map(k => {
       const f = fatura(k, ref), usado = limiteUsado(k), st = STATUS_FATURA[f.status] || STATUS_FATURA.aberta, fut = parcelasFuturas(k, 3);
       return `<div class="panel cartao" style="--cc:${esc(k.cor || CORES_CARTAO[0])}">
@@ -161,7 +161,7 @@ function finCartoes() {
         <button class="btn ghost sm block" data-a="importarFatura" data-id="${k.id}">${ic('up', 15, 2.2)} Importar fatura (planilha do banco)</button>
         <p class="tiny muted">Melhor dia de compra: dia ${k.fecha}. Compras a partir dele só entram na fatura seguinte.</p></div>`;
     }).join('')}</div>
-    <button class="btn ghost block" data-a="sheet" data-k="cartao">${ic('plus', 16, 2.4)} Novo cartão</button>${COL_MEIO}${grafico}${COL_FIM}`;
+    <button class="btn ghost block" data-a="sheet" data-k="cartao">${ic('plus', 16, 2.4)} Novo cartão</button>`;
 }
 
 /* ---------- Orçamento ---------- */

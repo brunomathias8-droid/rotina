@@ -56,11 +56,11 @@ function grafColunas(meses, series, rotulo) {
  * Colunas empilhadas por mês (ex.: faturas de cada cartão). series: [{ nome, cor, vals }].
  * sel: mês em destaque; depoisDe: meses depois dele aparecem mais claros (futuro já comprometido); acao: data-a ao tocar na coluna.
  */
-function grafEmpilhado(meses, series, { sel, depoisDe, acao, rotulo } = {}) {
-  const W = 340, H = 170, esq = 52, base = H - 22, topo = 10, larg = W - esq - 4;
+function grafEmpilhado(meses, series, { sel, depoisDe, acao, rotulo, alt } = {}) {
+  const W = 340, H = alt || 170, esq = 52, base = H - 22, topo = 10, larg = W - esq - 4;
   const tot = meses.map((m, i) => series.reduce((a, s) => a + Math.max(0, s.vals[i]), 0));
   const { max, passo } = eixo(Math.max(1, ...tot));
-  const y = v => base - (v / max) * (base - topo), banda = larg / meses.length, bw = Math.min(18, banda - 8);
+  const y = v => base - (v / max) * (base - topo), banda = larg / meses.length, bw = Math.min(16, banda - 8);
   let svg = '';
   for (let t = 0; t <= max + 1; t += passo) svg += `<line x1="${esq}" x2="${W}" y1="${y(t)}" y2="${y(t)}" class="g-grade"/><text x="${esq - 6}" y="${y(t) + 4}" class="g-eixo" text-anchor="end">${compacto(t)}</text>`;
   meses.forEach((m, i) => {

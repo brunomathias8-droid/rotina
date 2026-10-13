@@ -192,6 +192,9 @@ textarea.in{min-height:80px;resize:vertical;line-height:1.4}
 .g-grade{stroke:var(--grade);stroke-width:1}
 .g-base{stroke:var(--s3);stroke-width:1}
 .g-eixo{fill:var(--mut);font-size:10px;font-family:var(--fb);font-variant-numeric:tabular-nums}
+.cart-topo{display:flex;flex-direction:column;gap:12px}
+.graf-fat{padding:12px 14px;gap:6px}
+.graf-fat .g-tab{display:none}
 .g-sel{fill:var(--s2)} .g-eixo-sel{fill:var(--fg);font-weight:700}
 .g-cruzl{stroke:var(--mut);stroke-width:1}
 .g-alvoln{stroke:var(--fg);stroke-width:1;opacity:.45}
@@ -319,6 +322,7 @@ kbd{font:600 11px var(--fb);background:var(--s2);border-radius:5px;padding:1px 5
   #main.estreito > *{max-width:760px}
   .cols{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px;align-items:start}
   .col{display:flex;flex-direction:column;gap:14px;min-width:0}
+  .cart-topo{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,460px);gap:28px;align-items:start}
   .grade-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));align-items:start}
   .display{font-size:36px}
   .chips.scroll{flex-wrap:wrap;margin:0;padding:0;overflow:visible}
