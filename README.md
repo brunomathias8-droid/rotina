@@ -36,7 +36,7 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 | Hoje | Compromissos de hoje (e de amanhã, à noite), suas tarefas do dia, pedidos de troca, contas e faturas que vencem nos próximos 5 dias, resumo do mês, metas e a lista de compras |
 | Agenda | Calendário da família: próximos dias, semana ou mês, uma cor por pessoa, filtro por pessoa, "quem leva", lembretes, conversa no compromisso e o combinado da semana |
 | Tarefas | Tudo o que precisa ser feito, numa lista só: o que é de uma vez (renovar o passaporte) e o que se repete (lavar a louça), com responsável ou revezamento, prazo, passos, troca e placar de esforço |
-| Finanças | Sete abas: Resumo, Extrato, Contas, Cartões, Orçamento, Metas e Patrimônio (detalhes abaixo) |
+| Finanças | Oito abas: Resumo, Extrato, Contas, Cartões, Orçamento, Metas, Patrimônio e Investimentos (detalhes abaixo) |
 | Arquivos | Documentos da família num lugar só: carteirinha do plano, receitas, RG das crianças, contratos, manuais. Busca, categorias, validade com aviso e os importantes guardados no aparelho para abrir sem internet. No celular, fica no ícone de pasta no topo |
 | Compras | Lista compartilhada organizada pelos corredores do mercado. "2 leite, pão, café" vira três itens. Depois: lançar o gasto e limpar |
 
@@ -51,6 +51,7 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 | Orçamento | Limite por categoria com média dos últimos 3 meses, alertas aos 85% e ao passar, e a divisão da renda entre essenciais, estilo de vida e futuro |
 | Metas | Juntar um valor até uma data, investir um valor todo mês, ou reduzir (a fatura do cartão, uma categoria, uma dívida). A meta do cartão mede a soma das faturas que vencem no mês, o mesmo valor que aparece no banco. Modelos prontos: reserva de emergência, investir todo mês, reduzir o cartão, quitar dívida, sonho |
 | Patrimônio | Patrimônio líquido e sua evolução, onde está investido, contas, investimentos, bens, dívidas e cartões a pagar |
+| Investimentos | Total investido, aplicado e rendimento bruto (R$ e %), pontos de atenção (acima do limite do FGC por instituição, posições zeradas ou abaixo do aplicado, concentração, saldos desatualizados), distribuição por tipo e por emissor, evolução e a lista de posições ordenável por saldo ou rendimento |
 
 ### Regras de cálculo
 
@@ -59,6 +60,8 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 - **Pagar a fatura não é despesa nova:** as compras já foram contadas. O pagamento só tira o dinheiro da conta e quita o cartão.
 - **Investir não é despesa:** é dinheiro que sai da conta e entra no patrimônio. Conta como "futuro" na divisão da renda.
 - **Saldos:** cada conta, investimento ou dívida guarda o último valor informado ("Atualizar saldo") e soma os movimentos depois dele.
+- **Rendimento de um investimento** = saldo − aplicado. Aplicado = o total informado no cadastro (vale na data do primeiro saldo) + aportes − resgates lançados depois. Bruto, antes de impostos.
+- **FGC:** garante até R$ 250 mil por CPF por instituição em CDB, LCI, LCA, RDB, poupança e conta (o app considera Renda fixa e Reserva, menos Tesouro). Fundos, FIIs, ações, exterior, previdência e cripto não têm FGC.
 - **Patrimônio líquido** = contas + investimentos + bens − dívidas − saldo devedor dos cartões (incluindo parcelas futuras).
 - **Reserva de emergência sugerida** = 6 meses das despesas essenciais (média dos últimos 3 meses).
 
@@ -121,6 +124,7 @@ Finanças › Cartões › **Importar fatura** (ou, dentro da fatura, "Importar 
 | `agenda.js` | Tela, painéis e ações da Agenda e da família |
 | `arquivos.js` | Tela Arquivos, anexos, envio e cópias no aparelho |
 | `importar.js` | Importar fatura do cartão (CSV, Excel, OFX, colado) |
+| `invest.js` | Finanças › Investimentos: análise da carteira |
 | `telas-fin.js` | Telas, painéis e ações de Finanças |
 | `paineis.js` | Painéis de tarefa, troca, item de compra e perfil |
 | `acoes.js` | O que cada toque faz, login e inicialização |

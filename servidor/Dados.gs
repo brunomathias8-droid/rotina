@@ -20,7 +20,7 @@ var ABAS = {
   Lancamentos: ['ID', 'Dia', 'Tipo', 'Valor', 'Descricao', 'Categoria', 'Forma', 'Pago', 'Carteira', 'Cartao', 'Parcela', 'Grupo', 'Conta', 'Ref', 'Destino', 'Meta', 'Nota', 'Fatura', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Contas: ['ID', 'Nome', 'Tipo', 'Valor', 'Vence', 'Categoria', 'Forma', 'Cartao', 'Carteira', 'Destino', 'Meta', 'Ativa', 'Fim', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Cartoes: ['ID', 'Nome', 'Cor', 'Limite', 'Fecha', 'Vence', 'Carteira', 'Ativo', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
-  Patrimonio: ['ID', 'Nome', 'Icone', 'Natureza', 'Classe', 'Instituicao', 'Historico', 'Taxa', 'Ativo', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
+  Patrimonio: ['ID', 'Nome', 'Icone', 'Natureza', 'Classe', 'Instituicao', 'Historico', 'Taxa', 'Ativo', 'Nota', 'Aplicado', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Metas: ['ID', 'Nome', 'Icone', 'Tipo', 'Alvo', 'Prazo', 'Inicio', 'Itens', 'Metrica', 'Categoria', 'Base', 'Ativa', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Compras: ['ID', 'Item', 'Qtd', 'Setor', 'Comprado', 'CompradoPor', 'CompradoEm', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Push: ['Token', 'Pessoa', 'Plataforma', 'Tipos', 'CriadoEm', 'AtualizadoEm', 'Ativo', 'UltimoErro']
@@ -229,7 +229,7 @@ var COLECOES = {
     carteira: ['Carteira', 't', 40], ativo: ['Ativo', 'b'], nota: ['Nota', 't', 300] } },
   patrimonio: { aba: 'Patrimonio', exigir: 'nome', campos: {
     nome: ['Nome', 't', 60], ic: ['Icone', 't', 16], nat: ['Natureza', 'e', ['ativo', 'passivo']], classe: ['Classe', 't', 20], inst: ['Instituicao', 't', 60],
-    hist: ['Historico', 'j', 30000], taxa: ['Taxa', 'x'], ativo: ['Ativo', 'b'], nota: ['Nota', 't', 300] } },
+    hist: ['Historico', 'j', 30000], taxa: ['Taxa', 'x'], ativo: ['Ativo', 'b'], nota: ['Nota', 't', 300], aplicado: ['Aplicado', 'c'] } },
   metas: { aba: 'Metas', exigir: 'nome', campos: {
     nome: ['Nome', 't', 60], ic: ['Icone', 't', 16], tipo: ['Tipo', 'e', ['juntar', 'mensal', 'reduzir']], alvo: ['Alvo', 'c'], prazo: ['Prazo', 'd'],
     inicio: ['Inicio', 'd'], itens: ['Itens', 'L'], metrica: ['Metrica', 'e', ['', 'cartao', 'cat', 'divida']], cat: ['Categoria', 't', 30],

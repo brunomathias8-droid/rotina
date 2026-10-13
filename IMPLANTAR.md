@@ -109,6 +109,13 @@ Entre 22h e 7h nenhum aviso é enviado, a não ser os lembretes de compromisso. 
 
 ---
 
+## Atualizar da versão 3.3 para a 3.4 (investimentos)
+
+1. No Apps Script, troque o conteúdo de `Dados` e `Api` pelos novos.
+2. **Implantar › Gerenciar implantações › editar › Versão: Nova versão**.
+
+Sem isso, o "total aplicado" dos investimentos não chega ao app e o rendimento aparece como zero.
+
 ## Atualizar da versão 3.2 para a 3.3 (importar fatura)
 
 1. No Apps Script, troque o conteúdo de `Nucleo`, `Dados`, `Api` e `Push` pelos novos.

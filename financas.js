@@ -156,6 +156,21 @@ function movimentos(id) {
   });
   return out;
 }
+/**
+ * Quanto foi aplicado num investimento até o dia D (o custo, para calcular o rendimento): o total aplicado informado
+ * (vale na data do primeiro saldo) + aportes − resgates lançados depois dela. Sem total informado, o primeiro saldo é a base.
+ */
+function aplicadoEm(p, D) {
+  const hist = (p.hist || []).slice().sort((a, b) => a[0].localeCompare(b[0]));
+  if (!hist.length) return 0;
+  const base = hist[0][0];
+  let v = p.aplicado ? p.aplicado : hist[0][1];
+  lancs().forEach(l => {
+    if (l.destino !== p.id || l.dia <= base || l.dia > D) return;
+    if (l.tipo === 'aporte') v += l.v; else if (l.tipo === 'resgate') v -= l.v;
+  });
+  return v;
+}
 /** Valor de um item no fim do dia "D". Dívidas ficam positivas (o quanto se deve). */
 function valorEm(p, D) {
   const hist = (p.hist || []).filter(x => x[0] <= D).sort((a, b) => a[0].localeCompare(b[0]) || String(a[2] || '').localeCompare(String(b[2] || '')));

@@ -2,7 +2,7 @@
    Carregado depois de acoes.js (acrescenta ações ao objeto A). As contas ficam em financas.js. */
 'use strict';
 
-const FIN_ABAS = [['resumo', 'Resumo'], ['extrato', 'Extrato'], ['contas', 'Contas'], ['cartoes', 'Cartões'], ['orcamento', 'Orçamento'], ['metas', 'Metas'], ['patrimonio', 'Patrimônio']];
+const FIN_ABAS = [['resumo', 'Resumo'], ['extrato', 'Extrato'], ['contas', 'Contas'], ['cartoes', 'Cartões'], ['orcamento', 'Orçamento'], ['metas', 'Metas'], ['patrimonio', 'Patrimônio'], ['investimentos', 'Investimentos']];
 const CORES_CARTAO = ['#5B3FA0', '#C8643C', '#2E6A57', '#1F2937', '#3B6EA5', '#B8860B'];
 const statusTag = st => st === 'pago' ? `<span class="tag good">${ic('check', 12, 2.6)} pago</span>` : st === 'vencido' ? `<span class="tag bad">${ic('alert', 12, 2.4)} vencido</span>` : '';
 const pctTxt = x => x == null ? '—' : Math.round(x * 100) + '%';
@@ -15,7 +15,7 @@ function scrFin() {
   return `<div class="between"><h1 class="display">Finanças</h1><button class="btn sm" data-a="novoLanc" data-tipo="saida">${ic('plus', 16, 2.4)} Lançar</button></div>
     <div class="chips scroll" role="tablist">${FIN_ABAS.map(([k, l]) => `<button class="chip ${v === k ? 'on' : ''}" role="tab" aria-selected="${v === k}" data-a="fv" data-v="${k}">${l}</button>`).join('')}</div>
     ${comMes ? `<div class="mesnav"><button class="x" data-a="mes" data-v="-1" aria-label="Mês anterior">${ic('chevl', 18)}</button><p class="h2" style="text-align:center;flex:1">${fmtMes(S.mes)}${S.mes !== atual ? ` <button class="link" data-a="mesHoje">voltar a ${MESES[+atual.slice(5) - 1]}</button>` : ''}</p><button class="x" data-a="mes" data-v="1" aria-label="Próximo mês">${ic('chev', 18)}</button></div>` : ''}
-    ${{ resumo: finResumo, extrato: finExtrato, contas: finContas, cartoes: finCartoes, orcamento: finOrcamento, metas: finMetas, patrimonio: finPatrimonio }[v]()}`;
+    ${{ resumo: finResumo, extrato: finExtrato, contas: finContas, cartoes: finCartoes, orcamento: finOrcamento, metas: finMetas, patrimonio: finPatrimonio, investimentos: finInvestimentos }[v]()}`;
 }
 
 /* ---------- Resumo ---------- */
@@ -200,7 +200,7 @@ function finPatrimonio() {
       ${temAnt ? `<p class="small muted">${delta >= 0 ? '▲' : '▼'} ${reais(Math.abs(delta))} desde o fim do mês passado</p>` : '<p class="small muted">Tudo o que vocês têm menos o que devem.</p>'}
       <div class="grid2"><div class="stat"><span class="tiny muted">Tem</span><b>${compacto(pl.ativos)}</b></div><div class="stat"><span class="tiny muted">Deve</span><b>${compacto(pl.passivos)}</b></div></div></div>
     ${secao('Evolução')}<div class="panel">${temAnt ? grafLinha(serie, 'Patrimônio líquido mês a mês') : '<p class="small muted">O gráfico mês a mês aparece a partir do segundo mês de uso.</p>'}<p class="tiny muted">Calculado com os saldos informados e os lançamentos. Atualize os saldos uma vez por mês para a linha ficar fiel.</p></div>
-    ${aloc.length ? secao('Onde está investido') + `<div class="panel">${aloc.map(([cl, v]) => `<div class="stack" style="gap:6px"><div class="between small"><span><b>${classe(cl).ic} ${classe(cl).n}</b></span><span class="num">${reais(v)} <span class="tiny muted">${Math.round(v / totInv * 100)}%</span></span></div>${bar(v, totInv, 'var(--viz-1)')}</div>`).join('')}</div>` : ''}
+    ${aloc.length ? secao('Onde está investido', `<button class="link" data-a="fv" data-v="investimentos">Análise</button>`) + `<div class="panel">${aloc.map(([cl, v]) => `<div class="stack" style="gap:6px"><div class="between small"><span><b>${classe(cl).ic} ${classe(cl).n}</b></span><span class="num">${reais(v)} <span class="tiny muted">${Math.round(v / totInv * 100)}%</span></span></div>${bar(v, totInv, 'var(--viz-1)')}</div>`).join('')}</div>` : ''}
     ${COL_MEIO}${GRUPOS_PAT.map(([g, nome]) => { const l = itens.filter(p => classe(p.classe).g === g); return l.length ? secao(nome, `<span class="num small">${g === 'dividas' ? '− ' : ''}${reais(pl[g])}</span>`) + listaOu(l, linhaPat) : ''; }).join('')}
     ${pl.cartoes ? secao('Cartões a pagar', `<span class="num small">− ${reais(pl.cartoes)}</span>`) + `<div class="lst">${cartoes().map(k => { const d = dividaCartaoEm(k, h); return d ? `<button class="it" data-a="fv" data-v="cartoes"><span class="em-tile">💳</span><span class="main"><span class="t">${esc(k.nome)}</span><span class="s">faturas em aberto</span></span><span class="v c-bad">− ${reais(d)}</span></button>` : ''; }).join('')}</div>` : ''}
     ${botoesPat()}${COL_FIM}`;
@@ -348,8 +348,8 @@ SH.conta = s => {
 
 /* ---------- patrimônio ---------- */
 function formPat(p, cl) {
-  if (p) return { modo: 'editar', nome: p.nome, classe: p.classe, inst: p.inst || '', taxa: p.taxa != null ? String(p.taxa).replace('.', ',') : '', ativo: p.ativo !== false, nota: p.nota || '', ic: p.ic || '' };
-  return { modo: 'novo', nome: '', classe: cl || 'conta', inst: '', saldo: '', dia: hoje(), taxa: '', ativo: true, nota: '', ic: '' };
+  if (p) return { modo: 'editar', nome: p.nome, classe: p.classe, inst: p.inst || '', taxa: p.taxa != null ? String(p.taxa).replace('.', ',') : '', ativo: p.ativo !== false, nota: p.nota || '', ic: p.ic || '', aplicado: reaisInput(p.aplicado) };
+  return { modo: 'novo', nome: '', classe: cl || 'conta', inst: '', saldo: '', dia: hoje(), taxa: '', ativo: true, nota: '', ic: '', aplicado: '' };
 }
 SH.pat = s => {
   const p = s.id && S.d.patrimonio.get(s.id);
@@ -369,6 +369,7 @@ SH.pat = s => {
     ${campo('Nome', inp('nome', f.nome, `maxlength="60" placeholder="${{ contas: 'Ex.: Conta conjunta Itaú, Carteira', invest: 'Ex.: Tesouro Selic, CDB Inter', bens: 'Ex.: Apartamento, Carro', dividas: 'Ex.: Financiamento do apê' }[g]}" autocomplete="off"`))}
     ${campo('Instituição (opcional)', inp('inst', f.inst, 'maxlength="60" placeholder="Banco, corretora…" autocomplete="off"'))}
     ${!p ? `${grupo(g === 'dividas' ? 'Quanto deve hoje' : g === 'bens' ? 'Quanto vale hoje' : 'Saldo de hoje', valorInp('saldo', f.saldo))}` : ''}
+    ${g === 'invest' ? campo(p ? 'Total aplicado até o primeiro saldo (opcional)' : 'Quanto foi aplicado ao todo (opcional)', inp('aplicado', f.aplicado, 'inputmode="decimal" placeholder="R$ 0,00" autocomplete="off"')) + '<p class="tiny muted">Para calcular o rendimento. Aportes e resgates lançados depois somam sozinhos.</p>' : ''}
     ${g === 'dividas' ? campo('Juros ao mês, % (opcional)', inp('taxa', f.taxa, 'inputmode="decimal" placeholder="Ex.: 0,9"')) : ''}
     ${p ? toggle('ativo', f.ativo, 'Ativo', 'Desligue se vendeu, resgatou tudo ou quitou') : ''}
     ${campo('Observação', area('nota', f.nota, 'maxlength="300" style="min-height:60px"'))}
@@ -384,6 +385,7 @@ function verPat(p) {
   return `${head(esc(classe(p.classe).n), `${esc(p.ic || classe(p.classe).ic)} ${esc(p.nome)}`)}
     <div class="panel soft"><p class="saldo" style="font-size:30px">${g === 'dividas' ? '− ' : ''}${reais(v)}</p>
       <p class="small muted">${[p.inst, u ? 'saldo conferido em ' + fmtCurta(u) : ''].filter(Boolean).map(esc).join(' · ')}${p.taxa ? ` · juros ${fmt(p.taxa, 2)}% ao mês` : ''}</p></div>
+    ${g === 'invest' && (p.hist || []).length ? (() => { const a = aplicadoEm(p, hoje()), r = v - a; return `<div class="grid2"><div class="stat"><span class="tiny muted">Aplicado</span><b>${reais(a)}</b></div><div class="stat"><span class="tiny muted">Rendimento bruto</span><b class="${r < 0 ? 'c-bad' : 'c-good'}">${r >= 0 ? '+' : '−'}${reais(Math.abs(r))}${a > 0 ? ` <span class="tiny">${pctVar(r / a)}</span>` : ''}</b></div></div>`; })() : ''}
     <div class="grid2"><button class="btn sm" data-a="saldoPat">Atualizar saldo</button>
       ${g === 'invest' ? `<button class="btn ghost sm" data-a="novoLanc" data-tipo="aporte" data-destino="${p.id}">Aplicar / resgatar</button>` : g === 'contas' ? `<button class="btn ghost sm" data-a="novoLanc" data-tipo="transf" data-carteira="${p.id}">Transferir</button>` : g === 'dividas' ? `<button class="btn ghost sm" data-a="novoLanc" data-tipo="saida" data-cat="dividas" data-destino="${p.id}">Registrar pagamento</button>` : '<span></span>'}</div>
     ${comHist ? grafLinha(serie, 'Valor nos últimos 12 meses').replace(/patrimônio líquido/g, 'valor') : ''}
@@ -597,6 +599,7 @@ Object.assign(A, {
     if (!nome) { toast('Dê um nome.'); focar('f-nome'); return; }
     const item = { id: s.id || uidNovo(), nome, classe: f.classe, nat: classe(f.classe).g === 'dividas' ? 'passivo' : 'ativo', inst: String(f.inst || '').trim(),
       taxa: f.taxa ? parseFloat(String(f.taxa).replace(',', '.')) || '' : '', ativo: s.id ? !!f.ativo : true, nota: String(f.nota || '').trim() };
+    if (classe(f.classe).g === 'invest') item.aplicado = lerReais(f.aplicado || '');
     if (!s.id) item.hist = [[hoje(), lerReais(f.saldo), new Date().toISOString()]];
     closeSheet(); enfileirar('salvar', { col: 'patrimonio', item }); toast(s.id ? 'Atualizado.' : `${nome} cadastrado.`);
   },
