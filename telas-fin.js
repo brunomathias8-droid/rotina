@@ -197,7 +197,7 @@ function linhaMeta(m) {
   const val = `${compacto(p.atual)} <span class="tiny muted">${m.metrica === 'divida' ? 'devendo' : 'de ' + compacto(p.alvo)}</span>`;
   return `<button class="it" data-a="sheet" data-k="meta" data-id="${m.id}" style="grid-template-columns:auto minmax(0,1fr)"><span class="em-tile">${esc(m.ic || '🎯')}</span>
     <span class="main" style="gap:6px"><span class="between"><span class="t">${esc(m.nome)}</span><span class="tag ${st[0]}">${st[1]}</span></span>
-    ${bar(p.pct, 1, p.status === 'atencao' ? 'var(--warn)' : 'var(--accent)')}
+    ${bar(p.pct, 1, p.cor || (p.status === 'atencao' ? 'var(--warn)' : 'var(--accent)'))}
     <span class="between small" style="align-items:flex-start"><span class="muted">${esc(p.linha)}</span><span class="num" style="white-space:nowrap;text-align:right">${val}</span></span></span></button>`;
 }
 function finMetas() {
@@ -492,7 +492,7 @@ function verMeta(m) {
   const desc = m.tipo === 'mensal' ? `Investir ${reais(m.alvo)} por mês` : m.tipo === 'juntar' ? `Juntar ${reais(m.alvo)}${m.prazo ? ' até ' + fmtCurta(m.prazo) + '/' + m.prazo.slice(2, 4) : ''}` : m.metrica === 'divida' ? 'Quitar dívida' : `${METRICAS[m.metrica] || 'Gasto'}: até ${reais(m.alvo)}${m.metrica === 'cat' ? ' em ' + categoria(m.cat).nome : ''}`;
   return `${head(esc(desc), `${esc(m.ic || '🎯')} ${esc(m.nome)}`)}
     <div class="panel soft"><div class="between"><p class="saldo" style="font-size:30px">${m.tipo === 'juntar' || m.tipo === 'mensal' ? Math.round(p.pct * 100) + '%' : reais(p.atual)}</p><span class="tag ${st[0]}">${st[1]}</span></div>
-      ${bar(p.pct, 1, p.status === 'atencao' ? 'var(--warn)' : 'var(--accent)')}<p class="small">${esc(p.linha)}</p>
+      ${bar(p.pct, 1, p.cor || (p.status === 'atencao' ? 'var(--warn)' : 'var(--accent)'))}<p class="small">${esc(p.linha)}</p>
       ${m.tipo !== 'reduzir' || m.metrica === 'divida' ? `<p class="small muted">${reais(p.atual)} ${m.metrica === 'divida' ? 'de saldo devedor' : 'de ' + reais(p.alvo)}</p>` : ''}</div>
     ${m.metrica === 'cartao' ? faturasDaMeta() : ''}
     ${p.serie ? `<div class="panel"><p class="small muted">Últimos 6 meses ${m.tipo === 'mensal' ? '(investido no mês)' : ''}</p>${grafMini(p.serie, m.alvo, v => m.tipo === 'mensal' ? v >= m.alvo : v <= m.alvo)}</div>` : ''}

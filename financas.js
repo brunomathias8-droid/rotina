@@ -288,7 +288,8 @@ function progressoMeta(m) {
       return { atual, alvo, pct, serie, status: atual <= alvo ? 'concluida' : 'ok', linha: atual <= alvo ? 'Dívida quitada' : `Ainda deve ${reais(atual)}` };
     }
     const ant = serie[4].v;
-    return { atual, alvo, pct: alvo ? clamp(1 - Math.max(0, atual - alvo) / Math.max(alvo, 1), 0, 1) : 0, serie, anterior: ant,
+    // Barra = quanto do limite já foi usado: cheia e vermelha quando passa
+    return { atual, alvo, pct: alvo ? clamp(atual / alvo, 0, 1) : 0, cor: atual > alvo ? 'var(--bad)' : alvo && atual > alvo * .85 ? 'var(--warn)' : 'var(--accent)', serie, anterior: ant,
       status: atual <= alvo ? (ant <= alvo ? 'concluida' : 'ok') : 'atencao',
       linha: atual <= alvo ? `Dentro do limite: ${reais(atual)} de ${reais(alvo)}` : `Passou ${reais(atual - alvo)} do limite` };
   }
