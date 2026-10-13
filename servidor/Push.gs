@@ -205,8 +205,8 @@ function verificarAvisos() {
       avisarPessoa_(p, 'tarefas', { titulo: titulo, corpo: corpo, url: '#hoje', tag: 'manha' });
     });
 
-    // Documentos com validade (passaporte, CNH, carteirinha do plano): 30 dias antes, 7 dias antes e no dia
-    var vencendo = ativos_('arquivos').filter(function (x) { var n = x.validade ? N_diasEntre(hoje, x.validade) : -1; return n === 30 || n === 7 || n === 0; });
+    // Documentos soltos com validade (passaporte, CNH, carteirinha do plano): 30 dias antes, 7 dias antes e no dia. Anexo segue o prazo da tarefa ou compromisso.
+    var vencendo = ativos_('arquivos').filter(function (x) { var n = x.validade && !x.liga ? N_diasEntre(hoje, x.validade) : -1; return n === 30 || n === 7 || n === 0; });
     vencendo.forEach(function (x) {
       var n = N_diasEntre(hoje, x.validade), quem = (x.pessoas || []).filter(function (p) { return pessoas.indexOf(p) >= 0; });
       (quem.length ? quem : pessoas).forEach(function (p) {

@@ -60,7 +60,7 @@ function scrHoje() {
   const contas = agendaMes(ref).concat(agendaMes(N_somaMes(ref, 1))).filter(x => !x.entrada && x.status !== 'pago' && x.venc <= limite);
   const t = resumoMes(ref), comOrc = categorias('saida').filter(c => c.orc), orc = comOrc.reduce((a, c) => a + c.orc, 0);
   const gastoOrc = comOrc.reduce((a, c) => a + (t.porCat[c.id] || 0), 0);
-  const docs = lista('arquivos').filter(a => a.validade && N_diasEntre(h, a.validade) <= 30).sort((a, b) => a.validade.localeCompare(b.validade));
+  const docs = lista('arquivos').filter(a => docComValidade(a) && N_diasEntre(h, a.validade) <= 30).sort((a, b) => a.validade.localeCompare(b.validade));
   const ms = metas().slice(0, 2), nCompras = lista('compras').filter(c => !c.comprado).length;
   const partes = [];
   if (evHoje.length) partes.push(`${evHoje.length} ${plu(evHoje.length, 'compromisso')}`);
@@ -75,7 +75,7 @@ function scrHoje() {
     ${minhas.length || feitosHoje.length ? `<div class="lst">${minhas.map(linhaTarefa).join('')}${feitosHoje.map(linhaFeito).join('')}</div>` : `<div class="panel">${vazio('🌿', lista('tarefas').length ? 'Nada pendente com você hoje.' : 'Anote o que precisa ser feito: tarefas únicas ("renovar o seguro") e as que repetem ("lavar a louça", revezando).')}${lista('tarefas').length ? '' : '<button class="btn block" data-a="tab" data-v="tarefas">Montar as tarefas</button>'}</div>`}
     ${o && doOutro.length ? `<p class="small muted">Com ${esc(primeiroNome(o.id))} hoje: ${doOutro.map(a => esc(a.titulo)).join(', ')}.</p>` : ''}
     ${COL_MEIO}
-    ${docs.length ? secao('Documentos vencendo', `<button class="link" data-a="tab" data-v="arquivos">Ver arquivos</button>`) + listaOu(docs, a => linhaArquivo(a)) : ''}
+    ${docs.length ? secao('Documentos para renovar', `<button class="link" data-a="tab" data-v="arquivos">Ver arquivos</button>`) + listaOu(docs, a => linhaArquivo(a)) : ''}
     ${contas.length ? secao('Contas a pagar', `<button class="link" data-a="irFin" data-v="contas">Ver todas</button>`) + listaOu(contas, linhaAgenda) : ''}
     <button class="panel" data-a="irFin" data-v="resumo" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit">
       <div class="between"><p class="eb">${fmtMes(ref)} até agora</p><span class="muted">${ic('chev', 18)}</span></div>

@@ -94,7 +94,7 @@ Finanças › Cartões › **Importar fatura** (ou, dentro da fatura, "Importar 
 - **Links:** guarde só o endereço de uma pasta ou arquivo do Google Drive (ou de um site). Para a outra pessoa abrir, o arquivo precisa estar compartilhado com ela no Drive.
 - **Fotos:** foto de 3 a 6 MB do celular vira um JPEG de até 2400 px antes de subir: dá para ler uma receita e sobe rápido. Limite: 10 MB por arquivo.
 - **Sem internet:** o arquivo escolhido fica guardado no aparelho e sobe quando a conexão voltar. Os marcados como ⭐ importantes ficam no aparelho dos dois para abrir sem internet (no consultório, na portaria). Cada aparelho guarda até ~150 MB de cópias.
-- **Validade:** passaporte, CNH, carteirinha, apólice. O app avisa 30 dias antes, 7 dias antes e no dia, para as pessoas marcadas no documento.
+- **Validade:** passaporte, CNH, carteirinha, apólice. O app avisa 30 dias antes, 7 dias antes e no dia, para as pessoas marcadas no documento. Vale só para documento solto: anexo de tarefa, compromisso ou conta segue o prazo de onde está anexado (se um anexo antigo tiver data, ele oferece "Usar como prazo da tarefa").
 - **Excluir:** a ficha some para os dois e o arquivo vai para a lixeira do Drive (dá para recuperar por 30 dias).
 
 ## Tarefas e compras

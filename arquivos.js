@@ -20,6 +20,8 @@ const catPorNome = t => (PISTAS_ARQ.find(([r]) => r.test(t)) || [0, 'outros'])[1
 const ehDrive = u => /\b(drive|docs)\.google\.com\//i.test(u || '');
 const tamTxt = n => n >= 1048576 ? fmt(n / 1048576, 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
 const iconeArq = a => a.tipo === 'link' ? (ehDrive(a.url) ? '☁️' : '🔗') : /pdf/.test(a.mime) ? '📄' : /^image\//.test(a.mime) ? '🖼️' : /sheet|excel|csv/.test(a.mime) ? '📊' : /word|document|text/.test(a.mime) ? '📝' : '📎';
+/* Validade é de documento solto (passaporte, CNH). Anexo de tarefa, compromisso ou conta segue o prazo de onde está anexado. */
+const docComValidade = a => !!(a.validade && !a.liga);
 const anexosDe = liga => lista('arquivos').filter(a => a.liga === liga).sort((a, b) => String(a.em || '').localeCompare(String(b.em || '')));
 const normBusca = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 /* Links clicáveis em textos livres (nota do compromisso, comentários). Recebe texto já escapado. */
@@ -44,7 +46,7 @@ function tagValidade(iso) {
 function linhaArquivo(a, semLiga) {
   const c = catArq(a.cat), lg = !semLiga && ligaInfo(a.liga), ps = (a.pessoas || []).slice(0, 3);
   const sub = [`<span>${c[0]} ${c[1]}</span>`, ps.length ? `<span>${ps.map(id => av(id, 16)).join('')} ${esc(ps.map(primeiroNome).join(', '))}</span>` : '',
-    a.validade ? tagValidade(a.validade) : '', lg ? `<span>${esc(lg.rot)}</span>` : '',
+    docComValidade(a) ? tagValidade(a.validade) : '', lg ? `<span>${esc(lg.rot)}</span>` : '',
     a.enviando ? '<span class="tag warm">enviando…</span>' : a.tipo === 'link' ? `<span>${ehDrive(a.url) ? 'Google Drive' : 'link'}</span>` : a.tam ? `<span>${tamTxt(a.tam)}</span>` : ''].filter(Boolean).join('');
   return `<button class="it${a.pend ? ' pend' : ''}" data-a="sheet" data-k="arquivo" data-id="${a.id}"><span class="em-tile">${iconeArq(a)}</span>
     <span class="main"><span class="t">${a.fixo ? '⭐ ' : ''}${esc(a.titulo)}</span><span class="s">${sub}</span></span><span class="muted">${ic('chev', 18)}</span></button>`;
@@ -119,7 +121,7 @@ function scrArquivos() {
   const todos = lista('arquivos'), q = normBusca(S.arqBusca.trim()), h = hoje();
   const l = todos.filter(a => (!S.fArq || a.cat === S.fArq) && (!q || normBusca([a.titulo, a.nota, catArq(a.cat)[1], ...(a.pessoas || []).map(primeiroNome)].join(' ')).includes(q)))
     .sort((a, b) => String(b.em || '').localeCompare(String(a.em || '')));
-  const venc = l.filter(a => a.validade && N_diasEntre(h, a.validade) <= 60).sort((a, b) => a.validade.localeCompare(b.validade));
+  const venc = l.filter(a => docComValidade(a) && N_diasEntre(h, a.validade) <= 60).sort((a, b) => a.validade.localeCompare(b.validade));
   const fixos = l.filter(a => a.fixo && !venc.includes(a)), resto = l.filter(a => !a.fixo && !venc.includes(a));
   const cats = Object.keys(CATS_ARQ).filter(k => todos.some(a => a.cat === k));
   return `<div class="between"><h1 class="display">Arquivos</h1><span class="hrow"><button class="btn ghost sm" data-a="novoLink">${ic('link', 16)} Link</button><button class="btn sm" data-a="anexar" data-abrir="1">${ic('plus', 16, 2.4)} Arquivo</button></span></div>
@@ -174,10 +176,11 @@ function verArq(s, a) {
     <div class="panel soft">
       ${(a.pessoas || []).length ? `<div class="hrow" style="gap:10px">${ic('home', 18)}<span class="hrow" style="gap:6px">${a.pessoas.map(id => `${av(id, 22)} ${esc(primeiroNome(id))}`).join(' ')}</span></div>` : ''}
       ${lg ? `<div class="hrow" style="gap:10px">${ic('clipe', 18)}<button class="link" data-a="abrirLiga" data-v="${esc(a.liga)}">${esc(lg.rot)}</button></div>` : ''}
-      ${a.validade ? `<div class="hrow" style="gap:10px">${ic('clock', 18)}<span>Validade: ${fmtCurta(a.validade)}/${a.validade.slice(0, 4)} ${tagValidade(a.validade)}</span></div>` : ''}
+      ${docComValidade(a) ? `<div class="hrow" style="gap:10px">${ic('clock', 18)}<span>Validade: ${fmtCurta(a.validade)}/${a.validade.slice(0, 4)} ${tagValidade(a.validade)}</span></div>` : ''}
       ${a.nota ? `<p class="small" style="white-space:pre-wrap;margin:0">${linkar(esc(a.nota))}</p>` : ''}
       <p class="tiny muted" style="margin:0">${a.enviando ? 'Enviando' : 'Guardado'} por ${a.por === S.eu ? 'você' : esc(nomeDe(a.por))}${a.em ? ' em ' + fmtCurta(isoLocal(a.em)) : ''}${a.tam ? ' · ' + tamTxt(a.tam) : ''}.</p>
     </div>
+    ${a.validade && a.liga ? dataDoAnexo(a, lg) : ''}
     <div class="between"><span><b>⭐ Importante</b><br><span class="small muted">${link ? 'Fica no topo da lista' : 'Fica no topo e no aparelho, para abrir sem internet'}</span></span><button class="tog ${a.fixo ? 'on' : ''}" data-a="fixarArq" data-id="${a.id}" aria-pressed="${!!a.fixo}" aria-label="Importante"></button></div>
     <div class="grid2"><button class="btn ghost sm" data-a="editarArq">${ic('edit', 16)} Editar</button><button class="btn danger sm" data-a="excluirArq" data-id="${a.id}">${ic('trash', 16)} Excluir</button></div>
     ${dono ? `<p class="tiny muted">Está no seu Google Drive, na pasta "Rotina · Arquivos". <a class="link" href="https://drive.google.com/file/d/${esc(a.drive)}/view" target="_blank" rel="noopener">Ver no Drive</a></p>` : ''}`;
@@ -190,11 +193,19 @@ function editarArq(s, a) {
     ${campo('Nome', inp('titulo', f.titulo, `maxlength="120" placeholder="${link ? 'Ex.: Pasta dos documentos da família' : 'Ex.: Carteirinha do plano da Ana'}" autocomplete="off"`))}
     ${grupo('Categoria', escolha('cat', f.cat, Object.entries(CATS_ARQ).map(([k, [e, n]]) => [k, `${e} ${n}`])))}
     ${grupo('De quem', `<div class="chips">${ms.map(p => `<button class="chip ${f.pessoas.includes(p.id) ? 'on' : ''}" data-a="arqPess" data-v="${p.id}">${av(p.id, 18)} ${esc(p.id === S.eu ? 'Eu' : primeiroNome(p.id))}</button>`).join('')}</div><p class="tiny muted">Nenhum marcado: é da família toda.</p>`)}
-    ${grupo('Validade (opcional)', inp('validade', f.validade, 'type="date"') + '<p class="tiny muted">Passaporte, CNH, carteirinha, apólice: o app avisa 30 dias antes, 7 dias antes e no dia.</p>')}
+    ${(a && a.liga) || s.liga ? (f.validade ? grupo('Data', inp('validade', f.validade, 'type="date"')) : '') + `<p class="tiny muted">O prazo fica ${String((a && a.liga) || s.liga).startsWith('eventos') ? 'no compromisso' : String((a && a.liga) || s.liga).startsWith('contas') ? 'na conta' : 'na tarefa'} onde este anexo está.</p>`
+      : grupo('Validade (opcional)', inp('validade', f.validade, 'type="date"') + '<p class="tiny muted">Passaporte, CNH, carteirinha, apólice: o app avisa 30 dias antes, 7 dias antes e no dia.</p>')}
     <div class="between"><span><b>⭐ Importante</b><br><span class="small muted">No topo da lista${link ? '' : ' e guardado no aparelho'}</span></span><button class="tog ${f.fixo ? 'on' : ''}" data-a="f" data-k="fixo" data-v="${f.fixo ? '' : '1'}" aria-pressed="${f.fixo}" aria-label="Importante"></button></div>
     <details ${f.nota ? 'open' : ''}><summary class="small muted">Observação</summary>${area('nota', f.nota, 'maxlength="500" placeholder="Ex.: número da carteirinha, senha do portal fica com a Ana" style="min-height:60px"')}</details>
     <button class="btn block" data-a="salvarArq">Salvar</button>
     ${s.novoArq ? `<button class="btn ghost block" data-a="close">Depois</button>` : ''}`;
+}
+
+/* Anexo com data (de antes desta regra): a data é o prazo de onde ele está anexado, não um vencimento do documento */
+function dataDoAnexo(a, lg) {
+  const t = String(a.liga).startsWith('tarefas:') && S.d.tarefas.get(a.liga.split(':')[1]);
+  return `<div class="note"><span>Este anexo tem a data <b>${fmtCurta(a.validade)}</b>. Prazo é ${t ? 'da tarefa' : 'de onde ele está anexado'}${t && t.prox ? ` (hoje: ${rotuloDia(t.prox)})` : ''}.</span></div>
+    <div class="grid2">${t && !t.feita ? `<button class="btn sm" data-a="dataParaTarefa" data-id="${a.id}">Usar como prazo da tarefa</button>` : '<span></span>'}<button class="btn ghost sm" data-a="tirarDataArq" data-id="${a.id}">Tirar a data do anexo</button></div>`;
 }
 
 /* ============================== ações ============================== */
@@ -239,6 +250,13 @@ Object.assign(A, {
     toast('Excluído.');
   },
   abrirLiga: d => { const lg = ligaInfo(d.v); if (!lg) return; openSheet({ k: lg.k, id: d.v.split(':')[1], v: lg.v, volta: S.sheet }); },
+  dataParaTarefa: d => {
+    const a = S.d.arquivos.get(d.id), t = a && S.d.tarefas.get(String(a.liga).split(':')[1]); if (!t) return;
+    enfileirar('salvar', { col: 'tarefas', item: { id: t.id, prox: a.validade } });
+    enfileirar('salvar', { col: 'arquivos', item: { id: a.id, validade: '' } });
+    renderSheet(); toast(`Prazo de "${t.titulo}": ${rotuloDia(a.validade)}.`);
+  },
+  tirarDataArq: d => { enfileirar('salvar', { col: 'arquivos', item: { id: d.id, validade: '' } }); renderSheet(); toast('Data tirada do anexo.'); },
   tentarArq: () => { const s = S.sheet; s.erro = ''; renderSheet(); },
   compArq: async () => {
     const s = S.sheet; if (!s || !s.blob) return;
