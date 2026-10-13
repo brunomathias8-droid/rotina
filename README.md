@@ -76,7 +76,7 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 ## Arquivos e anexos
 
 - **Onde ficam:** no Google Drive de quem implantou o servidor, numa pasta "Rotina · Arquivos" criada sozinha. Na planilha (aba Arquivos) fica só a ficha. Quem tem login na casa abre tudo pelo app, sem precisar de conta no Drive nem de compartilhar nada.
-- **Anexos:** em cada compromisso (a receita do pediatra, a guia do plano), tarefa (o boleto do IPVA) e lançamento (comprovante, nota fiscal). O anexo também aparece na tela Arquivos.
+- **Anexos:** em cada compromisso (a receita do pediatra, a guia do plano), tarefa (o boleto do IPVA), lançamento (comprovante, nota fiscal) e conta fixa. Na conta fixa, o **boleto de cada mês** fica separado (aparece em "A pagar" com 📎 e de novo na hora de pagar) e os **documentos da conta** (contrato, código do cliente) valem para todos os meses. O anexo também aparece na tela Arquivos.
 - **Links:** guarde só o endereço de uma pasta ou arquivo do Google Drive (ou de um site). Para a outra pessoa abrir, o arquivo precisa estar compartilhado com ela no Drive.
 - **Fotos:** foto de 3 a 6 MB do celular vira um JPEG de até 2400 px antes de subir: dá para ler uma receita e sobe rápido. Limite: 10 MB por arquivo.
 - **Sem internet:** o arquivo escolhido fica guardado no aparelho e sobe quando a conexão voltar. Os marcados como ⭐ importantes ficam no aparelho dos dois para abrir sem internet (no consultório, na portaria). Cada aparelho guarda até ~150 MB de cópias.

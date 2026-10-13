@@ -26,8 +26,9 @@ const normBusca = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').
 const linkar = h => h.replace(/\bhttps?:\/\/[^\s<]+[^\s<.,;:!?)\]'"]/g, u => `<a href="${u}" target="_blank" rel="noopener" class="link">${u.length > 48 ? u.slice(0, 45) + '…' : u}</a>`);
 
 function ligaInfo(liga) {
-  const [col, id] = String(liga || '').split(':'), x = col && S.d[col] && S.d[col].get(id);
+  const [col, id, ref] = String(liga || '').split(':'), x = col && S.d[col] && S.d[col].get(id);
   if (!x) return null;
+  if (col === 'contas') return { rot: `🧾 ${x.nome}${ref ? ' · ' + fmtMes(ref).toLowerCase() : ''}`, k: 'conta', v: ref || '' };
   if (col === 'eventos') return { rot: `📅 ${x.titulo}`, k: 'evento' };
   if (col === 'tarefas') return { rot: `✅ ${x.titulo}`, k: 'tarefa' };
   if (col === 'lancamentos') return { rot: `💸 ${x.desc || 'Lançamento'} · ${fmtCurta(x.dia)}`, k: 'lanc' };
@@ -48,10 +49,10 @@ function linhaArquivo(a, semLiga) {
   return `<button class="it${a.pend ? ' pend' : ''}" data-a="sheet" data-k="arquivo" data-id="${a.id}"><span class="em-tile">${iconeArq(a)}</span>
     <span class="main"><span class="t">${a.fixo ? '⭐ ' : ''}${esc(a.titulo)}</span><span class="s">${sub}</span></span><span class="muted">${ic('chev', 18)}</span></button>`;
 }
-/* Bloco "Anexos" dentro de um compromisso, tarefa ou lançamento */
-function blocoAnexos(col, id) {
-  const liga = col + ':' + id, l = anexosDe(liga);
-  return `${secao('Anexos', l.length ? `<span class="tiny muted">${l.length}</span>` : '')}
+/* Bloco "Anexos" dentro de um compromisso, tarefa, lançamento ou conta fixa (ref: o mês do boleto, na conta fixa) */
+function blocoAnexos(col, id, ref, titulo, dica) {
+  const liga = col + ':' + id + (ref ? ':' + ref : ''), l = anexosDe(liga);
+  return `${secao(titulo || 'Anexos', l.length ? `<span class="tiny muted">${l.length}</span>` : '')}${dica && !l.length ? `<p class="small muted">${dica}</p>` : ''}
     ${listaOu(l, a => linhaArquivo(a, true), col === 'eventos' ? '<p class="small muted">Receita, guia do plano, convite, ingresso: deixe aqui e os dois encontram na hora.</p>' : '')}
     <div class="grid2"><button class="btn ghost sm" data-a="anexar" data-liga="${liga}">${ic('clipe', 16)} Anexar arquivo</button><button class="btn ghost sm" data-a="novoLink" data-liga="${liga}">${ic('link', 16)} Colar link</button></div>`;
 }
@@ -61,10 +62,10 @@ function preArq(liga) {
   if (!x) return { cat: '', pessoas: [] };
   if (col === 'eventos') return { cat: { saude: 'saude', escola: 'escola', trabalho: 'trabalho', casa: 'casa' }[x.tipo] || catPorNome(x.titulo), pessoas: [...(x.pessoas || [])] };
   if (col === 'tarefas') return { cat: { saude: 'saude', docs: 'documentos', carro: 'carro', dinheiro: 'financas', casa: 'casa', trabalho: 'trabalho' }[x.area] || catPorNome(x.titulo), pessoas: x.resp && x.resp !== 'ambos' && x.resp !== 'rodizio' ? [x.resp] : [] };
-  return { cat: 'financas', pessoas: [] };
+  return { cat: col === 'contas' && /aluguel|condom|iptu/i.test(x.nome || '') ? 'casa' : 'financas', pessoas: [] };
 }
 function tituloDoArquivo(nome, mime) {
-  let t = String(nome || '').replace(/\.[a-z0-9]{1,5}$/i, '').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
+  let t = String(nome || '').replace(/\.[a-z0-9]{1,5}$/i, '').replace(/[_]+|(?<=[A-Za-zÀ-ÿ])-+(?=[A-Za-zÀ-ÿ])/g, ' ').replace(/\s+/g, ' ').trim();
   if (!t || /^(img|dsc|pxl|image|photo|foto|screenshot|captura|whatsapp image|scan|doc|document)[\s-]*[\d\s:.-]*(at[\d\s:.-]*)?$/i.test(t) || /^[\d\s:.-]+$/.test(t))
     t = (/^image\//.test(mime) ? 'Foto de ' : 'Documento de ') + fmtCurta(hoje());
   return (t[0].toUpperCase() + t.slice(1)).slice(0, 120);
@@ -237,7 +238,7 @@ Object.assign(A, {
     idb.del('env:' + a.id).catch(() => { }); idb.del('arq:' + a.id).catch(() => { });
     toast('Excluído.');
   },
-  abrirLiga: d => { const lg = ligaInfo(d.v); if (!lg) return; openSheet({ k: lg.k, id: d.v.split(':')[1], volta: S.sheet }); },
+  abrirLiga: d => { const lg = ligaInfo(d.v); if (!lg) return; openSheet({ k: lg.k, id: d.v.split(':')[1], v: lg.v, volta: S.sheet }); },
   tentarArq: () => { const s = S.sheet; s.erro = ''; renderSheet(); },
   compArq: async () => {
     const s = S.sheet; if (!s || !s.blob) return;

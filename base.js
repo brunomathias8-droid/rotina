@@ -306,6 +306,8 @@ function aplicarResposta(r) {
   if (r.casa) S.casa = r.casa;
   reaplicarFila();
   salvarCache(); render(); redesenharSheet();
+  // Arquivo terminou de subir com um formulário aberto (tarefa, conta): atualiza o "enviando…", se ninguém estiver digitando
+  if (r.col === 'arquivos' && S.sheet && S.sheet.f && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('.sheet input, .sheet textarea'))) renderSheet();
 }
 
 /* ============================== arquivos no aparelho ============================== */

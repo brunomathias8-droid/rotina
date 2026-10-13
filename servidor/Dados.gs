@@ -259,7 +259,7 @@ function valorParaPlanilha_(tipo, op, v, ids) {
     case 'c': { var c = Math.round(Number(v) || 0); if (Math.abs(c) > 1e13) throw apiErro_('Valor alto demais.', 'VALIDACAO'); return (c / 100).toFixed(2); }
     case 'p': return ids.indexOf(String(v)) >= 0 ? String(v) : '';
     case 'u': return /^https?:\/\/[^\s]+$/i.test(String(v).trim()) ? String(v).trim().slice(0, 1500) : '';
-    case 'g': return /^(eventos|tarefas|lancamentos):[A-Za-z0-9_-]{6,40}$/.test(String(v)) ? String(v) : '';
+    case 'g': return /^(eventos|tarefas|lancamentos|contas):[A-Za-z0-9_-]{6,40}(:\d{4}-\d{2})?$/.test(String(v)) ? String(v) : '';
     case 'r': return v === 'rodizio' || v === 'ambos' || ids.indexOf(String(v)) >= 0 ? String(v) : 'ambos';
   }
   return String(v);

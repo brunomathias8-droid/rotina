@@ -109,6 +109,13 @@ Entre 22h e 7h nenhum aviso é enviado, a não ser os lembretes de compromisso. 
 
 ---
 
+## Atualizar da versão 3.1 para a 3.2 (boleto na conta fixa)
+
+1. No Apps Script, troque o conteúdo de `Dados` e `Api` pelos novos.
+2. **Implantar › Gerenciar implantações › editar › Versão: Nova versão**.
+
+Sem isso, o app até mostra o boleto anexado na conta, mas o servidor grava o arquivo sem a ligação com a conta.
+
 ## Atualizar da versão 3.0 para a 3.1 (Arquivos)
 
 1. No Apps Script, troque o conteúdo de `Dados`, `Api` e `Push` pelos novos.

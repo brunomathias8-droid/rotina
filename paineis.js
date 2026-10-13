@@ -38,8 +38,9 @@ SH.tarefa = s => {
   const hist = t ? feitosDe(t.id).sort((x, y) => (y.dia + y.hora).localeCompare(x.dia + x.hora)).slice(0, 8) : [];
   const feitos = f.itens.filter(x => x.ok).length;
   return `${head(t ? (t.feita ? 'Concluída' : t.freq ? 'Tarefa que repete' : 'Tarefa') : 'Nova tarefa', t ? esc(t.titulo) : 'O que precisa ser feito?')}
-    ${t && !t.feita ? `<div class="grid2"><button class="btn" data-a="concluir" data-id="${t.id}" data-fechar="1">${ic('check', 16, 2.4)} Concluir</button>${t.freq ? `<button class="btn ghost" data-a="pular" data-id="${t.id}">Pular esta vez</button>` : podeTrocar ? '' : '<span></span>'}</div>` : ''}
-    ${t && t.feita ? `<button class="btn ghost block" data-a="reabrir" data-id="${t.id}" data-fechar="1">Reabrir</button>` : ''}
+    ${t && !t.feita ? `<div class="grid2"><button class="btn" data-a="salvarTarefa">Salvar</button><button class="btn ghost concluir" data-a="concluir" data-id="${t.id}" data-fechar="1">${ic('check', 16, 2.4)} Concluir tarefa</button></div>${t.freq ? `<button class="btn ghost sm block" data-a="pular" data-id="${t.id}">Pular esta vez</button>` : ''}` : ''}
+    ${t && t.feita ? `<div class="grid2"><button class="btn" data-a="salvarTarefa">Salvar</button><button class="btn ghost" data-a="reabrir" data-id="${t.id}" data-fechar="1">Reabrir</button></div>` : ''}
+    ${!t ? `<button class="btn block" data-a="salvarTarefa">Salvar</button>` : ''}
     ${podeTrocar ? `<button class="btn ghost block" data-a="sheet" data-k="troca" data-id="${t.id}">${ic('swap', 18)} Pedir para ${o.length === 1 ? esc(primeiroNome(o[0].id)) : 'outra pessoa'} fazer</button>` : ''}
     ${tr && tr.st === 'pedida' && tr.para === S.eu ? `<div class="note warn"><span>${esc(primeiroNome(tr.de))} pediu para você fazer esta vez.</span></div><div class="grid2"><button class="btn" data-a="troca" data-op="aceitar" data-id="${t.id}">Aceitar</button><button class="btn ghost" data-a="troca" data-op="recusar" data-id="${t.id}">Recusar</button></div>` : ''}
     ${tr && tr.st === 'pedida' && tr.de === S.eu ? `<div class="note"><span>Você pediu para ${esc(primeiroNome(tr.para))} fazer esta vez.</span><button class="link" data-a="troca" data-op="cancelar" data-id="${t.id}">Cancelar</button></div>` : ''}

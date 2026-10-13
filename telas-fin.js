@@ -100,11 +100,12 @@ function extratoLista(ls, dias, sai, ent) {
 }
 
 /* ---------- Contas (a pagar e a receber) ---------- */
+const anexosAgenda = x => x.k === 'rec' ? anexosDe(`contas:${x.id}:${x.ref}`).length : x.k === 'lanc' ? anexosDe('lancamentos:' + x.id).length + (x.conta && x.ref ? anexosDe(`contas:${x.conta}:${x.ref}`).length : 0) : 0;
 function linhaAgenda(x) {
   const n = N_diasEntre(hoje(), x.venc), quando = x.status === 'pago' ? statusTag('pago') : x.status === 'vencido' ? (x.entrada ? `<span class="tag warn">esperado dia ${N_dataObj(x.venc).getDate()}</span>` : `<span class="tag bad">venceu ${rotuloDia(x.venc)}</span>`) : n === 0 ? '<span class="tag warn">vence hoje</span>' : `<span class="tag">${x.entrada ? 'dia' : 'vence'} ${n > 0 && n < 7 ? rotuloDia(x.venc) : fmtCurta(x.venc)}</span>`;
   const rot = x.k === 'fatura' ? (x.status === 'pago' ? 'Ver' : 'Pagar') : x.entrada ? 'Receber' : x.aporte ? 'Investir' : x.cartao ? 'Lançar' : 'Pagar';
-  const abrir = x.k === 'fatura' ? `data-a="sheet" data-k="fatura" data-id="${x.id}" data-v="${x.ref}"` : x.k === 'rec' ? `data-a="sheet" data-k="conta" data-id="${x.id}"` : `data-a="sheet" data-k="lanc" data-id="${x.id}"`;
-  return `<div class="it"><span class="em-tile">${esc(x.ic)}</span><button class="main" ${abrir}><span class="t">${esc(x.nome)}</span><span class="s">${quando}${x.cartao ? '<span>no cartão</span>' : ''}</span></button>
+  const abrir = x.k === 'fatura' ? `data-a="sheet" data-k="fatura" data-id="${x.id}" data-v="${x.ref}"` : x.k === 'rec' ? `data-a="sheet" data-k="conta" data-id="${x.id}" data-v="${x.ref || ''}"` : `data-a="sheet" data-k="lanc" data-id="${x.id}"`;
+  return `<div class="it"><span class="em-tile">${esc(x.ic)}</span><button class="main" ${abrir}><span class="t">${esc(x.nome)}</span><span class="s">${quando}${x.cartao ? '<span>no cartão</span>' : ''}${anexosAgenda(x) ? `<span>📎 ${anexosAgenda(x)}</span>` : ''}</span></button>
     ${x.status === 'pago' ? `<span class="v ${x.entrada ? 'c-good' : ''}">${reais(x.v)}</span>` : `<span class="stack" style="gap:4px;align-items:flex-end"><span class="v ${x.entrada ? 'c-good' : ''}">${reais(x.resta != null ? x.resta : x.v)}</span><button class="btn sm ${x.entrada ? '' : 'warm'}" style="padding:7px 12px" data-a="pagar" data-k="${x.k}" data-id="${x.id}" data-ref="${x.ref || ''}">${rot}</button></span>`}</div>`;
 }
 function finContas() {
@@ -274,6 +275,7 @@ SH.lanc = s => {
     ${conta ? `<div class="note"><span>${conta.tipo === 'entrada' ? 'Recebimento' : 'Pagamento'} de <b>${esc(conta.nome)}</b> referente a ${fmtMes(f.ref).toLowerCase()}.</span></div>` : ''}
     <div class="grid2">${campo('Data', inp('dia', f.dia, 'type="date"'))}<span></span></div>
     <details ${f.nota ? 'open' : ''}><summary class="small muted">Observação</summary>${area('nota', f.nota, 'maxlength="300" style="min-height:60px"')}</details>
+    ${f.conta && f.ref && S.d.contas.get(f.conta) ? blocoAnexos('contas', f.conta, f.ref, `Boleto de ${fmtMes(f.ref).toLowerCase()}`) : ''}
     ${l ? `<details ${anexosDe('lancamentos:' + l.id).length ? 'open' : ''}><summary class="small muted">Comprovante, nota fiscal ou boleto${anexosDe('lancamentos:' + l.id).length ? ` (${anexosDe('lancamentos:' + l.id).length})` : ''}</summary>${blocoAnexos('lancamentos', l.id)}</details>` : ''}
     <button class="btn block ${t === 'saida' || t === 'fatura' ? 'warm' : ''}" data-a="salvarLanc">${!l && f.forma === 'cartao' && t === 'saida' && n > 1 ? `Lançar ${n} parcelas` : 'Salvar'}</button>
     ${l ? `<button class="btn danger block" data-a="excluirLanc" data-id="${l.id}">${ic('trash', 16)} Excluir${l.grupo ? '' : ' lançamento'}</button><p class="tiny muted">Lançado por ${l.por === S.eu ? 'você' : esc(nomeDe(l.por))}.</p>` : ''}`;
@@ -336,6 +338,9 @@ SH.conta = s => {
     ${c ? toggle('ativa', f.ativa, 'Ativa', 'Desligue se a conta acabou') : ''}
     ${campo('Observação', area('nota', f.nota, 'maxlength="300" placeholder="Código de cliente, débito automático…" style="min-height:60px"'))}
     <button class="btn block" data-a="salvarConta">Salvar</button>
+    ${c ? blocoAnexos('contas', c.id, s.v || S.mes, `${t === 'entrada' ? 'Comprovante' : t === 'aporte' ? 'Comprovante' : 'Boleto'} de ${fmtMes(s.v || S.mes).toLowerCase()}`, t === 'saida' ? 'Anexe o boleto ou a fatura deste mês: fica junto quando for pagar.' : '')
+      + blocoAnexos('contas', c.id, '', 'Documentos da conta', 'Contrato, código do cliente, segunda via: o que vale para todos os meses.')
+      : '<p class="tiny muted">Depois de salvar, dá para anexar o boleto de cada mês e o contrato.</p>'}
     ${pags.length ? secao('Histórico') + listaOu(pags, linhaLanc) : ''}
     ${c ? `<button class="btn danger block" data-a="excluir" data-col="contas" data-id="${c.id}">${ic('trash', 16)} Excluir</button>` : ''}`;
 };
