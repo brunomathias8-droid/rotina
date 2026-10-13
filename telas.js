@@ -65,7 +65,7 @@ function scrHoje() {
   const partes = [];
   if (evHoje.length) partes.push(`${evHoje.length} ${plu(evHoje.length, 'compromisso')}`);
   partes.push(minhas.length ? `${minhas.length} ${plu(minhas.length, 'tarefa')} com você` : 'nenhuma tarefa sua');
-  return `<div class="stack" style="gap:4px"><p class="eb">${fmtData(h)}</p><h1 class="display">${saudacao()}, ${esc(primeiroNome(S.eu))}.</h1><p class="muted">Hoje: ${partes.join(' e ')}${o && doOutro.length ? `. ${esc(primeiroNome(o.id))} tem ${doOutro.length}` : ''}.</p></div>
+  return `<div class="stack" style="gap:4px"><p class="eb">${fmtData(h)}</p><h1 class="display">${saudacao()}, <span class="dest">${esc(primeiroNome(S.eu))}</span>.</h1><p class="muted">Hoje: ${partes.join(' e ')}${o && doOutro.length ? `. ${esc(primeiroNome(o.id))} tem ${doOutro.length}` : ''}.</p></div>
     ${!o ? `<div class="note warn"><span>Falta chamar a outra pessoa da casa. <button class="link" data-a="convidar">Mandar o convite</button></span></div>` : ''}
     ${COL_INI}${blocoTrocas()}
     ${secao('Agenda de hoje', `<button class="link" data-a="tab" data-v="agenda">Ver agenda</button>`)}

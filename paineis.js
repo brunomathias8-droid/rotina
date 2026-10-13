@@ -92,6 +92,7 @@ const EMOJIS_CAT = ['🛒', '🏠', '💡', '🚗', '⛽', '💊', '🍔', '🎉
 SH.perfil = () => {
   const casa = S.casa || {}, conv = casa.convite;
   return `${head(esc(casa.nome || 'Nossa casa'), esc(pessoa(S.eu).nome), '')}
+    ${grupo('Estilo', `<div class="seg">${[['classico', 'Clássico'], ['editorial', 'Editorial']].map(([v, l]) => `<button class="${S.estilo === v ? 'on' : ''}" data-a="estilo" data-v="${v}">${l}</button>`).join('')}</div><p class="tiny muted">Vale só neste aparelho: cada um escolhe o seu.</p>`)}
     ${grupo('Aparência', `<div class="seg">${[['auto', 'Automática'], ['claro', 'Clara'], ['escuro', 'Escura']].map(([v, l]) => `<button class="${S.tema === v ? 'on' : ''}" data-a="tema" data-v="${v}">${l}</button>`).join('')}</div>`)}
     ${secao('Notificações')}<div class="panel">${secaoPush()}</div>
     ${secao('Quem mora aqui')}

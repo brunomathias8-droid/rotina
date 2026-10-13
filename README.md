@@ -29,6 +29,8 @@ Atalhos de teclado no computador: `1` a `6` trocam de tela, `N` abre um item nov
 
 Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome e PIN.
 
+**Estilo:** Perfil › Estilo › Clássico (o original, tons quentes) ou Editorial (inspirado em painéis de dados: fundo quase preto, bordas finas, títulos com serifa leve, números grandes e finos, azul e vermelho). Cada aparelho guarda a sua escolha; claro, escuro e automático valem para os dois.
+
 ## Telas
 
 | Tela | O que tem |

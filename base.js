@@ -131,7 +131,7 @@ const S = {
   // sessão e controle
   sessao: null, fila: [], ultimaSinc: 0, sincronizando: false,
   // tela
-  tab: 'hoje', sheet: null, login: null, tema: lsGet('tema') || 'auto',
+  tab: 'hoje', sheet: null, login: null, tema: lsGet('tema') || 'auto', estilo: lsGet('estilo') || 'classico',
   fTar: 'todas', mes: N_mes(hoje()), fCat: null, fv: 'resumo', fExt: 'tudo', busca: '', placar: 'semana',
   ag: lsGet('agVisao') || 'lista', agDia: hoje(), fPess: '', fArq: '', arqBusca: ''
 };

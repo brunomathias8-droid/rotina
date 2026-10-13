@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Figtree:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Figtree:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@300;400;500;600&display=swap">
 <style>
 /* Layout: app de uma tela para celular. Cores em tokens no .app[data-theme] (claro e escuro); "auto" segue o aparelho. */
 :root{ --stage:#E9E3D8; }
@@ -350,6 +350,90 @@ kbd{font:600 11px var(--fb);background:var(--s2);border-radius:5px;padding:1px 5
 .ck.on.anim{animation:pop .3s}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 @media (max-width:360px){.display{font-size:26px}.saldo{font-size:30px}}
+
+/* ================= Estilo "Editorial" (escolhido no perfil; o "Clássico" acima continua igual) =================
+   Inspiração: painéis de dados editoriais. Fundo quase preto, painéis carvão com borda fina, títulos com serifa
+   leve, números grandes e finos, rótulos discretos e duas cores fortes (azul e vermelho) carregando o sentido. */
+.app[data-estilo="editorial"]{--r:14px;--r-sm:10px;--fd:'Newsreader',Georgia,serif;--fb:'Inter',system-ui,sans-serif;--fn:'Inter',system-ui,sans-serif;font-size:14.5px;letter-spacing:-.006em}
+.app[data-estilo="editorial"][data-theme="escuro"]{
+  --bg:#0B0B0C; --s1:#131315; --s2:#1B1B1E; --s3:#2A2A2F; --line:#25252A;
+  --fg:#EEEEF0; --mut:#8D8D96;
+  --accent:#5B7CFF; --on-accent:#FFFFFF; --accent-soft:#18203D;
+  --warm:#F04B55; --warm-soft:#3A1519;
+  --good:#4CC38A; --bad:#F04B55; --warn:#F2B33D; --warn-soft:#33270F; --bad-soft:#3A1519;
+  --cor-a:#F04B55; --cor-b:#5B7CFF; --cor-c:#A58BFA; --cor-d:#3FB8A0; --cor-e:#E9B949; --cor-f:#F070B0; --cor-g:#38BDD8; --cor-h:#B79C8C; --cor-n:#6E6E77;
+  --scrim:rgba(0,0,0,.72); --nav:#0B0B0C; --grade:#1F1F23;
+  --viz-1:#5B7CFF; --viz-2:#F04B55; --viz-3:#4CC38A;
+}
+.app[data-estilo="editorial"][data-theme="claro"]{
+  --bg:#F7F7F5; --s1:#FFFFFF; --s2:#F0F0EE; --s3:#DEDEDB; --line:#E4E4E0;
+  --fg:#111113; --mut:#6B6B73;
+  --accent:#2D4FE0; --on-accent:#FFFFFF; --accent-soft:#E6ECFF;
+  --warm:#D9283A; --warm-soft:#FCE5E7;
+  --good:#1E8A57; --bad:#D9283A; --warn:#A86A00; --warn-soft:#FBF0DA; --bad-soft:#FCE5E7;
+  --cor-a:#D9283A; --cor-b:#2D4FE0; --cor-c:#7A5AF0; --cor-d:#178A75; --cor-e:#B98400; --cor-f:#D23C8B; --cor-g:#0E8FAE; --cor-h:#8A6A5A; --cor-n:#9A9AA2;
+  --scrim:rgba(17,17,19,.45); --nav:#FFFFFF; --grade:#ECECE9;
+  --viz-1:#2D4FE0; --viz-2:#D9283A; --viz-3:#1E8A57;
+}
+.app[data-estilo="editorial"]{--sh:none}
+/* superfícies: borda fina no lugar da sombra */
+.app[data-estilo="editorial"] .panel,.app[data-estilo="editorial"] .lst,.app[data-estilo="editorial"] .mes,.app[data-estilo="editorial"] .coment{box-shadow:none;border:1px solid var(--line)}
+.app[data-estilo="editorial"] .panel.soft{background:var(--s1)}
+.app[data-estilo="editorial"] .panel.hero{background:var(--s1);color:var(--fg);background-image:radial-gradient(120% 140% at 100% 0%,var(--accent-soft) 0%,transparent 55%)}
+.app[data-estilo="editorial"] .panel.hero .eb{color:var(--mut)!important;opacity:1!important}
+.app[data-estilo="editorial"] .panel.hero .stat,.app[data-estilo="editorial"] .stat{background:transparent;border:1px solid var(--line)}
+.app[data-estilo="editorial"] .note{background:var(--s1);border:1px solid var(--line)}
+.app[data-estilo="editorial"] .note.warn{background:var(--warn-soft);border-color:transparent}
+.app[data-estilo="editorial"] .note.bad{background:var(--bad-soft);border-color:transparent}
+.app[data-estilo="editorial"] .it + .it{box-shadow:0 -1px 0 var(--line)}
+.app[data-estilo="editorial"] .em-tile{border-radius:9px;background:var(--s2)}
+.app[data-estilo="editorial"] .cartao{box-shadow:inset 3px 0 0 var(--cc)}
+/* tipografia: serifa leve nos títulos, números grandes e finos, rótulos discretos */
+.app[data-estilo="editorial"] .display,.app[data-estilo="editorial"] .h1,.app[data-estilo="editorial"] .h2,.app[data-estilo="editorial"] .brand{font-weight:500;letter-spacing:-.02em}
+.app[data-estilo="editorial"] .display{font-size:34px;line-height:1.04}
+.app[data-estilo="editorial"] .h2{font-size:19px}
+.app[data-estilo="editorial"] .display .dest,.app[data-estilo="editorial"] .display em{color:var(--accent);font-style:normal}
+.app[data-estilo="editorial"] .eb,.app[data-estilo="editorial"] .dia-h,.app[data-estilo="editorial"] .mes-sem span,.app[data-estilo="editorial"] .sdia-h b{font-weight:600;letter-spacing:.01em;text-transform:none;font-size:12px}
+.app[data-estilo="editorial"] .saldo,.app[data-estilo="editorial"] .in.big,.app[data-estilo="editorial"] .sdia-h span{font-family:var(--fn);font-weight:300;letter-spacing:-.045em}
+.app[data-estilo="editorial"] .saldo{font-size:42px}
+.app[data-estilo="editorial"] .stat b{font-family:var(--fn);font-weight:500;letter-spacing:-.025em;font-size:18px}
+.app[data-estilo="editorial"] .it .t,.app[data-estilo="editorial"] .h3{font-weight:600}
+.app[data-estilo="editorial"] .it .v{font-weight:600;letter-spacing:-.01em}
+.app[data-estilo="editorial"] .link{font-weight:600}
+.app[data-estilo="editorial"] .lab > span{font-weight:600}
+/* controles: pílulas finas; o principal em contraste (claro no escuro), como os filtros da referência */
+.app[data-estilo="editorial"] .btn{font-weight:600;background:var(--fg);color:var(--bg)}
+.app[data-estilo="editorial"] .btn.ghost{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 1px var(--s3)}
+.app[data-estilo="editorial"] .btn.warm{background:var(--warm);color:#FFF}
+.app[data-estilo="editorial"] .btn.danger{background:transparent;color:var(--bad);box-shadow:inset 0 0 0 1px var(--bad)}
+.app[data-estilo="editorial"] .btn.concluir{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+.app[data-estilo="editorial"] .chip{font-weight:500;background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.app[data-estilo="editorial"] .chip.on{background:var(--fg);color:var(--bg);box-shadow:none;font-weight:600}
+.app[data-estilo="editorial"] .seg{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.app[data-estilo="editorial"] .seg button{font-weight:500}
+.app[data-estilo="editorial"] .seg button.on{background:var(--fg);color:var(--bg);font-weight:600}
+.app[data-estilo="editorial"] .tag{font-weight:600;border-radius:6px}
+.app[data-estilo="editorial"] .in{border-width:1px;background:var(--s1)}
+.app[data-estilo="editorial"] .ck{box-shadow:inset 0 0 0 1.5px var(--s3)}
+.app[data-estilo="editorial"] .ck.on{background:var(--accent)}
+.app[data-estilo="editorial"] .ib{box-shadow:inset 0 0 0 1px var(--line);background:var(--s1)}
+.app[data-estilo="editorial"] .x{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.app[data-estilo="editorial"] .bar{height:6px}
+.app[data-estilo="editorial"] .mdia.hoje .mn{background:var(--fg);color:var(--bg)}
+.app[data-estilo="editorial"] .toast{background:var(--fg);color:var(--bg)}
+.app[data-estilo="editorial"] .sheet{border-top:1px solid var(--line)}
+/* menu */
+.app[data-estilo="editorial"] nav{box-shadow:0 -1px 0 var(--line)}
+.app[data-estilo="editorial"] nav button{font-weight:500}
+.app[data-estilo="editorial"] nav button.on{color:var(--fg);font-weight:600}
+.app[data-estilo="editorial"] nav button.on::before{background:var(--fg)}
+.app[data-estilo="editorial"] nav .badge{background:var(--warm)}
+@media (min-width:900px){
+  .app.logado[data-estilo="editorial"] nav{box-shadow:1px 0 0 var(--line)}
+  .app[data-estilo="editorial"] nav button:hover{background:var(--s1)}
+  .app[data-estilo="editorial"] nav button.on{background:var(--s1);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
+  .app[data-estilo="editorial"] .sheet{border:1px solid var(--line)}
+}
 </style>
 </head>
 <body>
@@ -360,7 +444,7 @@ kbd{font:600 11px var(--fb);background:var(--s2);border-radius:5px;padding:1px 5
   <div id="layer"></div>
   <div id="toast" class="toast" hidden role="status"></div>
 </div></div>
-<script>try { var t = localStorage.getItem('rotina_tema'); if (t !== 'claro' && t !== 'escuro') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro'; document.getElementById('app').dataset.theme = t; } catch (e) {}</script>
+<script>try { var t = localStorage.getItem('rotina_tema'); if (t !== 'claro' && t !== 'escuro') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro'; document.getElementById('app').dataset.theme = t; document.getElementById('app').dataset.estilo = localStorage.getItem('rotina_estilo') || 'classico'; } catch (e) {}</script>
 <script src="config.js"></script>
 <script src="nucleo.js"></script>
 <script src="base.js"></script>

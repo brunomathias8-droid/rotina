@@ -1,7 +1,7 @@
 /* acoes.js — o que cada toque faz, login, roteamento e a inicialização do app. */
 'use strict';
 
-const VERSAO_APP = '3.4.1';
+const VERSAO_APP = '3.5.0';
 
 /* ============ desenho ============ */
 const ABAS_APP = [['hoje', 'Hoje', 'sun'], ['agenda', 'Agenda', 'cal'], ['tarefas', 'Tarefas', 'clip'], ['financas', 'Finanças', 'wallet'], ['compras', 'Compras', 'cart'], ['arquivos', 'Arquivos', 'pasta']];
@@ -59,7 +59,9 @@ function toast(msg, ms, acao) {
 function aplicarTema() {
   const t = S.tema === 'claro' || S.tema === 'escuro' ? S.tema : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro');
   $('#app').dataset.theme = t;
-  document.querySelector('meta[name=theme-color]').content = t === 'escuro' ? '#151411' : '#F5F1EA';
+  $('#app').dataset.estilo = S.estilo;
+  const ed = S.estilo === 'editorial';
+  document.querySelector('meta[name=theme-color]').content = t === 'escuro' ? (ed ? '#0B0B0C' : '#151411') : (ed ? '#F7F7F5' : '#F5F1EA');
 }
 try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (S.tema === 'auto') aplicarTema(); }); } catch (e) { /* navegador antigo */ }
 
@@ -240,6 +242,7 @@ const A = {
   },
 
   // perfil
+  estilo: d => { S.estilo = d.v; lsSet('estilo', d.v === 'classico' ? null : d.v); aplicarTema(); render(); renderSheet(); },
   tema: d => { S.tema = d.v; lsSet('tema', d.v === 'auto' ? null : d.v); aplicarTema(); renderSheet(); },
   convidar: async () => {
     const cod = S.casa && S.casa.convite; if (!cod) return;
