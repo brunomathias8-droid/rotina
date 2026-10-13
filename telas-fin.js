@@ -3,7 +3,7 @@
 'use strict';
 
 const FIN_ABAS = [['resumo', 'Resumo'], ['extrato', 'Extrato'], ['contas', 'Contas'], ['cartoes', 'Cartões'], ['orcamento', 'Orçamento'], ['metas', 'Metas'], ['patrimonio', 'Patrimônio'], ['investimentos', 'Investimentos']];
-const CORES_CARTAO = ['#5B3FA0', '#C8643C', '#2E6A57', '#1F2937', '#3B6EA5', '#B8860B'];
+const CORES_CARTAO = ['#5B3FA0', '#C62828', '#C8643C', '#2E6A57', '#1F2937', '#3B6EA5', '#B8860B'];
 const statusTag = st => st === 'pago' ? `<span class="tag good">${ic('check', 12, 2.6)} pago</span>` : st === 'vencido' ? `<span class="tag bad">${ic('alert', 12, 2.4)} vencido</span>` : '';
 const pctTxt = x => x == null ? '—' : Math.round(x * 100) + '%';
 const opcConta = (vazio) => [...(vazio ? [['', vazio]] : []), ...contasBancarias().map(p => [p.id, `${esc(p.ic || classe(p.classe).ic)} ${esc(p.nome)}`])];
