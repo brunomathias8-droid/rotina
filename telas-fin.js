@@ -36,7 +36,7 @@ function finResumo() {
   const rs = meses.map(resumoMes), div = divisaoRenda(ref), met = metodo();
   const top = Object.entries(r.porCat).sort((a, b) => b[1] - a[1]).slice(0, 5), maxCat = top.length ? top[0][1] : 1;
   const ms = metas().slice(0, 3), pl = patrimonioEm(hoje()), plAnt = patrimonioEm(N_diaDoMes(N_somaMes(atual, -1), 31));
-  const temPat = lista('patrimonio').length > 0, temAnt = inicioPatrimonio() && inicioPatrimonio() < atual + '-01';
+  const temPat = investimentos().length > 0, temAnt = inicioPatrimonio() && inicioPatrimonio() < atual + '-01';
   return `${COL_INI}<div class="panel hero"><p class="eb" style="color:inherit;opacity:.8">Saldo do mês</p><p class="saldo">${reais(r.saldo)}</p>
       <div class="grid3"><div class="stat"><span class="tiny muted">Receitas</span><b>${compacto(r.rec)}</b></div><div class="stat"><span class="tiny muted">Despesas</span><b>${compacto(r.desp)}</b></div><div class="stat"><span class="tiny muted">Investido</span><b>${compacto(r.inv)}</b></div></div>
       ${r.poupanca != null ? `<p class="small muted">${r.poupanca >= 0 ? `Sobrou ${pctTxt(r.poupanca)} da renda` : `Gastaram ${pctTxt(-r.poupanca)} a mais do que ganharam`}${r.inv > 0 ? ` · ${pctTxt(r.inv / r.rec)} foi investido` : ''}.</p>` : ''}
@@ -51,7 +51,7 @@ function finResumo() {
       + `<p class="tiny muted">Método ${met.essencial}/${met.livre}/${met.futuro}: até ${met.essencial}% da renda no essencial, ${met.livre}% no estilo de vida e pelo menos ${met.futuro}% para o futuro.</p>` : '<p class="small muted">Lance as receitas do mês para ver como a renda foi dividida.</p>'}</div>
     ${top.length ? secao('Maiores gastos', `<button class="link" data-a="fv" data-v="extrato">Extrato</button>`) + `<div class="panel">${top.map(([id, g]) => { const c = categoria(id); return `<button class="orc" data-a="fcat" data-v="${esc(id)}"><div class="between"><span><b>${esc(c.ic)} ${esc(c.nome)}</b></span><span class="num">${reais(g)}${r.desp ? ` <span class="tiny muted">${Math.round(g / r.desp * 100)}%</span>` : ''}</span></div>${bar(g, maxCat, 'var(--viz-2)')}</button>`; }).join('')}</div>` : ''}
     ${ms.length ? secao('Metas', `<button class="link" data-a="fv" data-v="metas">Ver todas</button>`) + `<div class="lst">${ms.map(linhaMeta).join('')}</div>` : ''}
-    ${temPat ? secao('Patrimônio líquido', `<button class="link" data-a="fv" data-v="patrimonio">Detalhes</button>`) + `<button class="panel" data-a="fv" data-v="patrimonio" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit"><p class="saldo" style="font-size:28px">${reais(pl.liquido)}</p>${temAnt ? `<p class="small muted">${pl.liquido - plAnt.liquido >= 0 ? '▲' : '▼'} ${reais(Math.abs(pl.liquido - plAnt.liquido))} desde o fim do mês passado</p>` : '<p class="small muted">Tudo o que vocês têm menos o que devem.</p>'}</button>` : ''}${COL_FIM}`;
+    ${temPat ? secao('Patrimônio', `<button class="link" data-a="fv" data-v="patrimonio">Detalhes</button>`) + `<button class="panel" data-a="fv" data-v="patrimonio" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit"><p class="saldo" style="font-size:28px">${reais(pl.liquido)}</p>${temAnt ? `<p class="small muted">${pl.liquido - plAnt.liquido >= 0 ? '▲' : '▼'} ${reais(Math.abs(pl.liquido - plAnt.liquido))} desde o fim do mês passado</p>` : '<p class="small muted">Soma dos investimentos.</p>'}</button>` : ''}${COL_FIM}`;
 }
 
 /* ---------- Extrato ---------- */
@@ -191,21 +191,30 @@ function linhaPat(p) {
 }
 function finPatrimonio() {
   const h = hoje(), pl = patrimonioEm(h), ant = patrimonioEm(N_diaDoMes(N_somaMes(N_mes(h), -1), 31)), itens = patrimonio().filter(p => p.ativo !== false);
-  if (!itens.length && !cartoes().length) return `<div class="panel">${vazio('🏛️', 'Patrimônio é tudo o que a família tem (contas, investimentos, imóvel, carro) menos o que deve. Acompanhar mês a mês mostra se vocês estão enriquecendo.')}</div>${botoesPat()}`;
-  const inv = itens.filter(p => classe(p.classe).g === 'invest'), porClasse = {};
+  const inv = itens.filter(p => classe(p.classe).g === 'invest'), fora = itens.filter(p => classe(p.classe).g !== 'invest');
+  if (!inv.length) return `<div class="panel">${vazio('🏛️', 'Patrimônio é a soma dos investimentos da família. Ele só muda com rendimentos, renda passiva, aportes e resgates: conta corrente e o saldo do mês ficam de fora.')}<button class="btn block" data-a="sheet" data-k="pat" data-v="rendafixa">+ Investimento</button></div>${foraDoPatrimonio(fora, h)}`;
+  const porClasse = {};
   inv.forEach(p => { porClasse[p.classe] = (porClasse[p.classe] || 0) + valorAtual(p); });
-  const totInv = Object.values(porClasse).reduce((a, v) => a + v, 0), aloc = Object.entries(porClasse).sort((a, b) => b[1] - a[1]);
+  const totInv = Object.values(porClasse).reduce((a, v) => a + v, 0), aloc = Object.entries(porClasse).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
+  const aplic = inv.reduce((a, p) => a + aplicadoEm(p, h), 0), rend = totInv - aplic;
   const delta = pl.liquido - ant.liquido, serie = seriePatrimonio(12), temAnt = serie.length > 1;
-  return `${COL_INI}<div class="panel hero"><p class="eb" style="color:inherit;opacity:.8">Patrimônio líquido</p><p class="saldo">${reais(pl.liquido)}</p>
-      ${temAnt ? `<p class="small muted">${delta >= 0 ? '▲' : '▼'} ${reais(Math.abs(delta))} desde o fim do mês passado</p>` : '<p class="small muted">Tudo o que vocês têm menos o que devem.</p>'}
-      <div class="grid2"><div class="stat"><span class="tiny muted">Tem</span><b>${compacto(pl.ativos)}</b></div><div class="stat"><span class="tiny muted">Deve</span><b>${compacto(pl.passivos)}</b></div></div></div>
-    ${secao('Evolução')}<div class="panel">${temAnt ? grafLinha(serie, 'Patrimônio líquido mês a mês') : '<p class="small muted">O gráfico mês a mês aparece a partir do segundo mês de uso.</p>'}<p class="tiny muted">Calculado com os saldos informados e os lançamentos. Atualize os saldos uma vez por mês para a linha ficar fiel.</p></div>
+  return `${COL_INI}<div class="panel hero"><p class="eb" style="color:inherit;opacity:.8">Patrimônio</p><p class="saldo">${reais(pl.liquido)}</p>
+      ${temAnt ? `<p class="small muted">${delta >= 0 ? '▲' : '▼'} ${reais(Math.abs(delta))} desde o fim do mês passado</p>` : '<p class="small muted">Soma dos investimentos. Muda com rendimentos, renda passiva, aportes e resgates.</p>'}
+      <div class="grid2"><div class="stat"><span class="tiny muted">Aplicado</span><b>${compacto(aplic)}</b></div><div class="stat"><span class="tiny muted">Rendimento bruto</span><b>${rend >= 0 ? '' : '−'}${compacto(Math.abs(rend))}</b></div></div></div>
+    ${secao('Evolução')}<div class="panel">${temAnt ? grafLinha(serie, 'Patrimônio mês a mês') : '<p class="small muted">O gráfico mês a mês aparece quando houver saldos de pelo menos dois meses.</p>'}<p class="tiny muted">Atualize o saldo de cada investimento uma vez por mês para a linha ficar fiel.</p></div>
     ${aloc.length ? secao('Onde está investido', `<button class="link" data-a="fv" data-v="investimentos">Análise</button>`) + `<div class="panel">${aloc.map(([cl, v]) => `<div class="stack" style="gap:6px"><div class="between small"><span><b>${classe(cl).ic} ${classe(cl).n}</b></span><span class="num">${reais(v)} <span class="tiny muted">${Math.round(v / totInv * 100)}%</span></span></div>${bar(v, totInv, 'var(--viz-1)')}</div>`).join('')}</div>` : ''}
-    ${COL_MEIO}${GRUPOS_PAT.map(([g, nome]) => { const l = itens.filter(p => classe(p.classe).g === g); return l.length ? secao(nome, `<span class="num small">${g === 'dividas' ? '− ' : ''}${reais(pl[g])}</span>`) + listaOu(l, linhaPat) : ''; }).join('')}
-    ${pl.cartoes ? secao('Cartões a pagar', `<span class="num small">− ${reais(pl.cartoes)}</span>`) + `<div class="lst">${cartoes().map(k => { const d = dividaCartaoEm(k, h); return d ? `<button class="it" data-a="fv" data-v="cartoes"><span class="em-tile">💳</span><span class="main"><span class="t">${esc(k.nome)}</span><span class="s">faturas em aberto</span></span><span class="v c-bad">− ${reais(d)}</span></button>` : ''; }).join('')}</div>` : ''}
-    ${botoesPat()}${COL_FIM}`;
+    ${COL_MEIO}${secao('Investimentos', `<span class="num small">${reais(pl.invest)}</span>`)}${listaOu(inv, linhaPat)}
+    <div class="grid2"><button class="btn ghost sm" data-a="sheet" data-k="pat" data-v="rendafixa">+ Investimento</button><button class="btn ghost sm" data-a="novoLanc" data-tipo="aporte">Aplicar / resgatar</button></div>
+    ${foraDoPatrimonio(fora, h)}${COL_FIM}`;
 }
-const botoesPat = () => `<div class="grid2"><button class="btn ghost sm" data-a="sheet" data-k="pat" data-v="conta">+ Conta</button><button class="btn ghost sm" data-a="sheet" data-k="pat" data-v="rendafixa">+ Investimento</button><button class="btn ghost sm" data-a="sheet" data-k="pat" data-v="imovel">+ Bem</button><button class="btn ghost sm" data-a="sheet" data-k="pat" data-v="financiamento">+ Dívida</button></div>`;
+/* Contas correntes (usadas nos lançamentos), bens e dívidas: cadastrados, mas fora da soma do patrimônio */
+function foraDoPatrimonio(fora, h) {
+  const grupos = GRUPOS_PAT.filter(([g]) => g !== 'invest').map(([g, nome]) => [nome, fora.filter(p => classe(p.classe).g === g)]).filter(x => x[1].length);
+  return `<details class="fora"><summary>${secao('Fora do patrimônio', `<span class="tiny muted">${fora.length}</span>`)}</summary>
+    <p class="tiny muted">Conta corrente, bens e dívidas ficam cadastrados (as contas aparecem nos lançamentos), mas não entram na soma do patrimônio.</p>
+    ${grupos.map(([nome, l]) => `<p class="dia-h">${nome}</p>` + listaOu(l, linhaPat)).join('')}
+    <div class="grid2"><button class="btn ghost sm" data-a="sheet" data-k="pat" data-v="conta">+ Conta</button><button class="btn ghost sm" data-a="sheet" data-k="pat" data-v="imovel">+ Bem</button><button class="btn ghost sm" data-a="sheet" data-k="pat" data-v="financiamento">+ Dívida</button><span></span></div></details>`;
+}
 
 /* ============================== painéis ============================== */
 const toggle = (k, on, rot, sub) => `<div class="between"><span><b>${rot}</b>${sub ? `<br><span class="small muted">${sub}</span>` : ''}</span><button class="tog ${on ? 'on' : ''}" data-a="f" data-k="${k}" data-v="${on ? '' : '1'}" aria-pressed="${!!on}" aria-label="${esc(rot)}"></button></div>`;
@@ -251,7 +260,9 @@ SH.lanc = s => {
   } else if (t === 'entrada') {
     corpo += campo('Descrição', inp('desc', f.desc, 'maxlength="120" placeholder="Ex.: salário de outubro" autocomplete="off"'));
     corpo += grupo('Categoria', escolha('cat', f.cat, categorias('entrada').map(c => [c.id, `${esc(c.ic)} ${esc(c.nome)}`])));
-    if (contas.length > 1) corpo += grupo('Entrou em qual conta', escolha('carteira', f.carteira, contas));
+    const destinosEnt = f.cat === 'rendimentos' ? [...contas, ...investimentos().map(p => [p.id, `${esc(p.ic || classe(p.classe).ic)} ${esc(p.nome)}`])] : contas;
+    if (destinosEnt.length > 1) corpo += grupo(f.cat === 'rendimentos' ? 'Entrou onde' : 'Entrou em qual conta', escolha('carteira', f.carteira, destinosEnt));
+    if (f.cat === 'rendimentos') corpo += '<p class="tiny muted">Renda passiva (dividendos, juros, aluguel de FII): escolha o investimento se o dinheiro ficou nele. Aí ela soma no patrimônio como rendimento.</p>';
     corpo += toggle('pago', f.pago, 'Já recebeu', f.pago ? '' : 'Fica em "Contas › A receber"');
   } else if (inv) {
     corpo += segm('tipo', t, [['aporte', 'Aplicar'], ['resgate', 'Resgatar']]);
@@ -388,7 +399,7 @@ function verPat(p) {
     ${g === 'invest' && (p.hist || []).length ? (() => { const a = aplicadoEm(p, hoje()), r = v - a; return `<div class="grid2"><div class="stat"><span class="tiny muted">Aplicado</span><b>${reais(a)}</b></div><div class="stat"><span class="tiny muted">Rendimento bruto</span><b class="${r < 0 ? 'c-bad' : 'c-good'}">${r >= 0 ? '+' : '−'}${reais(Math.abs(r))}${a > 0 ? ` <span class="tiny">${pctVar(r / a)}</span>` : ''}</b></div></div>`; })() : ''}
     <div class="grid2"><button class="btn sm" data-a="saldoPat">Atualizar saldo</button>
       ${g === 'invest' ? `<button class="btn ghost sm" data-a="novoLanc" data-tipo="aporte" data-destino="${p.id}">Aplicar / resgatar</button>` : g === 'contas' ? `<button class="btn ghost sm" data-a="novoLanc" data-tipo="transf" data-carteira="${p.id}">Transferir</button>` : g === 'dividas' ? `<button class="btn ghost sm" data-a="novoLanc" data-tipo="saida" data-cat="dividas" data-destino="${p.id}">Registrar pagamento</button>` : '<span></span>'}</div>
-    ${comHist ? grafLinha(serie, 'Valor nos últimos 12 meses').replace(/patrimônio líquido/g, 'valor') : ''}
+    ${comHist ? grafLinha(serie, 'Valor nos últimos 12 meses').replace(/patrimônio/g, 'valor') : ''}
     ${rend.length ? `<p class="small muted">Rendimento estimado: ${rend.map(([m, r]) => `${mesCurto(m)} ${r >= 0 ? '+' : '−'}${reais(Math.abs(r))}`).join(' · ')}</p>` : ''}
     ${movs.length ? secao('Movimentos') + listaOu(movs, linhaLanc) : ''}
     ${p.nota ? `<p class="small">${esc(p.nota)}</p>` : ''}

@@ -129,7 +129,7 @@ function aoApontar(e) {
     const g = svg.querySelector('.g-cruz'); g.removeAttribute('hidden');
     g.querySelector('line').setAttribute('x1', pts[k][0]); g.querySelector('line').setAttribute('x2', pts[k][0]);
     g.querySelector('circle').setAttribute('cx', pts[k][0]); g.querySelector('circle').setAttribute('cy', pts[k][1]);
-    mostrarDica(el, [pts[k][2], ['var(--viz-1)', 'patrimônio líquido', pts[k][3]]], sr.left + pts[k][0] / sx, sr.top + pts[k][1] / sx);
+    mostrarDica(el, [pts[k][2], ['var(--viz-1)', 'patrimônio', pts[k][3]]], sr.left + pts[k][0] / sx, sr.top + pts[k][1] / sx);
     return;
   }
   mostrarDica(el, JSON.parse(el.dataset.tip), e.clientX || r.left + r.width / 2, r.top);

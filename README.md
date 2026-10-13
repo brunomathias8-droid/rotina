@@ -50,7 +50,7 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 | Cartões | Fatura atual de cada cartão (aberta, fechada, paga ou vencida), limite usado e disponível, parcelas já comprometidas nos próximos meses, pagar fatura |
 | Orçamento | Limite por categoria com média dos últimos 3 meses, alertas aos 85% e ao passar, e a divisão da renda entre essenciais, estilo de vida e futuro |
 | Metas | Juntar um valor até uma data, investir um valor todo mês, ou reduzir (a fatura do cartão, uma categoria, uma dívida). A meta do cartão mede a soma das faturas que vencem no mês, o mesmo valor que aparece no banco. Modelos prontos: reserva de emergência, investir todo mês, reduzir o cartão, quitar dívida, sonho |
-| Patrimônio | Patrimônio líquido e sua evolução, onde está investido, contas, investimentos, bens, dívidas e cartões a pagar |
+| Patrimônio | Soma dos investimentos e sua evolução, onde está investido e a lista de investimentos. Contas correntes, bens e dívidas ficam numa seção à parte, fora da soma |
 | Investimentos | Total investido, aplicado e rendimento bruto (R$ e %), pontos de atenção (acima do limite do FGC por instituição, posições zeradas ou abaixo do aplicado, concentração, saldos desatualizados), distribuição por tipo e por emissor, evolução e a lista de posições ordenável por saldo ou rendimento |
 
 ### Regras de cálculo
@@ -62,7 +62,7 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 - **Saldos:** cada conta, investimento ou dívida guarda o último valor informado ("Atualizar saldo") e soma os movimentos depois dele.
 - **Rendimento de um investimento** = saldo − aplicado. Aplicado = o total informado no cadastro (vale na data do primeiro saldo) + aportes − resgates lançados depois. Bruto, antes de impostos.
 - **FGC:** garante até R$ 250 mil por CPF por instituição em CDB, LCI, LCA, RDB, poupança e conta (o app considera Renda fixa e Reserva, menos Tesouro). Fundos, FIIs, ações, exterior, previdência e cripto não têm FGC.
-- **Patrimônio líquido** = contas + investimentos + bens − dívidas − saldo devedor dos cartões (incluindo parcelas futuras).
+- **Patrimônio** = só os investimentos. Conta corrente, saldo do mês, bens, dívidas e cartões ficam de fora. Ele muda com rendimentos (saldo atualizado), renda passiva (receita na categoria Rendimentos que entra num investimento), aportes e resgates.
 - **Reserva de emergência sugerida** = 6 meses das despesas essenciais (média dos últimos 3 meses).
 
 ## Agenda

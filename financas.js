@@ -194,15 +194,18 @@ function dividaCartaoEm(k, D) {
   });
   return Math.max(0, c);
 }
-/** Patrimônio líquido no dia D = contas + investimentos + bens − dívidas − cartões a pagar. */
+/** Situação no dia D por grupo. liquido = o patrimônio da família, que é só a soma dos investimentos. */
 function patrimonioEm(D) {
   const r = { contas: 0, invest: 0, bens: 0, dividas: 0, cartoes: 0 };
   lista('patrimonio').filter(p => p.ativo !== false).forEach(p => { r[classe(p.classe).g] += valorEm(p, D); });
   r.cartoes = cartoes().reduce((a, k) => a + dividaCartaoEm(k, D), 0);
-  r.ativos = r.contas + r.invest + r.bens; r.passivos = r.dividas + r.cartoes; r.liquido = r.ativos - r.passivos;
+  r.ativos = r.contas + r.invest + r.bens; r.passivos = r.dividas + r.cartoes;
+  // Patrimônio da família = só os investimentos. Conta corrente, saldo do mês, bens, dívidas e cartões ficam de fora:
+  // ele só se move com rendimentos (saldo atualizado), renda passiva, aportes e resgates.
+  r.liquido = r.invest;
   return r;
 }
-/** Patrimônio líquido no fim de cada um dos últimos n meses (o mês atual vale até hoje). */
+/** Patrimônio (investimentos) no fim de cada um dos últimos n meses (o mês atual vale até hoje). */
 function seriePatrimonio(n) {
   const h = hoje(), ref = N_mes(h), out = [], ini = inicioPatrimonio();
   for (let i = n - 1; i >= 0; i--) {
@@ -213,14 +216,15 @@ function seriePatrimonio(n) {
 }
 /** Data do primeiro saldo informado (ou da primeira compra no cartão): o começo da história do patrimônio. */
 function inicioPatrimonio() {
-  const datas = lista('patrimonio').flatMap(p => (p.hist || []).map(x => x[0])).concat(lancs().filter(l => l.forma === 'cartao').map(l => l.dia));
+  const datas = lista('patrimonio').filter(p => classe(p.classe).g === 'invest').flatMap(p => (p.hist || []).map(x => x[0]));
   return datas.length ? datas.sort()[0] : '';
 }
 /** Rendimento estimado de um investimento no mês: variação do valor menos o que entrou e saiu. */
 function rendimentoMes(p, ref) {
   const fim = N_diaDoMes(ref, 31), ini = N_diaDoMes(N_somaMes(ref, -1), 31);
   if (!(p.hist || []).some(x => x[0] <= ini)) return null;
-  const fluxo = movimentos(p.id).filter(([d]) => d > ini && d <= fim).reduce((a, x) => a + x[2], 0);
+  // Renda passiva (receita que cai no investimento) é retorno: não sai do rendimento como aporte e resgate saem
+  const fluxo = movimentos(p.id).filter(([d, , , l]) => d > ini && d <= fim && l.tipo !== 'entrada').reduce((a, x) => a + x[2], 0);
   return valorEm(p, fim) - valorEm(p, ini) - fluxo;
 }
 
