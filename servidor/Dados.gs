@@ -17,7 +17,7 @@ var ABAS = {
   Afazeres: ['ID', 'Nome', 'Icone', 'Freq', 'Dias', 'N', 'DiaMes', 'Resp', 'Vez', 'Prox', 'Peso', 'Troca', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Feitos: ['ID', 'Afazer', 'Nome', 'Pessoa', 'Dia', 'Hora', 'Peso', 'Pulou', 'Antes', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Pendencias: ['ID', 'Titulo', 'Nota', 'Area', 'Resp', 'Prazo', 'Alta', 'Itens', 'Repete', 'Feita', 'FeitaPor', 'FeitaEm', 'Seguinte', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
-  Lancamentos: ['ID', 'Dia', 'Tipo', 'Valor', 'Descricao', 'Categoria', 'Forma', 'Pago', 'Carteira', 'Cartao', 'Parcela', 'Grupo', 'Conta', 'Ref', 'Destino', 'Meta', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
+  Lancamentos: ['ID', 'Dia', 'Tipo', 'Valor', 'Descricao', 'Categoria', 'Forma', 'Pago', 'Carteira', 'Cartao', 'Parcela', 'Grupo', 'Conta', 'Ref', 'Destino', 'Meta', 'Nota', 'Fatura', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Contas: ['ID', 'Nome', 'Tipo', 'Valor', 'Vence', 'Categoria', 'Forma', 'Cartao', 'Carteira', 'Destino', 'Meta', 'Ativa', 'Fim', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Cartoes: ['ID', 'Nome', 'Cor', 'Limite', 'Fecha', 'Vence', 'Carteira', 'Ativo', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Patrimonio: ['ID', 'Nome', 'Icone', 'Natureza', 'Classe', 'Instituicao', 'Historico', 'Taxa', 'Ativo', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
@@ -219,7 +219,7 @@ var COLECOES = {
   lancamentos: { aba: 'Lancamentos', exigir: 'dia', campos: {
     dia: ['Dia', 'd'], tipo: ['Tipo', 'e', TIPOS_LANC], v: ['Valor', 'c'], desc: ['Descricao', 't', 120], cat: ['Categoria', 't', 30],
     forma: ['Forma', 't', 20], pago: ['Pago', 'b'], carteira: ['Carteira', 't', 40], cartao: ['Cartao', 't', 40], parc: ['Parcela', 't', 9],
-    grupo: ['Grupo', 't', 40], conta: ['Conta', 't', 40], ref: ['Ref', 't', 7], destino: ['Destino', 't', 40], meta: ['Meta', 't', 40], nota: ['Nota', 't', 300] } },
+    grupo: ['Grupo', 't', 40], conta: ['Conta', 't', 40], ref: ['Ref', 't', 7], destino: ['Destino', 't', 40], meta: ['Meta', 't', 40], nota: ['Nota', 't', 300], fat: ['Fatura', 'f'] } },
   contas: { aba: 'Contas', exigir: 'nome', campos: {
     nome: ['Nome', 't', 60], tipo: ['Tipo', 'e', ['saida', 'entrada', 'aporte']], v: ['Valor', 'c'], vence: ['Vence', 'n'], cat: ['Categoria', 't', 30],
     forma: ['Forma', 't', 20], cartao: ['Cartao', 't', 40], carteira: ['Carteira', 't', 40], destino: ['Destino', 't', 40], meta: ['Meta', 't', 40],
@@ -258,6 +258,7 @@ function valorParaPlanilha_(tipo, op, v, ids) {
     case 'j': { if (v === '') return ''; var t = typeof v === 'string' ? v : JSON.stringify(v); if (t.length > op) throw apiErro_('Dados grandes demais.', 'VALIDACAO'); return t; }
     case 'c': { var c = Math.round(Number(v) || 0); if (Math.abs(c) > 1e13) throw apiErro_('Valor alto demais.', 'VALIDACAO'); return (c / 100).toFixed(2); }
     case 'p': return ids.indexOf(String(v)) >= 0 ? String(v) : '';
+    case 'f': return /^\d{4}-(0[1-9]|1[0-2])$/.test(String(v)) ? String(v) : '';
     case 'u': return /^https?:\/\/[^\s]+$/i.test(String(v).trim()) ? String(v).trim().slice(0, 1500) : '';
     case 'g': return /^(eventos|tarefas|lancamentos|contas):[A-Za-z0-9_-]{6,40}(:\d{4}-\d{2})?$/.test(String(v)) ? String(v) : '';
     case 'r': return v === 'rodizio' || v === 'ambos' || ids.indexOf(String(v)) >= 0 ? String(v) : 'ambos';

@@ -139,6 +139,7 @@ function finCartoes() {
         ${k.limite ? `<div class="stack" style="gap:6px">${bar(usado, k.limite, usado > k.limite * .9 ? 'var(--bad)' : usado > k.limite * .7 ? 'var(--warn)' : 'var(--accent)')}<span class="between tiny"><span class="muted">Limite usado ${reais(usado)}</span><span>Disponível <b>${reais(Math.max(0, k.limite - usado))}</b></span></span></div>` : ''}
         ${fut.some(x => x.total) ? `<p class="tiny muted">Já comprometido: ${fut.filter(x => x.total).map(x => `${mesCurto(x.ref)} ${reais(x.total)}`).join(' · ')}</p>` : ''}
         <div class="grid2"><button class="btn ghost sm" data-a="sheet" data-k="fatura" data-id="${k.id}" data-v="${f.ref}">Ver compras</button>${f.resta ? `<button class="btn sm warm" data-a="pagar" data-k="fatura" data-id="${k.id}" data-ref="${f.ref}">Pagar ${reais(f.resta)}</button>` : `<button class="btn ghost sm" data-a="novoLanc" data-tipo="saida" data-cartao="${k.id}">+ Compra</button>`}</div>
+        <button class="btn ghost sm block" data-a="importarFatura" data-id="${k.id}">${ic('up', 15, 2.2)} Importar fatura (planilha do banco)</button>
         <p class="tiny muted">Melhor dia de compra: dia ${k.fecha}. Compras a partir dele só entram na fatura seguinte.</p></div>`;
     }).join('')}</div>
     <button class="btn ghost block" data-a="sheet" data-k="cartao">${ic('plus', 16, 2.4)} Novo cartão</button>`;
@@ -240,7 +241,7 @@ SH.lanc = s => {
       corpo += cartoes().length > 1 ? grupo('Cartão', escolha('cartao', f.cartao, cartoes().map(c => [c.id, esc(c.nome)]))) : '';
       if (!l) corpo += grupo('Parcelas', `<div class="chips">${[1, 2, 3, 4, 5, 6, 8, 10, 12, 18, 24].map(x => `<button class="chip ${n === x ? 'on' : ''}" data-a="f" data-k="parcelas" data-v="${x}">${x === 1 ? 'À vista' : x + 'x'}</button>`).join('')}</div>`)
         + (n > 1 && v ? `<p class="small muted">${n}x de ${reais(Math.floor(v / n))}. Cada parcela entra no orçamento do seu mês e na fatura certa.</p>` : '');
-      if (k && N_dataValida(f.dia)) { const ref = N_faturaRef(k, f.dia); corpo += `<p class="small muted">Entra na fatura de ${MESES[+ref.slice(5) - 1]} (vence ${fmtCurta(N_vencimento(k, ref))}).</p>`; }
+      if (k && N_dataValida(f.dia)) { const ref = l && l.fat && l.cartao === k.id ? l.fat : N_faturaRef(k, f.dia); corpo += `<p class="small muted">Entra na fatura de ${MESES[+ref.slice(5) - 1]} (vence ${fmtCurta(N_vencimento(k, ref))}).</p>`; }
       if (l && l.parc) corpo += `<div class="note"><span>Parcela ${esc(l.parc)}. Mudanças aqui valem só para esta parcela.</span></div>`;
     } else {
       if (contas.length > 1) corpo += grupo('Saiu de qual conta', escolha('carteira', f.carteira, contas));
@@ -290,7 +291,7 @@ SH.fatura = s => {
     <div class="panel soft"><p class="saldo" style="font-size:30px">${reais(f.total)}</p><p class="small muted">Fecha ${fmtData(f.fecha)} · vence ${fmtData(f.venc)}</p>
       ${f.pago ? `<p class="small">Pago: <b>${reais(f.pago)}</b>${f.resta ? ` · falta ${reais(f.resta)}` : ''}</p>` : ''}</div>
     ${f.resta ? `<button class="btn warm block" data-a="pagar" data-k="fatura" data-id="${k.id}" data-ref="${f.ref}">Pagar ${reais(f.resta)}</button>` : ''}
-    ${secao('Compras', `<span class="tiny muted">${f.compras.length}</span>`)}${listaOu(f.compras, linhaLanc, '<p class="small muted">Nenhuma compra nesta fatura.</p>')}
+    ${secao('Compras', `<button class="link" data-a="importarFatura" data-id="${k.id}" data-v="${f.ref}">Importar planilha</button>`)}${listaOu(f.compras, linhaLanc, '<p class="small muted">Nenhuma compra nesta fatura.</p>')}
     ${f.pagamentos.length ? secao('Pagamentos') + listaOu(f.pagamentos, linhaLanc) : ''}`;
 };
 

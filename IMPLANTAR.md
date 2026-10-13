@@ -109,6 +109,13 @@ Entre 22h e 7h nenhum aviso é enviado, a não ser os lembretes de compromisso. 
 
 ---
 
+## Atualizar da versão 3.2 para a 3.3 (importar fatura)
+
+1. No Apps Script, troque o conteúdo de `Nucleo`, `Dados`, `Api` e `Push` pelos novos.
+2. **Implantar › Gerenciar implantações › editar › Versão: Nova versão**.
+
+A coluna `Fatura` aparece sozinha na aba Lancamentos na primeira importação. Sem atualizar o servidor, as compras importadas são gravadas sem a fatura e voltam a ser calculadas pela data.
+
 ## Atualizar da versão 3.1 para a 3.2 (boleto na conta fixa)
 
 1. No Apps Script, troque o conteúdo de `Dados` e `Api` pelos novos.

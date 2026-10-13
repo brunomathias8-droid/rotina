@@ -55,7 +55,7 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 ### Regras de cálculo
 
 - **Competência:** a despesa conta no mês em que aconteceu. Compra parcelada: cada parcela no seu mês e na fatura certa.
-- **Fatura:** compra feita no dia do fechamento ou depois entra na fatura seguinte. A fatura leva o nome do mês do vencimento.
+- **Fatura:** compra feita no dia do fechamento ou depois entra na fatura seguinte. A fatura leva o nome do mês do vencimento. Compra importada de uma fatura fica na fatura de onde veio (coluna `Fatura` na planilha), mesmo que a data diga outra coisa.
 - **Pagar a fatura não é despesa nova:** as compras já foram contadas. O pagamento só tira o dinheiro da conta e quita o cartão.
 - **Investir não é despesa:** é dinheiro que sai da conta e entra no patrimônio. Conta como "futuro" na divisão da renda.
 - **Saldos:** cada conta, investimento ou dívida guarda o último valor informado ("Atualizar saldo") e soma os movimentos depois dele.
@@ -72,6 +72,20 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 - **Conversa:** comentários dentro do compromisso ("levar a carteirinha"), em vez de perder no WhatsApp. Também cria uma tarefa a partir dele.
 - **Combinado da semana:** domingo às 19h o app chama os dois para 15 minutos juntos: ver a semana, decidir quem leva e quem faz.
 - **No calendário do celular:** perfil › "Ver a agenda no calendário do celular" dá um endereço para assinar no iPhone, Outlook ou Google Agenda (só leitura, atualiza sozinho). Cada compromisso também baixa como `.ics`.
+
+## Importar a fatura do cartão
+
+Finanças › Cartões › **Importar fatura** (ou, dentro da fatura, "Importar planilha").
+
+- **Arquivos aceitos:** CSV, Excel (.xlsx, .xls), OFX ou linhas coladas do Excel ou do Google Planilhas. Serve o arquivo exportado pelo banco (Nubank, Inter, C6, Itaú…) ou a **planilha modelo** do app: Data, Descrição, Valor, Categoria, Parcela, Observação.
+- **Colunas pelo nome**, em qualquer ordem. Datas como 05/10/2026, 2026-10-05 ou 05/10 (o ano é deduzido); valores como 1.234,56 ou 1234.56. Compras negativas (alguns bancos) são invertidas.
+- **Revisão antes de lançar:** a fatura é sugerida pelas datas; dá para desmarcar linhas e trocar a categoria de cada uma. A categoria vem da planilha, de uma compra igual já lançada antes ou do nome da loja (Uber → Transporte, iFood → Restaurante e delivery…).
+- **Conferência:** digite o total que o banco mostra e o app diz se bate ou quanto falta.
+- **Sem duplicar:** o que já está no app (mesmo valor e parcela) fica de fora. Dá para importar a mesma fatura de novo.
+- **Parcelas:** "Loja 3/10" entra na fatura importada e, se quiser, as parcelas 4/10 a 10/10 já entram nas próximas faturas (e no limite usado). Na próxima importação, elas são reconhecidas.
+- **Pagamento da fatura** que vier no arquivo fica de fora (pague pelo botão Pagar). **Estorno** entra como crédito, abatendo a fatura e a categoria.
+- **Desfazer:** logo depois de importar, o aviso tem "Desfazer", que apaga tudo o que entrou.
+- PDF não dá para ler: no banco, procure "exportar" ou "baixar em CSV/Excel". O leitor de Excel é baixado da internet na primeira vez que você abre um .xlsx.
 
 ## Arquivos e anexos
 
@@ -106,6 +120,7 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 | `telas.js` | Telas Hoje, Tarefas e Compras |
 | `agenda.js` | Tela, painéis e ações da Agenda e da família |
 | `arquivos.js` | Tela Arquivos, anexos, envio e cópias no aparelho |
+| `importar.js` | Importar fatura do cartão (CSV, Excel, OFX, colado) |
 | `telas-fin.js` | Telas, painéis e ações de Finanças |
 | `paineis.js` | Painéis de tarefa, troca, item de compra e perfil |
 | `acoes.js` | O que cada toque faz, login e inicialização |

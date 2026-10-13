@@ -267,7 +267,7 @@ function contasAVencer_(hoje) {
       var total = 0, pago = 0;
       lancs.forEach(function (l) {
         if (l.cartao !== k.id) return;
-        if (l.tipo === 'saida' && l.forma === 'cartao' && N_faturaRef(k, l.dia) === ref) total += l.v;
+        if (l.tipo === 'saida' && l.forma === 'cartao' && N_faturaDe(k, l) === ref) total += l.v;
         if (l.tipo === 'fatura' && l.ref === ref) pago += l.v;
       });
       if (total - pago > 0) out.push({ nome: 'Fatura ' + k.nome, v: total - pago, venc: venc });

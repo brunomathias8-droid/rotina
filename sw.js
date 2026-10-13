@@ -1,6 +1,6 @@
 /* sw.js — faz o app abrir sem internet e mostra as notificações. Troque VERSAO a cada publicação para os aparelhos receberem a nova versão. */
-const VERSAO = 'rotina-v3.2.0';
-const CASCA = ['./', 'index.html', 'config.js', 'nucleo.js', 'base.js', 'financas.js', 'graficos.js', 'telas.js', 'paineis.js', 'acoes.js', 'telas-fin.js', 'agenda.js', 'arquivos.js', 'push.js',
+const VERSAO = 'rotina-v3.3.0';
+const CASCA = ['./', 'index.html', 'config.js', 'nucleo.js', 'base.js', 'financas.js', 'graficos.js', 'telas.js', 'paineis.js', 'acoes.js', 'telas-fin.js', 'agenda.js', 'arquivos.js', 'importar.js', 'push.js',
   'manifest.webmanifest', 'icones/icone.svg', 'icones/icone-192.png', 'icones/apple-touch-icon.png'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSAO).then(c => c.addAll(CASCA))); });
@@ -15,7 +15,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (/script\.google(usercontent)?\.com$/.test(url.hostname)) return;
   // Firebase e fontes: primeiro o cache
-  if (/fonts\.(googleapis|gstatic)\.com|www\.gstatic\.com/.test(url.hostname)) {
+  if (/fonts\.(googleapis|gstatic)\.com|www\.gstatic\.com|cdnjs\.cloudflare\.com/.test(url.hostname)) {
     e.respondWith(caches.open('rotina-libs').then(async c => {
       const hit = await c.match(req);
       if (hit) return hit;

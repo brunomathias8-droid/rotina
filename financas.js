@@ -111,7 +111,7 @@ function previsaoMes(ref) {
 const ehCompraCartao = (l, k) => l.tipo === 'saida' && l.forma === 'cartao' && l.cartao === k.id;
 /** A fatura "ref" (mês do vencimento) de um cartão. */
 function fatura(k, ref) {
-  const h = hoje(), compras = lancs().filter(l => ehCompraCartao(l, k) && N_faturaRef(k, l.dia) === ref).sort((a, b) => b.dia.localeCompare(a.dia));
+  const h = hoje(), compras = lancs().filter(l => ehCompraCartao(l, k) && N_faturaDe(k, l) === ref).sort((a, b) => b.dia.localeCompare(a.dia));
   const pagamentos = lancs().filter(l => l.tipo === 'fatura' && l.cartao === k.id && l.ref === ref);
   const total = compras.reduce((a, l) => a + l.v, 0), pago = pagamentos.reduce((a, l) => a + l.v, 0);
   const fecha = N_fechamento(k, ref), venc = N_vencimento(k, ref), resta = Math.max(0, total - pago);

@@ -1,7 +1,7 @@
 /* acoes.js — o que cada toque faz, login, roteamento e a inicialização do app. */
 'use strict';
 
-const VERSAO_APP = '3.2.0';
+const VERSAO_APP = '3.3.0';
 
 /* ============ desenho ============ */
 const ABAS_APP = [['hoje', 'Hoje', 'sun'], ['agenda', 'Agenda', 'cal'], ['tarefas', 'Tarefas', 'clip'], ['financas', 'Finanças', 'wallet'], ['compras', 'Compras', 'cart'], ['arquivos', 'Arquivos', 'pasta']];
@@ -126,7 +126,7 @@ const A = {
   f: d => {
     const s = S.sheet, f = s.f; if (!f) return;
     let v = d.v;
-    if (['alta', 'ativa', 'ativo', 'pago', 'diaTodo', 'fixo'].includes(d.k)) v = !!v;
+    if (['alta', 'ativa', 'ativo', 'pago', 'diaTodo', 'fixo', 'futuras'].includes(d.k)) v = !!v;
     if (d.k === 'forma' && s.k === 'lanc' && f.forma === v) return;
     f[d.k] = v;
     if (s.k === 'tarefa' && d.k === 'freq') { if (v === 'mes' && f.prox) f.dm = +f.prox.slice(8); recalcProx(s); }
@@ -292,10 +292,12 @@ function aoDigitar(e) {
   if (k === 'arqbusca') { S.arqBusca = t.value; const y = $('#main').scrollTop; render(); const b = $('#arqbusca'); if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(b.value.length, b.value.length); } $('#main').scrollTop = y; return; }
   if (!k || !S.sheet || !S.sheet.f) return;
   const s = S.sheet, f = s.f;
+  if (k.startsWith('impcat:')) { const r = s.rows && s.rows[+k.slice(7)]; if (r) r.cat = t.value; return; }
   if (k.startsWith('met:')) { f.met[k.slice(4)] = t.value; return; }
   if (k.startsWith('cnome:')) { f.cats[+k.slice(6)].nome = t.value; return; }
   if (k.startsWith('corc:')) { f.cats[+k.slice(5)].orcTxt = t.value; return; }
   f[k] = t.value;
+  if (s.k === 'importar' && k === 'total') atualizarConferencia();
   if (s.k === 'tarefa') {
     if (k === 'prox') s.proxManual = true;
     if (k === 'dm' || k === 'n') { recalcProx(s); const el = $('#f-prox'); if (el) el.value = f.prox; }

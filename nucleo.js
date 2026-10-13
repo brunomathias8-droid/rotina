@@ -105,6 +105,8 @@ function N_faturaRef(cartao, dia) {
   var mesFecha = dia >= N_diaDoMes(mes, fecha) ? N_somaMes(mes, 1) : mes;
   return vence > fecha ? mesFecha : N_somaMes(mesFecha, 1);
 }
+/** Fatura de uma compra no cartão: a que veio gravada (compra importada de uma fatura) ou a calculada pela data. */
+function N_faturaDe(cartao, l) { return /^\d{4}-\d{2}$/.test(l.fat || '') ? l.fat : N_faturaRef(cartao, l.dia); }
 /** Data de fechamento da fatura "ref". */
 function N_fechamento(cartao, ref) {
   var fecha = Number(cartao.fecha) || 1, vence = Number(cartao.vence) || 10;
