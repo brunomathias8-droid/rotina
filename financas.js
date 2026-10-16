@@ -42,11 +42,16 @@ const lancs = () => lista('lancamentos');
 const recorrentes = () => lista('contas').sort((a, b) => (a.vence || 0) - (b.vence || 0));
 
 /* ============================== o mês ============================== */
-/** Receitas, despesas e investimentos do mês "ref", com as despesas por categoria e por grupo do 50/30/20. */
+/** Mês em que o lançamento mexe no caixa (regime de caixa): compra no cartão conta no mês em que a fatura vence; o resto, na data. */
+function mesCaixa(l) {
+  const k = l.tipo === 'saida' && l.forma === 'cartao' && S.d.cartoes.get(l.cartao);
+  return k ? N_faturaDe(k, l) : N_mes(l.dia);
+}
+/** Receitas, despesas e investimentos do mês "ref" (regime de caixa), com as despesas por categoria e por grupo do 50/30/20. */
 function resumoMes(ref) {
   const r = { rec: 0, desp: 0, inv: 0, recPend: 0, despPend: 0, cartao: 0, porCat: {}, essencial: 0, livre: 0, n: 0 };
   lancs().forEach(l => {
-    if (N_mes(l.dia) !== ref) return;
+    if (mesCaixa(l) !== ref) return;
     r.n++;
     if (l.tipo === 'entrada') { r.rec += l.v; if (!l.pago) r.recPend += l.v; }
     else if (l.tipo === 'saida') {
@@ -65,7 +70,7 @@ function resumoMes(ref) {
 function mediaMeses(ref, n, fn) {
   let t = 0; for (let i = 1; i <= n; i++) t += fn(resumoMes(N_somaMes(ref, -i))); return Math.round(t / n);
 }
-const mesesComDados = () => [...new Set(lancs().map(l => N_mes(l.dia)))].sort();
+const mesesComDados = () => [...new Set(lancs().map(mesCaixa))].sort();
 
 /* ============================== contas fixas e agenda ============================== */
 /** Contas fixas e receitas recorrentes valendo no mês "ref", com o lançamento que pagou cada uma. */
@@ -266,8 +271,7 @@ function aportesMeta(m, ref) {
 }
 /** Valor medido de uma meta "reduzir" num mês. */
 function valorReduzir(m, ref) {
-  // Soma das faturas que vencem no mês (todos os cartões): é o valor que se vê no banco e que sai da conta.
-  // (Compras feitas no mês dariam outro número: a fatura de outubro é quase toda de compras de setembro.)
+  // Soma das faturas que vencem no mês (todos os cartões): é o valor que se vê no banco e que sai da conta (regime de caixa, como o resumo).
   if (m.metrica === 'cartao') return faturasDoMes(ref);
   if (m.metrica === 'cat') return resumoMes(ref).porCat[m.cat] || 0;
   const fim = ref === N_mes(hoje()) ? hoje() : N_diaDoMes(ref, 31);

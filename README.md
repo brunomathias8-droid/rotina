@@ -57,7 +57,7 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 
 ### Regras de cálculo
 
-- **Competência:** a despesa conta no mês em que aconteceu. Compra parcelada: cada parcela no seu mês e na fatura certa.
+- **Regime de caixa:** a despesa conta no mês em que o dinheiro sai. Compra no cartão conta no mês em que a fatura vence (a fatura de outubro, quase toda de compras de setembro, entra em outubro); as outras despesas, na data. Vale para o resumo, o extrato, o orçamento, a divisão da renda e as metas. Compra parcelada: cada parcela na sua fatura.
 - **Fatura:** compra feita no dia do fechamento ou depois entra na fatura seguinte. A fatura leva o nome do mês do vencimento. Compra importada de uma fatura fica na fatura de onde veio (coluna `Fatura` na planilha), mesmo que a data diga outra coisa.
 - **Pagar a fatura não é despesa nova:** as compras já foram contadas. O pagamento só tira o dinheiro da conta e quita o cartão.
 - **Investir não é despesa:** é dinheiro que sai da conta e entra no patrimônio. Conta como "futuro" na divisão da renda.

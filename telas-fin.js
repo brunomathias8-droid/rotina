@@ -79,7 +79,7 @@ function linhaLanc(l) {
 }
 function finExtrato() {
   const f = S.fExt, q = S.busca.trim().toLowerCase();
-  let ls = lancs().filter(l => N_mes(l.dia) === S.mes);
+  let ls = lancs().filter(l => mesCaixa(l) === S.mes);
   if (f === 'saida' || f === 'entrada') ls = ls.filter(l => l.tipo === f);
   if (f === 'cartao') ls = ls.filter(l => l.forma === 'cartao' || l.tipo === 'fatura');
   if (f === 'invest') ls = ls.filter(l => ['aporte', 'resgate', 'transf'].includes(l.tipo));
@@ -95,7 +95,9 @@ function finExtrato() {
     <div id="extlista" class="stack" style="gap:10px">${extratoLista(ls, dias, sai, ent)}</div>`;
 }
 function extratoLista(ls, dias, sai, ent) {
+  const doCartao = ls.some(l => l.tipo === 'saida' && l.forma === 'cartao' && N_mes(l.dia) !== S.mes);
   return `<p class="small muted">${ls.length} ${plu(ls.length, 'lançamento')}${sai ? ` · saídas ${reais(sai)}` : ''}${ent ? ` · entradas ${reais(ent)}` : ''}</p>
+    ${doCartao ? '<p class="tiny muted">Regime de caixa: as compras no cartão aparecem no mês em que a fatura vence, com a data da compra.</p>' : ''}
     ${dias.length ? dias.map(d => `<p class="dia-h">${rotuloDia(d) === fmtCurta(d) ? fmtData(d) : rotuloDia(d) + ' · ' + fmtCurta(d)}</p><div class="lst">${ls.filter(l => l.dia === d).map(linhaLanc).join('')}</div>`).join('') : `<div class="panel">${vazio('💸', 'Nenhum lançamento aqui.')}</div>`}`;
 }
 
