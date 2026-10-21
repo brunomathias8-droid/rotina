@@ -16,7 +16,7 @@ var PUSH_TIPOS = {
   contas: 'Contas e faturas vencendo (2 dias antes e no dia)',
   trocas: 'Pedidos de troca de tarefa',
   atribuidas: 'Tarefa passada para você ou concluída',
-  compras: 'Itens novos na lista de compras',
+  compras: 'Itens novos na lista de compras e em Para comprar',
   resumo: 'Resumo da semana e o combinado de domingo, às 19h',
   fechamento: 'Fechamento do mês e das metas, no dia 1'
 };
@@ -161,7 +161,8 @@ function avisosDeSalvar_(s, col, antes, depois) {
     var cache = CacheService.getScriptCache(), k = 'rotina_compras_' + s.pessoa;
     if (cache.get(k)) return;
     cache.put(k, '1', 600);
-    avisarOutros_(s.pessoa, 'compras', { titulo: nomeDe_(s.pessoa) + ' adicionou à lista de compras', corpo: depois.item + (depois.qtd ? ' (' + depois.qtd + ')' : ''), url: '#compras', tag: 'compras' });
+    var plano = depois.lista === 'plano';
+    avisarOutros_(s.pessoa, 'compras', { titulo: nomeDe_(s.pessoa) + (plano ? ' quer comprar' : ' adicionou à lista de compras'), corpo: depois.item + (depois.qtd ? ' (' + depois.qtd + ')' : '') + (plano && depois.orc ? ' · até R$ ' + (depois.orc / 100).toFixed(0) : ''), url: '#compras', tag: 'compras' });
   }
 }
 var DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];

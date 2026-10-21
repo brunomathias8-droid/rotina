@@ -2,7 +2,7 @@
    Carregado depois de acoes.js (acrescenta ações ao objeto A). As contas ficam em financas.js. */
 'use strict';
 
-const FIN_ABAS = [['resumo', 'Resumo'], ['extrato', 'Extrato'], ['contas', 'Contas'], ['cartoes', 'Cartões'], ['orcamento', 'Orçamento'], ['metas', 'Metas'], ['patrimonio', 'Patrimônio'], ['investimentos', 'Investimentos']];
+const FIN_ABAS = [['resumo', 'Resumo'], ['analises', 'Análises'], ['extrato', 'Extrato'], ['contas', 'Contas'], ['cartoes', 'Cartões'], ['orcamento', 'Orçamento'], ['metas', 'Metas'], ['patrimonio', 'Patrimônio'], ['investimentos', 'Investimentos']];
 const CORES_CARTAO = ['#5B3FA0', '#C62828', '#C8643C', '#2E6A57', '#1F2937', '#3B6EA5', '#B8860B'];
 const statusTag = st => st === 'pago' ? `<span class="tag good">${ic('check', 12, 2.6)} pago</span>` : st === 'vencido' ? `<span class="tag bad">${ic('alert', 12, 2.4)} vencido</span>` : '';
 const pctTxt = x => x == null ? '—' : Math.round(x * 100) + '%';
@@ -11,11 +11,11 @@ const opcConta = (vazio) => [...(vazio ? [['', vazio]] : []), ...contasBancarias
 /* ============================== tela ============================== */
 function scrFin() {
   const v = FIN_ABAS.some(a => a[0] === S.fv) ? S.fv : 'resumo';
-  const comMes = ['resumo', 'extrato', 'contas', 'orcamento'].includes(v), atual = N_mes(hoje());
+  const comMes = ['resumo', 'analises', 'extrato', 'contas', 'orcamento'].includes(v) && !(v === 'extrato' && S.fExt === 'revisar'), atual = N_mes(hoje());
   return `<div class="between"><h1 class="display">Finanças</h1><button class="btn sm" data-a="novoLanc" data-tipo="saida">${ic('plus', 16, 2.4)} Lançar</button></div>
-    <div class="chips scroll" role="tablist">${FIN_ABAS.map(([k, l]) => `<button class="chip ${v === k ? 'on' : ''}" role="tab" aria-selected="${v === k}" data-a="fv" data-v="${k}">${l}</button>`).join('')}</div>
+    ${avisoServidor()}<div class="chips scroll" role="tablist">${FIN_ABAS.map(([k, l]) => `<button class="chip ${v === k ? 'on' : ''}" role="tab" aria-selected="${v === k}" data-a="fv" data-v="${k}">${l}</button>`).join('')}</div>
     ${comMes ? `<div class="mesnav"><button class="x" data-a="mes" data-v="-1" aria-label="Mês anterior">${ic('chevl', 18)}</button><p class="h2" style="text-align:center;flex:1">${fmtMes(S.mes)}${S.mes !== atual ? ` <button class="link" data-a="mesHoje">voltar a ${MESES[+atual.slice(5) - 1]}</button>` : ''}</p><button class="x" data-a="mes" data-v="1" aria-label="Próximo mês">${ic('chev', 18)}</button></div>` : ''}
-    ${{ resumo: finResumo, extrato: finExtrato, contas: finContas, cartoes: finCartoes, orcamento: finOrcamento, metas: finMetas, patrimonio: finPatrimonio, investimentos: finInvestimentos }[v]()}`;
+    ${{ resumo: finResumo, analises: finAnalises, extrato: finExtrato, contas: finContas, cartoes: finCartoes, orcamento: finOrcamento, metas: finMetas, patrimonio: finPatrimonio, investimentos: finInvestimentos }[v]()}`;
 }
 
 /* ---------- Resumo ---------- */
@@ -44,8 +44,9 @@ function finResumo() {
     <div class="grid3"><button class="btn warm sm" data-a="novoLanc" data-tipo="saida">${ic('down', 15, 2.4)} Despesa</button><button class="btn sm" data-a="novoLanc" data-tipo="entrada">${ic('up', 15, 2.4)} Receita</button><button class="btn ghost sm" data-a="novoLanc" data-tipo="aporte">📈 Investir</button></div>
     ${faltam ? `<div class="panel soft"><div class="between"><p class="h3">Comece por aqui</p><span class="tiny muted">${passos.length - faltam} de ${passos.length}</span></div>
       <div class="stack" style="gap:2px">${passos.map(([t, ok, k, cl]) => `<button class="passo ${ok ? 'ok' : ''}" ${ok ? 'disabled' : `data-a="sheet" data-k="${k}"${cl ? ` data-v="${cl}"` : ''}`}><span class="ck sm ${ok ? 'on' : ''}">${ic('check', 14, 2.6)}</span><span>${t}</span>${ok ? '' : ic('chev', 16)}</button>`).join('')}</div></div>` : ''}
+    ${(n => n ? `<div class="note"><span>${ic('flag', 16)}</span><span style="flex:1">${n} ${plu(n, 'despesa está', 'despesas estão')} sem categoria certa: o orçamento e as análises ficam mais fiéis depois de revisar.</span><button class="link" data-a="irRevisar">Revisar</button></div>` : '')(ref === atual ? lancs().filter(aRevisar).length : 0)}
     ${alertas.length ? `<div class="stack">${alertas.slice(0, 6).map(a => `<div class="note ${a.nivel === 'bad' ? 'bad' : a.nivel === 'warn' ? 'warn' : ''}"><span>${ic(a.nivel === 'info' ? 'flag' : 'alert', 16)}</span><span style="flex:1">${esc(a.txt)}</span>${a.acao ? `<button class="link" data-a="pagar" data-k="${a.acao.k}" data-id="${a.acao.id}" data-ref="${a.acao.ref || ''}">Pagar</button>` : a.meta ? `<button class="link" data-a="sheet" data-k="meta" data-id="${a.meta}">Ver</button>` : ''}</div>`).join('')}</div>` : ''}
-    ${secao('Últimos 6 meses')}<div class="panel">${grafColunas(meses, [{ nome: 'Receitas', cor: VIZ.rec, vals: rs.map(x => x.rec) }, { nome: 'Despesas', cor: VIZ.desp, vals: rs.map(x => x.desp) }, { nome: 'Investido', cor: VIZ.inv, vals: rs.map(x => x.inv) }], 'Receitas, despesas e investimentos dos últimos 6 meses')}</div>
+    ${secao('Últimos 6 meses', `<button class="link" data-a="fv" data-v="analises">Análises</button>`)}<div class="panel">${grafColunas(meses, [{ nome: 'Receitas', cor: VIZ.rec, vals: rs.map(x => x.rec) }, { nome: 'Despesas', cor: VIZ.desp, vals: rs.map(x => x.desp) }, { nome: 'Investido', cor: VIZ.inv, vals: rs.map(x => x.inv) }], 'Receitas, despesas e investimentos dos últimos 6 meses')}</div>
     ${COL_MEIO}${secao('Para onde foi a renda', `<button class="link" data-a="fv" data-v="orcamento">Orçamento</button>`)}
     <div class="panel">${div.base ? grafPilha([{ nome: 'Essenciais', cor: VIZ.rec, v: div.essencial, pct: div.pct.essencial, meta: met.essencial }, { nome: 'Estilo de vida', cor: VIZ.desp, v: div.livre, pct: div.pct.livre, meta: met.livre }, { nome: 'Futuro (investimentos)', cor: VIZ.inv, v: div.futuro, pct: div.pct.futuro, meta: met.futuro }], div.base)
       + `<p class="tiny muted">Método ${met.essencial}/${met.livre}/${met.futuro}: até ${met.essencial}% da renda no essencial, ${met.livre}% no estilo de vida e pelo menos ${met.futuro}% para o futuro.</p>` : '<p class="small muted">Lance as receitas do mês para ver como a renda foi dividida.</p>'}</div>
@@ -55,7 +56,7 @@ function finResumo() {
 }
 
 /* ---------- Extrato ---------- */
-const FILTROS_EXT = [['tudo', 'Tudo'], ['saida', 'Despesas'], ['entrada', 'Receitas'], ['cartao', 'Cartão'], ['invest', 'Investimentos'], ['pendente', 'A pagar']];
+const FILTROS_EXT = [['tudo', 'Tudo'], ['saida', 'Despesas'], ['entrada', 'Receitas'], ['cartao', 'Cartão'], ['invest', 'Investimentos'], ['pendente', 'A pagar'], ['revisar', 'Revisar']];
 function iconeLanc(l) { return l.tipo === 'fatura' ? '💳' : l.tipo === 'aporte' || l.tipo === 'resgate' ? '📈' : l.tipo === 'transf' ? '🔁' : categoria(l.cat).ic; }
 function tituloLanc(l) {
   if (l.desc) return l.desc;
@@ -77,20 +78,39 @@ function linhaLanc(l) {
   return `<button class="it${l.pend ? ' pend' : ''}" data-a="sheet" data-k="lanc" data-id="${l.id}"><span class="em-tile">${esc(iconeLanc(l))}</span>
     <span class="main"><span class="t">${esc(tituloLanc(l))}</span><span class="s"><span>${av(l.por, 15)} ${partes.map(esc).join(' · ')}</span>${pend ? `<span class="tag warn">${ent ? 'a receber' : 'a pagar'}</span>` : ''}</span></span>${valor}</button>`;
 }
+/* Fila Revisar: despesas sem categoria, agrupadas por loja. Um toque aplica a categoria a todas e ensina as próximas importações. */
+function finRevisar() {
+  const fila = filaRevisar(), dups = possiveisDuplicados(), cats = categorias('saida'), n = fila.reduce((a, g) => a + g.ls.length, 0);
+  const grupoRev = g => {
+    const sug = g.sug && categoria(g.sug), aberto = S.revAberto === g.k, meses = [...new Set(g.ls.map(l => mesCurto(N_mes(l.dia))))].slice(0, 4).join(', ');
+    return `<div class="panel rev"><div class="between" style="align-items:flex-start;gap:10px"><span class="stack" style="gap:2px;min-width:0"><b class="t">${esc(g.nome)}</b><span class="tiny muted">${g.ls.length} ${plu(g.ls.length, 'lançamento')} · ${esc(meses)}${aConfirmar(g.ls[0]) ? ' · estava "a confirmar"' : ''}</span></span>
+      <span class="v">${reais(g.v)}</span></div>
+      ${aberto ? '' : `<div class="hrow" style="gap:8px;flex-wrap:wrap">${sug ? `<button class="btn sm" data-a="revOk" data-v="${esc(g.k)}" data-cat="${esc(g.sug)}">${ic('check', 14, 2.6)} ${esc(sug.ic)} ${esc(sug.nome)}</button>` : ''}<button class="btn ghost sm" data-a="revVer" data-v="${esc(g.k)}">${sug ? 'Outra' : 'Escolher categoria'}</button></div>`}
+      ${aberto ? `<div class="chips">${cats.filter(c => c.id !== 'outros').map(c => `<button class="chip sm" data-a="revOk" data-v="${esc(g.k)}" data-cat="${esc(c.id)}">${esc(c.ic)} ${esc(c.nome)}</button>`).join('')}<button class="chip sm" data-a="revOk" data-v="${esc(g.k)}" data-cat="outros">📦 É outros mesmo</button><button class="chip sm" data-a="revVer" data-v="${esc(g.k)}">Fechar</button></div>` : ''}</div>`;
+  };
+  return `<p class="small muted">${n ? `${n} ${plu(n, 'despesa')} sem categoria certa, de ${fila.length} ${plu(fila.length, 'loja')}. A categoria escolhida vale para todas da loja e para as próximas faturas importadas.` : 'Tudo categorizado. 🎉'}</p>
+    ${fila.map(grupoRev).join('')}
+    ${dups.length ? secao('Possíveis repetidos', `<span class="tiny muted">${dups.length}</span>`) + `<p class="tiny muted">Mesmo dia, valor e loja. Pode ser uma fatura importada duas vezes, ou duas compras iguais de verdade.</p>` + dups.slice(0, 20).map(d => `<div class="panel rev"><div class="lst">${d.ls.map(linhaLanc).join('')}</div>
+      <div class="grid2"><button class="btn ghost sm" data-a="dupOk" data-v="${esc(d.k)}">Não é repetido</button><button class="btn danger sm" data-a="dupTirar" data-id="${d.ls[d.ls.length - 1].id}">${ic('trash', 14)} Excluir um</button></div></div>`).join('') : ''}`;
+}
+const rotuloExt = (k, l) => k === 'revisar' ? (n => n ? `${l} <span class="tag warn" style="margin-left:2px">${n}</span>` : l)(lancs().filter(aRevisar).length) : l;
 function finExtrato() {
   const f = S.fExt, q = S.busca.trim().toLowerCase();
-  let ls = lancs().filter(l => mesCaixa(l) === S.mes);
+  if (f === 'revisar') return `<div class="chips scroll">${FILTROS_EXT.map(([k, l]) => `<button class="chip ${f === k ? 'on' : ''}" data-a="fext" data-v="${k}">${rotuloExt(k, l)}</button>`).join('')}</div>${finRevisar()}`;
+  const todos = !!(S.buscaTodos && q);
+  let ls = lancs().filter(l => todos || mesCaixa(l) === S.mes);
   if (f === 'saida' || f === 'entrada') ls = ls.filter(l => l.tipo === f);
   if (f === 'cartao') ls = ls.filter(l => l.forma === 'cartao' || l.tipo === 'fatura');
   if (f === 'invest') ls = ls.filter(l => ['aporte', 'resgate', 'transf'].includes(l.tipo));
   if (f === 'pendente') ls = ls.filter(l => !l.pago && l.forma !== 'cartao' && (l.tipo === 'saida' || l.tipo === 'entrada'));
   if (S.fCat) ls = ls.filter(l => l.cat === S.fCat);
-  if (q) ls = ls.filter(l => (tituloLanc(l) + ' ' + categoria(l.cat).nome + ' ' + (l.nota || '')).toLowerCase().includes(q));
+  if (q) ls = ls.filter(l => (tituloLanc(l) + ' ' + categoria(l.cat).nome + ' ' + (l.nota || '') + ' ' + (l.proj || '') + ' ' + (l.reemb || '')).toLowerCase().includes(q));
   ls.sort((a, b) => b.dia.localeCompare(a.dia) || String(b.em).localeCompare(String(a.em)));
   const sai = ls.filter(l => l.tipo === 'saida').reduce((a, l) => a + l.v, 0), ent = ls.filter(l => l.tipo === 'entrada').reduce((a, l) => a + l.v, 0);
   const dias = [...new Set(ls.map(l => l.dia))];
-  return `<div class="chips scroll">${FILTROS_EXT.map(([k, l]) => `<button class="chip ${f === k ? 'on' : ''}" data-a="fext" data-v="${k}">${l}</button>`).join('')}</div>
+  return `<div class="chips scroll">${FILTROS_EXT.map(([k, l]) => `<button class="chip ${f === k ? 'on' : ''}" data-a="fext" data-v="${k}">${rotuloExt(k, l)}</button>`).join('')}</div>
     <input class="in" id="busca" data-i="busca" value="${esc(S.busca)}" placeholder="Buscar (ex.: farmácia, Netflix)" autocomplete="off" enterkeyhint="search">
+    ${q ? `<button class="chip sm ${todos ? 'on' : ''}" data-a="buscaTodos" style="align-self:flex-start">${todos ? ic('check', 12, 2.6) + ' ' : ''}Buscar em todos os meses</button>` : ''}
     ${S.fCat ? `<button class="chip on" data-a="fcat" data-v="${esc(S.fCat)}" style="align-self:flex-start">${esc(categoria(S.fCat).ic)} ${esc(categoria(S.fCat).nome)} ${ic('x', 12, 2.6)}</button>` : ''}
     <div id="extlista" class="stack" style="gap:10px">${extratoLista(ls, dias, sai, ent)}</div>`;
 }
@@ -127,7 +147,7 @@ function finContas() {
     ${receber.length ? secao('A receber') + listaOu(receber, linhaAgenda) : ''}
     ${ok.length ? `<details><summary>${secao('Pagas e recebidas', `<span class="tiny muted">${ok.length}</span>`)}</summary>${listaOu(ok, linhaAgenda)}</details>` : ''}
     ${COL_MEIO}${secao('Contas fixas e receitas', `<button class="link" data-a="sheet" data-k="conta">+ Nova</button>`)}
-    ${listaOu(recs, c => `<button class="it${c.ativa === false ? ' feito' : ''}" data-a="sheet" data-k="conta" data-id="${c.id}"><span class="em-tile">${esc(c.tipo === 'aporte' ? '📈' : categoria(c.cat).ic)}</span><span class="main"><span class="t">${esc(c.nome)}</span><span class="s">${c.tipo === 'entrada' ? 'recebe' : c.tipo === 'aporte' ? 'investe' : 'vence'} todo dia ${c.vence || 1}${c.forma ? ' · ' + esc(c.forma === 'cartao' && S.d.cartoes.get(c.cartao) ? S.d.cartoes.get(c.cartao).nome : formaNome(c.forma)) : ''}${c.fim ? ' · até ' + fmtMesCurto(c.fim + '-01') : ''}${c.ativa === false ? ' · pausada' : ''}</span></span><span class="v ${c.tipo === 'entrada' ? 'c-good' : ''}">${reais(c.v)}</span></button>`,
+    ${listaOu(recs, c => `<button class="it${c.ativa === false ? ' feito' : ''}" data-a="sheet" data-k="conta" data-id="${c.id}"><span class="em-tile">${esc(c.tipo === 'aporte' ? '📈' : categoria(c.cat).ic)}</span><span class="main"><span class="t">${esc(c.nome)}</span><span class="s">${c.tipo === 'entrada' ? 'recebe' : c.tipo === 'aporte' ? 'investe' : 'vence'} todo dia ${c.vence || 1}${c.forma ? ' · ' + esc(c.forma === 'cartao' && S.d.cartoes.get(c.cartao) ? S.d.cartoes.get(c.cartao).nome : formaNome(c.forma)) : ''}${c.fim ? ' · até ' + fmtMesCurto(c.fim + '-01') : ''}${contaAuto(c) ? ' · automático' : ''}${c.ativa === false ? ' · pausada' : ''}</span></span><span class="v ${c.tipo === 'entrada' ? 'c-good' : ''}">${reais(c.v)}</span></button>`,
       `<div class="panel">${vazio('🧾', 'Salário, aluguel, luz, internet, escola, assinaturas… Cadastre uma vez e o app lembra todo mês.')}<button class="btn block" data-a="sheet" data-k="conta">Cadastrar conta fixa</button></div>`)}${COL_FIM}`;
 }
 
@@ -253,13 +273,13 @@ const valorInp = (k, val, extra = '') => `<input class="in big" id="f-${k}" data
 function formLanc(l, pre) {
   const conta1 = (contasBancarias()[0] || {}).id || '', cart1 = lsGet('ultimoCartao') && S.d.cartoes.get(lsGet('ultimoCartao')) ? lsGet('ultimoCartao') : (cartoes()[0] || {}).id || '';
   if (l) return { tipo: l.tipo, v: reaisInput(l.v), desc: l.desc || '', cat: l.cat || '', dia: l.dia, forma: l.forma || '', carteira: l.carteira || '', cartao: l.cartao || '', parcelas: 1,
-    pago: l.pago !== false, destino: l.destino || '', meta: l.meta || '', conta: l.conta || '', ref: l.ref || '', nota: l.nota || '' };
+    pago: l.pago !== false, destino: l.destino || '', meta: l.meta || '', conta: l.conta || '', ref: l.ref || '', nota: l.nota || '', proj: l.proj || '', reemb: l.reemb || '', reembOk: !!l.reembOk };
   pre = pre || {};
   const tipo = pre.tipo || 'saida', dia = pre.dia || hoje(), cats = categorias(tipo === 'entrada' ? 'entrada' : 'saida');
   const forma = pre.forma || (pre.cartao ? 'cartao' : lsGet('ultimaForma') || 'pix');
   return { tipo, v: pre.v ? reaisInput(pre.v) : '', desc: pre.desc || '', cat: pre.cat || (tipo === 'saida' || tipo === 'entrada' ? (cats[0] || {}).id || '' : ''), dia,
     forma: forma === 'cartao' && !cartoes().length ? 'pix' : forma, carteira: pre.carteira || conta1, cartao: pre.cartao || cart1, parcelas: 1, pago: pre.pago != null ? pre.pago : dia <= hoje(),
-    destino: pre.destino || (tipo === 'aporte' || tipo === 'resgate' ? (investimentos()[0] || {}).id || '' : ''), meta: pre.meta || '', conta: pre.conta || '', ref: pre.ref || '', nota: '' };
+    destino: pre.destino || (tipo === 'aporte' || tipo === 'resgate' ? (investimentos()[0] || {}).id || '' : ''), meta: pre.meta || '', conta: pre.conta || '', ref: pre.ref || '', nota: pre.nota || '', compra: pre.compra || '', proj: pre.proj || '', reemb: '', reembOk: false };
 }
 SH.lanc = s => {
   const l = s.id && S.d.lancamentos.get(s.id);
@@ -283,6 +303,11 @@ SH.lanc = s => {
     } else {
       if (contas.length > 1) corpo += grupo('Saiu de qual conta', escolha('carteira', f.carteira, contas));
     }
+    if (CAT_VAGA(f.cat) || !f.cat) { const sug = sugerirCat(f.desc, l && l.id); if (sug && sug !== f.cat) corpo += `<button class="chip sm" data-a="f" data-k="cat" data-v="${esc(sug)}" style="align-self:flex-start">Sugestão: ${esc(categoria(sug).ic)} ${esc(categoria(sug).nome)}</button>`; }
+    corpo += `<details ${f.proj || f.reemb ? 'open' : ''}><summary class="small muted">Viagem, projeto ou reembolso</summary><div class="stack" style="margin-top:8px">
+      ${campo('Viagem ou projeto (opcional)', inp('proj', f.proj, 'maxlength="40" placeholder="Ex.: Bruxelas 2026, Reforma da sala" autocomplete="off" list="dl-proj"'))}<datalist id="dl-proj">${projetos().map(x => `<option value="${esc(x)}">`).join('')}</datalist>
+      ${campo('Alguém vai devolver? (opcional)', inp('reemb', f.reemb, 'maxlength="40" placeholder="Nome de quem deve" autocomplete="off" list="dl-reemb"'))}<datalist id="dl-reemb">${nomesReembolso().map(x => `<option value="${esc(x)}">`).join('')}</datalist>
+      ${String(f.reemb || '').trim() ? toggle('reembOk', f.reembOk, 'Já devolveu', 'Enquanto não devolver, aparece em Análises › A receber') : ''}</div></details>`;
     if (f.cat === 'dividas' && passivos.length) corpo += grupo('Abate de qual dívida (opcional)', escolha('destino', f.destino, [['', 'Nenhuma'], ...passivos.map(p => [p.id, esc(p.nome)])]));
   } else if (t === 'entrada') {
     corpo += campo('Descrição', inp('desc', f.desc, 'maxlength="120" placeholder="Ex.: salário de outubro" autocomplete="off"'));
@@ -311,6 +336,7 @@ SH.lanc = s => {
     ${valorInp('v', f.v)}
     ${(t === 'saida' && f.forma !== 'cartao') || t === 'entrada' || t === 'fatura' ? `<div class="panel soft pagobox">${toggle('pago', f.pago, t === 'entrada' ? 'Já recebeu' : t === 'fatura' ? 'Já foi paga' : 'Já foi pago', f.pago ? 'Desligue se ainda não saiu da conta' : `Fica em "Contas › ${t === 'entrada' ? 'A receber' : 'A pagar'}" até você marcar`)}</div>` : ''}
     ${corpo}
+    ${f.compra && S.d.compras.get(f.compra) ? `<div class="note"><span>🛍️ Ao salvar, <b>${esc(S.d.compras.get(f.compra).item)}</b> sai de Para comprar.</span></div>` : ''}
     ${conta ? `<div class="note"><span>${conta.tipo === 'entrada' ? 'Recebimento' : 'Pagamento'} de <b>${esc(conta.nome)}</b> referente a ${fmtMes(f.ref).toLowerCase()}.</span></div>` : ''}
     <div class="grid2">${campo('Data', inp('dia', f.dia, 'type="date"'))}<span></span></div>
     <details ${f.nota ? 'open' : ''}><summary class="small muted">Observação</summary>${area('nota', f.nota, 'maxlength="300" style="min-height:60px"')}</details>
@@ -356,8 +382,8 @@ SH.cartao = s => {
 
 /* ---------- conta fixa e receita recorrente ---------- */
 function formConta(c) {
-  if (c) return { tipo: c.tipo || 'saida', nome: c.nome, v: reaisInput(c.v), vence: c.vence || 10, cat: c.cat || '', forma: c.forma || '', cartao: c.cartao || '', carteira: c.carteira || '', destino: c.destino || '', meta: c.meta || '', ativa: c.ativa !== false, fim: c.fim || '', nota: c.nota || '' };
-  return { tipo: 'saida', nome: '', v: '', vence: 10, cat: 'contas', forma: 'boleto', cartao: (cartoes()[0] || {}).id || '', carteira: (contasBancarias()[0] || {}).id || '', destino: (investimentos()[0] || {}).id || '', meta: '', ativa: true, fim: '', nota: '' };
+  if (c) return { tipo: c.tipo || 'saida', nome: c.nome, v: reaisInput(c.v), vence: c.vence || 10, cat: c.cat || '', forma: c.forma || '', cartao: c.cartao || '', carteira: c.carteira || '', destino: c.destino || '', meta: c.meta || '', ativa: c.ativa !== false, fim: c.fim || '', nota: c.nota || '', auto: !!c.auto, autoDesde: c.autoDesde || '' };
+  return { tipo: 'saida', nome: '', v: '', vence: 10, cat: 'contas', forma: 'boleto', cartao: (cartoes()[0] || {}).id || '', carteira: (contasBancarias()[0] || {}).id || '', destino: (investimentos()[0] || {}).id || '', meta: '', ativa: true, fim: '', nota: '', auto: false, autoDesde: '' };
 }
 SH.conta = s => {
   const c = s.id && S.d.contas.get(s.id);
@@ -374,6 +400,7 @@ SH.conta = s => {
     ${t === 'aporte' ? (investimentos().length ? grupo('Investimento', escolha('destino', f.destino, investimentos().map(p => [p.id, esc(p.nome)]))) : '<div class="note warn"><span>Cadastre o investimento em Patrimônio.</span></div>') : ''}
     ${t === 'aporte' && metas().length ? grupo('Meta (opcional)', escolha('meta', f.meta, [['', 'Nenhuma'], ...metas().map(m => [m.id, esc(m.nome)])])) : ''}
     ${f.forma !== 'cartao' && contasBancarias().length > 1 ? grupo(t === 'entrada' ? 'Entra na conta' : 'Sai da conta', escolha('carteira', f.carteira, opcConta())) : ''}
+    ${t === 'entrada' || (t === 'saida' && f.forma === 'auto') ? toggle('auto', f.auto, t === 'entrada' ? 'Cai sozinho no dia' : 'Lançar sozinho no dia', t === 'entrada' ? 'No dia, o app marca como recebido. Se não cair, toque em "Não foi recebido".' : 'Débito automático: no dia, o app marca como pago.') : ''}
     ${campo('Termina em (opcional)', inp('fim', f.fim, 'type="month" placeholder="AAAA-MM"'))}
     ${c ? toggle('ativa', f.ativa, 'Ativa', 'Desligue se a conta acabou') : ''}
     ${campo('Observação', area('nota', f.nota, 'maxlength="300" placeholder="Código de cliente, débito automático…" style="min-height:60px"'))}
@@ -532,6 +559,8 @@ SH.orcamento = s => {
 };
 
 /* ============================== ações ============================== */
+/* Para comprar › Comprei: o item fica como comprado, ligado ao lançamento */
+function marcarComprado(id, lanc) { if (S.d.compras.get(id)) enfileirar('salvar', { col: 'compras', item: { id, comprado: true, compradoPor: S.eu, compradoEm: new Date().toISOString(), lanc } }); }
 function lancarLote(itens) { if (itens.length === 1) enfileirar('salvar', { col: 'lancamentos', item: itens[0] }); else enfileirar('lote', { col: 'lancamentos', itens }); }
 Object.assign(A, {
   fv: d => { S.fv = d.v; if (d.v !== 'extrato') S.fCat = null; esconderDica(); render(false); },
@@ -539,6 +568,17 @@ Object.assign(A, {
   mesHoje: () => { S.mes = N_mes(hoje()); render(); },
   fcat: d => { S.fCat = S.fCat === d.v ? null : d.v; S.fv = 'extrato'; S.fExt = 'tudo'; render(false); },
   fext: d => { S.fExt = d.v; render(); },
+  buscaTodos: () => { S.buscaTodos = !S.buscaTodos; render(); },
+  irRevisar: () => { S.fv = 'extrato'; S.fExt = 'revisar'; S.fCat = null; render(false); },
+  revVer: d => { S.revAberto = S.revAberto === d.v ? null : d.v; render(); },
+  revOk: d => {
+    const g = filaRevisar().find(x => x.k === d.v); if (!g) return;
+    S.revAberto = null;
+    const n = categorizarLoja(g.ls[0].desc, d.cat, lojaDe(g.ls[0].desc) ? null : g.ls[0].id), c = categoria(d.cat);
+    toast(`${n} ${plu(n, 'lançamento')} de ${g.nome} em ${c.ic} ${c.nome}.`);
+  },
+  dupOk: d => { let l = []; try { l = JSON.parse(lsGet('dupOk') || '[]'); } catch (e) { /* vazio */ } lsSet('dupOk', JSON.stringify([...l, d.v].slice(-300))); render(); },
+  dupTirar: d => { const l = S.d.lancamentos.get(d.id); if (!l || !confirm(`Excluir este lançamento repetido (${tituloLanc(l)}, ${reais(l.v)})?`)) return; enfileirar('excluir', { col: 'lancamentos', id: l.id }); toast('Excluído.'); },
   fl: d => { const f = S.sheet.f, l = f[d.k] || []; f[d.k] = l.includes(d.v) ? l.filter(x => x !== d.v) : [...l, d.v]; renderSheet(); },
   fatMes: d => { S.fatMes = N_somaMes(S.fatMes || refFaturaDaVez(), +d.v); render(); },
   fatMesIr: d => { S.fatMes = d.v === refFaturaDaVez() ? null : d.v; render(); },
@@ -598,18 +638,29 @@ Object.assign(A, {
       cat: t === 'saida' || t === 'entrada' ? f.cat : '', forma: t === 'saida' ? f.forma : '', cartao: cartao || t === 'fatura' ? f.cartao : '',
       carteira: cartao ? '' : f.carteira || '', pago: cartao || ['aporte', 'resgate', 'transf'].includes(t) ? true : !!f.pago,
       destino: ['aporte', 'resgate', 'transf'].includes(t) || (t === 'saida' && f.cat === 'dividas') ? f.destino || '' : '', meta: t === 'aporte' || t === 'resgate' ? f.meta || '' : '',
-      conta: f.conta || '', ref: f.conta || t === 'fatura' ? f.ref : '' };
+      conta: f.conta || '', ref: f.conta || t === 'fatura' ? f.ref : '',
+      proj: t === 'saida' ? String(f.proj || '').trim() : '', reemb: t === 'saida' ? String(f.reemb || '').trim() : '', reembOk: t === 'saida' && String(f.reemb || '').trim() ? !!f.reembOk : false };
+    // Trocou a categoria de uma loja: a nota "categoria a confirmar" sai e o app aprende para as próximas
+    const trocouCat = t === 'saida' && antigo && antigo.cat !== base.cat && !CAT_VAGA(base.cat);
+    if (trocouCat && aConfirmar(antigo)) base.nota = base.nota.replace(/;?\s*categoria a confirmar/i, '').trim();
     const n = Math.max(1, Math.min(72, parseInt(f.parcelas, 10) || 1));
     if (cartao) lsSet('ultimoCartao', f.cartao);
     if (t === 'saida') lsSet('ultimaForma', f.forma);
     closeSheet();
     if (!antigo && cartao && n > 1) {
       const grupo = uidNovo(), datas = N_datasParcelas(f.dia, n), vals = N_valoresParcelas(v, n);
-      lancarLote(datas.map((d, i) => ({ ...base, id: uidNovo(), dia: d, v: vals[i], parc: `${i + 1}/${n}`, grupo })));
+      const ls = datas.map((d, i) => ({ ...base, id: uidNovo(), dia: d, v: vals[i], parc: `${i + 1}/${n}`, grupo }));
+      lancarLote(ls); if (f.compra) marcarComprado(f.compra, ls[0].id);
       toast(`Compra em ${n}x de ${reais(vals[1])} lançada.`);
     } else {
-      lancarLote([{ ...base, id: s.id || uidNovo() }]);
+      const novo = { ...base, id: s.id || uidNovo() };
+      lancarLote([novo]); if (f.compra && !antigo) marcarComprado(f.compra, novo.id);
       toast(antigo ? 'Lançamento atualizado.' : `${{ saida: 'Despesa de X lançada', entrada: 'Receita de X lançada', aporte: 'Aporte de X registrado', resgate: 'Resgate de X registrado', transf: 'Transferência de X registrada', fatura: 'Pagamento de X registrado' }[t].replace('X', reais(v))}.`);
+    }
+    if (trocouCat) {
+      const k = lojaDe(base.desc), outros = k ? lancs().filter(l => l.id !== antigo.id && aRevisar(l) && lojaDe(l.desc) === k).length : 0;
+      if (outros) toast(`Usar ${categoria(base.cat).nome} nas outras ${outros} de ${base.desc}?`, 7000, { rot: 'Aplicar', fn: () => categorizarLoja(base.desc, base.cat) });
+      else if (k && regrasCat()[k] !== base.cat) enfileirar('casa', { regras: { [k]: base.cat } });
     }
     if (S.tab === 'financas' && N_mes(f.dia) !== S.mes && S.fv !== 'cartoes' && S.fv !== 'patrimonio' && S.fv !== 'metas') { S.mes = N_mes(f.dia); render(false); }
   },
@@ -638,7 +689,10 @@ Object.assign(A, {
     const item = { id: s.id || uidNovo(), tipo: t, nome, v: lerReais(f.v), vence: clamp(parseInt(f.vence, 10) || 1, 1, 31), cat: t === 'aporte' ? '' : f.cat || (categorias(t)[0] || {}).id || '',
       forma: t === 'saida' ? f.forma : '', cartao: t === 'saida' && f.forma === 'cartao' ? f.cartao : '', carteira: f.carteira || '', destino: t === 'aporte' ? f.destino : '', meta: t === 'aporte' ? f.meta || '' : '',
       ativa: s.id ? !!f.ativa : true, fim: /^\d{4}-\d{2}$/.test(f.fim) ? f.fim : '', nota: String(f.nota || '').trim() };
-    closeSheet(); enfileirar('salvar', { col: 'contas', item });
+    item.auto = !!f.auto && (t === 'entrada' || (t === 'saida' && item.forma === 'auto'));
+    // A partir de quando lançar sozinho: do mês em que ligou (não preenche o passado)
+    item.autoDesde = item.auto ? (f.autoDesde || N_mes(hoje())) : '';
+    closeSheet(); enfileirar('salvar', { col: 'contas', item }); if (item.auto) lancarAutomaticos();
     toast(s.id ? 'Atualizado.' : `${nome} cadastrado. Aparece em Contas todo mês, dia ${item.vence}.`);
   },
   saldoPat: () => { S.sheet.f = { modo: 'saldo', saldo: '', dia: hoje() }; renderSheet(); setTimeout(() => focar('f-saldo'), 100); },

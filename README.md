@@ -40,14 +40,15 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 | Tarefas | Tudo o que precisa ser feito, numa lista só: o que é de uma vez (renovar o passaporte) e o que se repete (lavar a louça), com responsável ou revezamento, prazo, passos, troca e placar de esforço |
 | Finanças | Oito abas: Resumo, Extrato, Contas, Cartões, Orçamento, Metas, Patrimônio e Investimentos (detalhes abaixo) |
 | Arquivos | Documentos da família num lugar só: carteirinha do plano, receitas, RG das crianças, contratos, manuais. Busca, categorias, validade com aviso e os importantes guardados no aparelho para abrir sem internet. No celular, fica no ícone de pasta no topo |
-| Compras | Lista compartilhada organizada pelos corredores do mercado. "2 leite, pão, café" vira três itens. Depois: lançar o gasto e limpar |
+| Compras | **Para comprar**: o que a família quer comprar, com opções (link e preço), orçamento e prazo; "Comprei" vira lançamento. **Mercado**: lista compartilhada pelos corredores do mercado ("2 leite, pão, café" vira três itens), itens da casa que voltam quando acabam, lançar o gasto e limpar |
 
 ## Finanças
 
 | Aba | O que tem |
 |---|---|
 | Resumo | Saldo do mês, receitas, despesas e investido, taxa de poupança, saldo previsto até o fim do mês, alertas, gráfico dos últimos 6 meses, divisão da renda (50/30/20), maiores gastos, metas e patrimônio |
-| Extrato | Todos os lançamentos do mês com filtros (despesas, receitas, cartão, investimentos, a pagar) e busca |
+| Análises | Futuro comprometido (faturas já compradas nos próximos 12 meses e quando cada parcelamento acaba), próximos 6 meses (o que entra, o que sai e o saldo acumulado), o mês contra a média por categoria, por cartão, gastos que se repetem (assinaturas, seguros, anuidade, com o custo por ano), viagens e projetos, e o que outras pessoas devem devolver |
+| Extrato | Todos os lançamentos do mês com filtros (despesas, receitas, cartão, investimentos, a pagar) e busca (no mês ou em todos os meses). **Revisar**: despesas sem categoria certa agrupadas por loja, com sugestão; um toque categoriza a loja inteira e as próximas faturas já vêm certas. Mostra também possíveis lançamentos repetidos |
 | Contas | O que falta pagar e receber no mês (contas fixas, boletos agendados e faturas), o que já foi pago e o cadastro das contas fixas e receitas recorrentes |
 | Cartões | Fatura atual de cada cartão (aberta, fechada, paga ou vencida), limite usado e disponível, parcelas já comprometidas nos próximos meses, pagar fatura |
 | Orçamento | Limite por categoria com média dos últimos 3 meses, alertas aos 85% e ao passar, e a divisão da renda entre essenciais, estilo de vida e futuro |
@@ -66,6 +67,10 @@ Os dados são os mesmos em todos os aparelhos: cada um entra com o próprio nome
 - **FGC:** garante até R$ 250 mil por CPF por instituição em CDB, LCI, LCA, RDB, poupança e conta (o app considera Renda fixa e Reserva, menos Tesouro). Fundos, FIIs, ações, exterior, previdência e cripto não têm FGC.
 - **Patrimônio** = só os investimentos. Conta corrente, saldo do mês, bens, dívidas e cartões ficam de fora. Ele muda com rendimentos (saldo atualizado), renda passiva (receita na categoria Rendimentos que entra num investimento), aportes e resgates.
 - **Reserva de emergência sugerida** = 6 meses das despesas essenciais (média dos últimos 3 meses).
+- **Receita que cai sozinha:** numa receita fixa (salário, pró-labore) ou numa conta em débito automático, ligue "Cai sozinho no dia". No dia do vencimento o app lança como recebido (ou pago), a partir do mês em que a opção foi ligada. Se não cair, "Não foi recebido" desfaz. Os dois aparelhos geram o mesmo lançamento, sem duplicar.
+- **Categoria por loja:** a categoria escolhida para uma loja vira regra da casa (aba Config, `regras`). Na importação vale, nesta ordem: a categoria que veio na planilha, a regra da loja, a categoria mais usada para a mesma loja, as palavras conhecidas (supermercado, Uber, farmácia…). "PG *LOJA", "LOJA 03/10" e "LOJA" são a mesma loja.
+- **Viagem, projeto e reembolso:** no lançamento, "Viagem, projeto ou reembolso" junta gastos de vários cartões e meses (ex.: Bruxelas 2026) e marca quem vai devolver. Enquanto não devolver, aparece em Análises › A receber.
+- **Mês contra a média:** compara com a média dos até 3 meses anteriores que tiveram despesas (meses vazios, de antes do app, não puxam a média para baixo).
 
 ## Agenda
 
@@ -110,7 +115,8 @@ Finanças › Cartões › **Importar fatura** (ou, dentro da fatura, "Importar 
 - **Esforço (leve 1, médio 2, pesado 3):** o placar soma pontos, não tarefas. Lavar o banheiro não vale o mesmo que regar as plantas. O objetivo é enxergar a divisão, inspirado no método *Fair Play*.
 - **Pular esta vez** (viagem, não precisou): a data anda, a vez não muda e não conta ponto.
 - **Próximo passo:** cada tarefa pode ter um checklist curto, área (casa, saúde, documentos, carro…) e prazo. As que repetem (IPTU, seguro, revisão do carro) já marcam a próxima data ao serem concluídas.
-- **Compras** se agrupam pelos corredores do mercado (hortifrúti, padaria, açougue…), adivinhados pelo nome; tocar no item muda o setor.
+- **Compras › Para comprar:** o que a família quer comprar (robô aspirador, quadro da sala), com as opções (link, loja e preço), orçamento, prazo, prioridade e quem cuida, mais fotos e referências. Colar só o link do produto já cria o item com o nome e a loja. **Comprei** abre o lançamento preenchido com o valor da opção; ao salvar, o item vai para Comprados, ligado ao lançamento.
+- **Compras › Mercado** se agrupa pelos corredores do mercado (hortifrúti, padaria, açougue…), adivinhados pelo nome; tocar no item muda o setor. **Item da casa** (café, arroz, papel higiênico): depois de comprado fica guardado e volta para a lista com um toque quando acabar. Mostra o gasto de mercado do mês e a média.
 
 ## Arquivos
 
@@ -122,7 +128,9 @@ Finanças › Cartões › **Importar fatura** (ou, dentro da fatura, "Importar 
 | `base.js` | Estado, armazenamento no aparelho, API, fila offline e sincronização |
 | `financas.js` | Cálculos de finanças: mês, contas a pagar, faturas, orçamento, metas e patrimônio |
 | `graficos.js` | Gráficos em SVG (colunas, linha, barra empilhada) com valores no toque e tabela |
-| `telas.js` | Telas Hoje, Tarefas e Compras |
+| `telas.js` | Telas Hoje e Tarefas, e a lista do mercado |
+| `compras.js` | Compras: Para comprar (opções, orçamento, Comprei) e Mercado |
+| `analises.js` | Finanças › Análises |
 | `agenda.js` | Tela, painéis e ações da Agenda e da família |
 | `arquivos.js` | Tela Arquivos, anexos, envio e cópias no aparelho |
 | `importar.js` | Importar fatura do cartão (CSV, Excel, OFX, colado) |
@@ -133,6 +141,7 @@ Finanças › Cartões › **Importar fatura** (ou, dentro da fatura, "Importar 
 | `push.js` | Notificações (Firebase Cloud Messaging) |
 | `sw.js` | Guarda o app no aparelho e mostra as notificações. Trocar `VERSAO` a cada publicação |
 | `servidor/*.gs` | Código do Apps Script |
+| `testes/` | Testes de ponta a ponta: servidor simulado (planilha em memória) + Playwright. `cd testes && npm install && ./rodar.sh` |
 
 ## Planilha
 
@@ -150,7 +159,7 @@ Finanças › Cartões › **Importar fatura** (ou, dentro da fatura, "Importar 
 | Cartoes | Cartão (limite, dia de fechamento e de vencimento) |
 | Patrimonio | Conta, investimento, bem ou dívida, com o histórico de saldos informados |
 | Metas | Meta da família |
-| Compras | Item da lista |
+| Compras | Item da lista do mercado ou de Para comprar (coluna `Lista`) |
 | Push | Aparelho com notificação ligada |
 
 As abas antigas `Afazeres` e `Pendencias` (versão 2) são copiadas para `Tarefas` sozinhas na primeira vez que a versão 3 roda, e ficam lá intactas.

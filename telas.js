@@ -56,12 +56,13 @@ function scrHoje() {
   const evHoje = eventosDoDia(h), evAmanha = eventosDoDia(amanha).slice(0, 3);
   const minhas = abertas().filter(t => comigo(t) && t.prox && t.prox <= h), doOutro = o ? abertas().filter(t => quemFaz(t) === o.id && t.prox && t.prox <= h) : [];
   const feitosHoje = lista('feitos').filter(f => f.dia === h && f.quem === S.eu).sort((a, b) => String(b.hora).localeCompare(String(a.hora)));
-  const ref = N_mes(h), limite = N_somaDias(h, 5);
+  const ref = N_mes(h), limite = N_somaDias(h, 7);
   const contas = agendaMes(ref).concat(agendaMes(N_somaMes(ref, 1))).filter(x => !x.entrada && x.status !== 'pago' && x.venc <= limite);
   const t = resumoMes(ref), comOrc = categorias('saida').filter(c => c.orc), orc = comOrc.reduce((a, c) => a + c.orc, 0);
   const gastoOrc = comOrc.reduce((a, c) => a + (t.porCat[c.id] || 0), 0);
   const docs = lista('arquivos').filter(a => docComValidade(a) && N_diasEntre(h, a.validade) <= 30).sort((a, b) => a.validade.localeCompare(b.validade));
-  const ms = metas().slice(0, 2), nCompras = lista('compras').filter(c => !c.comprado).length;
+  const ms = metas().slice(0, 2), nCompras = mercado().filter(c => !c.comprado).length, pc = planos().filter(c => !c.comprado), pcLogo = pc.filter(c => c.prazo && c.prazo <= limite).length;
+  const prev = previsaoMes(ref), somaContas = contas.reduce((a, x) => a + (x.resta != null ? x.resta : x.v), 0), nRev = lancs().filter(aRevisar).length;
   const partes = [];
   if (evHoje.length) partes.push(`${evHoje.length} ${plu(evHoje.length, 'compromisso')}`);
   partes.push(minhas.length ? `${minhas.length} ${plu(minhas.length, 'tarefa')} com você` : 'nenhuma tarefa sua');
@@ -76,14 +77,16 @@ function scrHoje() {
     ${o && doOutro.length ? `<p class="small muted">Com ${esc(primeiroNome(o.id))} hoje: ${doOutro.map(a => esc(a.titulo)).join(', ')}.</p>` : ''}
     ${COL_MEIO}
     ${docs.length ? secao('Documentos para renovar', `<button class="link" data-a="tab" data-v="arquivos">Ver arquivos</button>`) + listaOu(docs, a => linhaArquivo(a)) : ''}
-    ${contas.length ? secao('Contas a pagar', `<button class="link" data-a="irFin" data-v="contas">Ver todas</button>`) + listaOu(contas, linhaAgenda) : ''}
+    ${contas.length ? secao('Contas desta semana', `<button class="link" data-a="irFin" data-v="contas">${reais(somaContas)}</button>`) + listaOu(contas, linhaAgenda) : ''}
     <button class="panel" data-a="irFin" data-v="resumo" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit">
       <div class="between"><p class="eb">${fmtMes(ref)} até agora</p><span class="muted">${ic('chev', 18)}</span></div>
-      <div class="grid2"><div class="stat"><span class="tiny muted">Despesas</span><b>${reais(t.desp)}</b></div><div class="stat"><span class="tiny muted">Saldo do mês</span><b class="${t.saldo < 0 ? 'c-bad' : ''}">${reais(t.saldo)}</b></div></div>
+      <div class="grid2"><div class="stat"><span class="tiny muted">Despesas</span><b>${reais(t.desp)}</b></div><div class="stat"><span class="tiny muted">Saldo previsto</span><b class="${prev.saldo < 0 ? 'c-bad' : ''}">${reais(prev.saldo)}</b></div></div>
+      ${prev.aPagar || prev.aReceber ? `<span class="tiny muted">Até o fim do mês: faltam pagar ${reais(prev.aPagar)}${prev.aReceber ? ` e receber ${reais(prev.aReceber)}` : ''}.</span>` : ''}
+      ${nRev ? `<span class="tiny muted">${ic('flag', 12)} ${nRev} ${plu(nRev, 'despesa', 'despesas')} para revisar a categoria</span>` : ''}
       ${orc ? `<div class="stack" style="gap:6px">${bar(gastoOrc, orc, gastoOrc > orc ? 'var(--bad)' : gastoOrc > orc * .85 ? 'var(--warn)' : 'var(--accent)')}<span class="tiny muted">${reais(gastoOrc)} de ${reais(orc)} nas categorias com orçamento</span></div>` : ''}
     </button>
     ${ms.length ? `<div class="lst">${ms.map(linhaMeta).join('')}</div>` : ''}
-    ${nCompras ? `<button class="panel soft" data-a="tab" data-v="compras" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit;flex-direction:row;align-items:center"><span class="em-tile" style="background:var(--s1)">🛒</span><span style="flex:1"><b>${nCompras} ${plu(nCompras, 'item', 'itens')}</b> na lista de compras</span>${ic('chev', 18)}</button>` : ''}${COL_FIM}`;
+    ${nCompras || pc.length ? `<button class="panel soft" data-a="tab" data-v="compras" style="border:0;text-align:left;cursor:pointer;color:inherit;font:inherit;flex-direction:row;align-items:center"><span class="em-tile" style="background:var(--s1)">🛒</span><span style="flex:1">${[nCompras ? `<b>${nCompras} ${plu(nCompras, 'item', 'itens')}</b> no mercado` : '', pc.length ? `<b>${pc.length}</b> para comprar${pcLogo ? ` (${pcLogo} com prazo esta semana)` : ''}` : ''].filter(Boolean).join(' · ')}</span>${ic('chev', 18)}</button>` : ''}${COL_FIM}`;
 }
 
 /* ============================== Tarefas ============================== */
@@ -170,18 +173,6 @@ function lembrarCompra(nome) {
 }
 function linhaCompra(c) {
   return `<div class="it${c.comprado ? ' feito' : ''}${c.pend ? ' pend' : ''}"><button class="ck${c.comprado ? ' on' : ''}" data-a="comprado" data-id="${c.id}" aria-label="${c.comprado ? 'Desmarcar' : 'Marcar'} ${esc(c.item)}">${ic('check', 18, 2.4)}</button>
-    <button class="main" data-a="sheet" data-k="compra" data-id="${c.id}"><span class="t">${esc(c.item)}${c.qtd ? ` <span class="muted" style="font-weight:600">· ${esc(c.qtd)}</span>` : ''}</span>${c.comprado ? `<span class="s">${esc(nomeDe(c.compradoPor))} pegou</span>` : c.por && c.por !== S.eu ? `<span class="s">${av(c.por, 14)} ${esc(primeiroNome(c.por))} pediu</span>` : ''}</button>
+    <button class="main" data-a="sheet" data-k="compra" data-id="${c.id}"><span class="t">${esc(c.item)}${c.qtd ? ` <span class="muted" style="font-weight:600">· ${esc(c.qtd)}</span>` : ''}</span>${c.comprado ? `<span class="s">${esc(nomeDe(c.compradoPor))} pegou</span>` : c.por && c.por !== S.eu ? `<span class="s">${av(c.por, 14)} ${esc(primeiroNome(c.por))} pediu${c.fixo ? ' · item da casa' : ''}</span>` : c.fixo ? '<span class="s">item da casa</span>' : ''}</button>
     <button class="mini" data-a="rmCompra" data-id="${c.id}" aria-label="Tirar ${esc(c.item)} da lista">${ic('x', 18)}</button></div>`;
-}
-function scrCompras() {
-  const todas = compras(), falta = todas.filter(c => !c.comprado), ok = todas.filter(c => c.comprado);
-  const naLista = new Set(todas.map(c => c.item.toLowerCase()));
-  const hist = historicoCompras().filter(x => !naLista.has(x.toLowerCase())).slice(0, 14);
-  const porSetor = SETORES.map(([id, e, n]) => [e, n, falta.filter(c => (c.setor || setorDe(c.item)) === id)]).filter(x => x[2].length);
-  return `<div class="between"><h1 class="display">Compras</h1>${falta.length ? `<span class="tag">${falta.length} ${plu(falta.length, 'item', 'itens')}</span>` : ''}</div>
-    <form data-f="compra" class="inrow"><input class="in" id="comptxt" placeholder="Ex.: 2 leite, pão, café" maxlength="200" autocomplete="off" enterkeyhint="done"><button class="btn" type="submit" aria-label="Adicionar">${ic('plus', 20, 2.4)}</button></form>
-    ${hist.length ? `<div class="chips scroll">${hist.map(x => `<button class="chip" data-a="readd" data-v="${esc(x)}">+ ${esc(x)}</button>`).join('')}</div>` : ''}
-    ${porSetor.length ? porSetor.map(([e, n, l]) => `<p class="dia-h">${e} ${n}</p>${listaOu(l, linhaCompra)}`).join('') : `<div class="panel">${vazio('🛒', ok.length ? 'Tudo pego. Bom trabalho!' : 'A lista está vazia. Separe vários itens com vírgula. Ela se organiza pelos corredores do mercado.')}</div>`}
-    ${ok.length ? secao('No carrinho', `<span class="tiny muted">${ok.length}</span>`) + listaOu(ok, linhaCompra) +
-      `<div class="grid2"><button class="btn ghost" data-a="gastoCompras">${ic('receipt', 16)} Lançar o gasto</button><button class="btn ghost" data-a="limparCompras">${ic('trash', 16)} Limpar</button></div>` : ''}`;
 }

@@ -1,0 +1,7 @@
+{
+  "name": "rotina-testes",
+  "private": true,
+  "description": "Testes de ponta a ponta do Rotina (servidor simulado + Playwright)",
+  "scripts": { "test": "./rodar.sh" },
+  "devDependencies": { "playwright": "1.56.1", "xlsx": "0.18.5" }
+}

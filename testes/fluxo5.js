@@ -1,0 +1,70 @@
+// Versão 3.2: boleto anexado na conta fixa + Salvar no topo da tarefa. Roda depois do fluxo3.
+const { chromium } = require('playwright');
+const fs = require('fs');
+const URL = 'http://localhost:8787/', DIR = __dirname + '/fotos5/';
+fs.mkdirSync(DIR, { recursive: true });
+const erros = []; let n = 0;
+const espera = ms => new Promise(r => setTimeout(r, ms));
+function ok(c, m) { if (!c) { erros.push('FALHOU: ' + m); console.log('  ✗', m); } else console.log('  ✓', m); }
+const NOME = 'Luz ' + Date.now().toString(36).slice(-4);
+const PDF = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
+(async () => {
+  const b = await chromium.launch();
+  const c = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: 'pt-BR', timezoneId: 'America/Fortaleza' });
+  const p = await c.newPage();
+  p.on('pageerror', e => erros.push('pageerror ' + e.message));
+  p.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) erros.push('console ' + m.text()); });
+  p.on('dialog', d => d.accept());
+  const foto = async nome => { await espera(300); await p.screenshot({ path: DIR + String(++n).padStart(2, '0') + '-' + nome + '.png' }); };
+  const filaVazia = () => p.waitForFunction(() => S.fila.length === 0, null, { timeout: 20000 });
+  await p.goto(URL); await p.fill('#lnome', 'Bruno'); await p.fill('#lpin', '1234'); await p.click('button[type=submit]'); await p.waitForSelector('nav button');
+
+  console.log('1. Tarefa: Salvar em cima, ao lado de Concluir');
+  const tid = await p.evaluate(() => { const t = abertas()[0]; openSheet({ k: 'tarefa', id: t.id }); return t.id; }); await espera(200);
+  const topo = await p.evaluate(() => [...document.querySelectorAll('.sheet .grid2')][0].innerText);
+  ok(/Salvar/.test(topo) && /Concluir tarefa/.test(topo), 'primeira linha do painel: Salvar e Concluir tarefa');
+  const yS = await p.locator('.sheet button[data-a="salvarTarefa"]').first().boundingBox();
+  ok(yS.y < 300, `Salvar aparece no topo, sem rolar (y=${Math.round(yS.y)})`);
+  await foto('tarefa-topo');
+  await p.fill('#f-titulo', 'Título mudado pelo Salvar de cima');
+  await p.locator('.sheet button[data-a="salvarTarefa"]').first().click(); await filaVazia();
+  ok(await p.evaluate(id => { const t = S.d.tarefas.get(id); return t.titulo === 'Título mudado pelo Salvar de cima' && !t.feita; }, tid), 'Salvar de cima salva sem concluir');
+  await p.evaluate(() => openSheet({ k: 'tarefa' })); await espera(200);
+  ok(await p.locator('.sheet button[data-a="salvarTarefa"]').count() === 2 && !(await p.locator('.sheet button[data-a="concluir"]').count()), 'tarefa nova: Salvar em cima (e no fim), sem Concluir');
+  await p.evaluate(() => closeSheet());
+
+  console.log('2. Boleto anexado na conta fixa');
+  const cid = await p.evaluate(nome => { const id = uidNovo(); enfileirar('salvar', { col: 'contas', item: { id, nome, tipo: 'saida', v: 18990, vence: 25, cat: 'contas', forma: 'boleto', ativa: true } }); window._cid = id; return id; }, NOME);
+  await filaVazia();
+  await p.evaluate(() => { S.tab = 'financas'; S.fv = 'contas'; S.mes = N_mes(hoje()); render(false); });
+  await p.locator('#main .it', { hasText: NOME }).first().locator('button.main').click(); await espera(300);
+  const ref = await p.evaluate(() => N_mes(hoje()));
+  ok(await p.evaluate(r => S.sheet.k === 'conta' && S.sheet.v === r, ref), 'tocar na conta em "A pagar" abre a conta no mês certo');
+  ok(await p.locator('.sheet', { hasText: 'Boleto de ' }).isVisible() && await p.locator('.sheet', { hasText: 'Documentos da conta' }).isVisible(), 'conta fixa tem "Boleto do mês" e "Documentos da conta"');
+  const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.locator('.sheet button[data-a="anexar"]').first().click()]);
+  await fc.setFiles([{ name: 'boleto-luz-outubro.pdf', mimeType: 'application/pdf', buffer: PDF }]); await espera(600);
+  await filaVazia();
+  const a = await p.evaluate(() => lista('arquivos').find(x => x.liga && x.liga.startsWith('contas:' + window._cid)));
+  ok(a && a.liga === `contas:${cid}:${ref}` && a.cat === 'financas' && a.drive, 'boleto subiu ligado à conta e ao mês (categoria Finanças)');
+  ok(await p.locator('.sheet .it', { hasText: 'Boleto luz' }).isVisible(), 'boleto aparece dentro da conta');
+  ok(!(await p.locator('.sheet .it', { hasText: 'Boleto luz' }).innerText()).includes('enviando'), 'depois de subir, o formulário deixa de mostrar "enviando…"');
+  await foto('conta-boleto');
+  await p.evaluate(() => closeSheet());
+  ok(await p.locator('#main .it', { hasText: NOME }).first().innerText().then(t => t.includes('📎 1')), 'em "A pagar", a conta mostra 📎 1');
+  await p.locator('#main .it', { hasText: NOME }).first().locator('button[data-a="pagar"]').click(); await espera(300);
+  ok(await p.locator('.sheet .it', { hasText: 'Boleto luz' }).isVisible(), 'na hora de pagar, o boleto está à mão');
+  await foto('pagar-com-boleto');
+  await p.locator('.sheet .it', { hasText: 'Boleto luz' }).click(); await espera(500);
+  await p.click('.sheet button[data-a="close"]'); await espera(200);
+  ok(await p.evaluate(() => S.sheet && S.sheet.k === 'lanc'), 'abrir o boleto e fechar volta para o pagamento');
+  await p.evaluate(() => closeSheet());
+  const proxRef = await p.evaluate(() => N_somaMes(N_mes(hoje()), 1));
+  await p.evaluate(r => openSheet({ k: 'conta', id: lista('contas').find(c => c.nome === r[1]).id, v: r[0] }), [proxRef, NOME]); await espera(200);
+  ok(!(await p.locator('.sheet .it', { hasText: 'Boleto luz' }).isVisible()), 'o boleto deste mês não aparece no mês seguinte');
+  await p.evaluate(() => closeSheet());
+  await p.evaluate(() => { S.tab = 'arquivos'; render(false); });
+  ok(await p.locator('#main .it', { hasText: NOME }).first().innerText().then(t => t.includes(NOME + ' · ')), 'na tela Arquivos, mostra de qual conta e mês é');
+
+  await b.close();
+  console.log(erros.length ? '\nPROBLEMAS:\n' + erros.join('\n') : '\nTudo certo, nenhum erro no console.');
+})().catch(e => { console.error('ERRO NO TESTE', String(e).split('\n').slice(0, 3).join(' | ')); console.log(erros.join('\n')); process.exit(1); });

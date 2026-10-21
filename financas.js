@@ -337,3 +337,92 @@ function alertasFinanceiros() {
   if (velhos.length) out.push({ nivel: 'info', txt: `Atualize o saldo de ${velhos.length === 1 ? velhos[0].nome : velhos.length + ' investimentos'} (mais de um mês sem conferir)` });
   return out;
 }
+
+/* ============================== categorias aprendidas ============================== */
+/** Chave da loja: "PG *HEALTH CENTER LTDA 03/10" → "health center ltda". Igual para o mesmo estabelecimento em faturas diferentes. */
+function lojaDe(desc) {
+  const t = String(desc || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/^(pg|mp|pag|ec|sumup|picpay|pp|iz|sq|dl|ebn|htm|pagseguro|mercadopago)\s*\*\s*/, '')
+    .replace(/\d+\s*\/\s*\d+/g, ' ').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+  return t.split(' ').slice(0, 3).join(' ');
+}
+const regrasCat = () => (S.casa && S.casa.regras) || {};
+const CAT_VAGA = id => !id || id === 'outros' || !categorias().some(c => c.id === id);
+const aConfirmar = l => /categoria a confirmar/i.test(l.nota || '');
+/** Lançamento que precisa de uma olhada: despesa sem categoria (ou "outros") ou marcada como "categoria a confirmar". */
+// "É outros mesmo" fica guardado como regra da loja = outros: aí não volta para a fila
+const aRevisar = l => l.tipo === 'saida' && ((CAT_VAGA(l.cat) && !(l.cat === 'outros' && regrasCat()[lojaDe(l.desc)] === 'outros')) || aConfirmar(l));
+/** Categoria provável de uma despesa: regra da casa, depois o que vocês mais usaram para a mesma loja. Vazio se não souber. */
+function sugerirCat(desc, ignorar) {
+  const k = lojaDe(desc); if (!k) return '';
+  const r = regrasCat()[k]; if (r && !CAT_VAGA(r)) return r;
+  const n = {};
+  lancs().forEach(l => { if (l.tipo === 'saida' && l.id !== ignorar && !CAT_VAGA(l.cat) && !aConfirmar(l) && lojaDe(l.desc) === k) n[l.cat] = (n[l.cat] || 0) + 1; });
+  return Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+}
+/** Grupos da fila Revisar: uma linha por loja, com todos os lançamentos dela e a sugestão. */
+function filaRevisar() {
+  const g = new Map();
+  lancs().filter(aRevisar).sort((a, b) => b.dia.localeCompare(a.dia)).forEach(l => {
+    const k = lojaDe(l.desc) || l.id;
+    if (!g.has(k)) g.set(k, { k, nome: l.desc || 'Sem descrição', ls: [], v: 0 });
+    const x = g.get(k); x.ls.push(l); x.v += l.v;
+  });
+  return [...g.values()].map(x => ({ ...x, sug: sugerirCat(x.ls[0].desc) || (typeof pistaCat === 'function' ? pistaCat(x.ls[0].desc) : '') })).sort((a, b) => b.ls.length - a.ls.length || b.v - a.v);
+}
+/** Aplica a categoria a todos os lançamentos da mesma loja que estão para revisar e guarda a regra para as próximas importações. */
+function categorizarLoja(desc, cat, alemDe) {
+  const k = lojaDe(desc), ls = lancs().filter(l => l.tipo === 'saida' && (l.id === alemDe || (k && aRevisar(l) && lojaDe(l.desc) === k)));
+  const itens = ls.map(l => ({ id: l.id, cat, nota: aConfirmar(l) ? String(l.nota).replace(/;?\s*categoria a confirmar/i, '').trim() : l.nota || '' }));
+  for (let i = 0; i < itens.length; i += 60) { const p = itens.slice(i, i + 60); if (p.length === 1) enfileirar('salvar', { col: 'lancamentos', item: p[0] }); else enfileirar('lote', { col: 'lancamentos', itens: p }); }
+  if (k && regrasCat()[k] !== cat) enfileirar('casa', { regras: { [k]: cat } });
+  return itens.length;
+}
+
+/* ============================== duplicados ============================== */
+/** Possíveis lançamentos repetidos (mesmo dia, valor, loja e cartão, de compras diferentes): sinal de fatura importada duas vezes. */
+function possiveisDuplicados() {
+  let ign = []; try { ign = JSON.parse(lsGet('dupOk') || '[]'); } catch (e) { /* vazio */ }
+  const m = new Map(), out = [];
+  lancs().filter(l => l.tipo === 'saida').forEach(l => {
+    const k = [l.dia, l.v, lojaDe(l.desc), l.cartao || l.carteira || '', l.parc || ''].join('|');
+    if (!m.has(k)) m.set(k, []); m.get(k).push(l);
+  });
+  m.forEach((ls, k) => { if (ls.length > 1 && !ign.includes(k) && !(ls[0].grupo && ls.every(l => l.grupo === ls[0].grupo))) out.push({ k, ls }); });
+  return out.sort((a, b) => b.ls[0].dia.localeCompare(a.ls[0].dia));
+}
+
+/* ============================== lançamentos automáticos ============================== */
+/** Contas fixas que entram sozinhas no dia: receitas e débito automático. Cartão fica de fora (já vem na fatura). */
+const contaAuto = c => c.auto && c.ativa !== false && (c.tipo === 'entrada' || (c.tipo === 'saida' && c.forma === 'auto'));
+const idAuto = (c, ref) => ('au' + c.id + ref.replace('-', '')).slice(0, 40);
+/** Depois de sincronizar: lança como recebido/pago o que venceu neste mês e no anterior (a partir do mês em que ligou). Mesmo ID nos dois aparelhos: não duplica. */
+function lancarAutomaticos() {
+  if (!S.sessao) return;
+  const h = hoje(), atual = N_mes(h), novos = [];
+  let tentados = []; try { tentados = JSON.parse(lsGet('autoFeitos') || '[]'); } catch (e) { /* vazio */ }
+  recorrentes().filter(contaAuto).forEach(c => {
+    [N_somaMes(atual, -1), atual].forEach(ref => {
+      if (c.autoDesde && ref < c.autoDesde) return;
+      if (c.fim && ref > c.fim) return;
+      const venc = N_diaDoMes(ref, c.vence || 1), id = idAuto(c, ref);
+      if (venc > h || tentados.includes(id) || S.d.lancamentos.has(id) || lancs().some(l => l.conta === c.id && l.ref === ref)) return;
+      novos.push({ id, tipo: c.tipo, v: c.v, dia: venc, desc: c.nome, cat: c.cat, forma: c.tipo === 'saida' ? 'auto' : '', cartao: '', carteira: c.carteira || (contasBancarias()[0] || {}).id || '',
+        pago: true, destino: '', meta: '', conta: c.id, ref, nota: 'Lançado sozinho no dia' });
+      tentados.push(id);
+    });
+  });
+  if (!novos.length) return;
+  lsSet('autoFeitos', JSON.stringify(tentados.slice(-200)));
+  if (novos.length === 1) enfileirar('salvar', { col: 'lancamentos', item: novos[0] }); else enfileirar('lote', { col: 'lancamentos', itens: novos });
+}
+
+/* ============================== reembolsos e projetos ============================== */
+/** Despesas pagas por vocês que outra pessoa vai devolver, por pessoa. */
+function aReceberDeTerceiros() {
+  const g = {};
+  lancs().filter(l => l.tipo === 'saida' && l.reemb && !l.reembOk).forEach(l => { const k = l.reemb.trim(); g[k] = g[k] || { nome: k, ls: [], v: 0 }; g[k].ls.push(l); g[k].v += l.v; });
+  return Object.values(g).sort((a, b) => b.v - a.v);
+}
+const projetos = () => [...new Set(lancs().map(l => (l.proj || '').trim()).filter(Boolean))].sort();
+const nomesReembolso = () => [...new Set(lancs().map(l => (l.reemb || '').trim()).filter(Boolean))].sort();

@@ -1,0 +1,58 @@
+// 3.5.2: navegar entre as faturas na aba Cartões. Roda depois do fluxo3 e do fluxo8 (C6 Bruno com compras).
+const { chromium } = require('playwright');
+const fs = require('fs'); fs.mkdirSync(__dirname + '/fotos11', { recursive: true });
+const erros = []; const ok = (c, m) => { if (!c) { erros.push(m); console.log('  ✗', m); } else console.log('  ✓', m); };
+const espera = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  const b = await chromium.launch();
+  const c = await b.newContext({ viewport: { width: 1180, height: 820 }, colorScheme: 'dark' });
+  await c.addInitScript(() => localStorage.setItem('rotina_estilo', 'editorial'));
+  const p = await c.newPage();
+  p.on('pageerror', e => erros.push('pageerror ' + e.message));
+  await p.goto('http://localhost:8787/'); await p.fill('#lnome', 'Bruno'); await p.fill('#lpin', '1234'); await p.click('button[type=submit]'); await p.waitForSelector('nav button');
+  // Segundo cartão com compras em vários meses e uma compra parcelada (mostra o futuro comprometido)
+  await p.evaluate(() => {
+    if (cartoes().some(x => x.nome === 'Nubank Ana')) return;
+    const k = uidNovo(), h = hoje(), m = N_mes(h), itens = [];
+    enfileirar('salvar', { col: 'cartoes', item: { id: k, nome: 'Nubank Ana', fecha: 8, vence: 15, ativo: true, limite: 3000000 } });
+    [-6, -5, -4, -3, -2, -1].forEach((i, j) => itens.push({ id: uidNovo(), tipo: 'saida', forma: 'cartao', cartao: k, dia: N_somaMes(m, i) + '-03', v: 150000 + j * 25000, desc: 'Compras', cat: 'mercado', pago: true }));
+    const g = uidNovo(); N_datasParcelas(h, 6).forEach((d, i) => itens.push({ id: uidNovo(), tipo: 'saida', forma: 'cartao', cartao: k, dia: d, v: 60000, desc: 'Geladeira', cat: 'compras', pago: true, parc: (i + 1) + '/6', grupo: g }));
+    const c6 = cartoes().find(x => x.nome === 'C6 Bruno').id;
+    [-6, -5, -4, -3, -2].forEach((i, j) => itens.push({ id: uidNovo(), tipo: 'saida', forma: 'cartao', cartao: c6, dia: N_somaMes(m, i) + '-20', v: 420000 + j * 60000, desc: 'Compras', cat: 'outros', pago: true }));
+    enfileirar('lote', { col: 'lancamentos', itens });
+  });
+  await p.waitForFunction(() => S.fila.length === 0, null, { timeout: 20000 });
+  await p.evaluate(() => { S.tab = 'financas'; S.fv = 'cartoes'; render(false); });
+  const k = await p.evaluate(() => cartoes().find(x => x.nome === 'C6 Bruno').id);
+  const valor = () => p.locator('#main .cartao', { hasText: 'C6 Bruno' }).locator('.fatbox .saldo').innerText();
+  const daVez = await p.evaluate(() => refFaturaDaVez());
+  const esperado = r => p.evaluate(([id, ref]) => reais(fatura(S.d.cartoes.get(id), ref).total), [k, r]);
+  ok(await valor() === await esperado(daVez), `abre na fatura da vez (${daVez})`);
+  await p.click('button[data-a="fatMes"][data-v="-1"]'); await espera(200);
+  const ant = await p.evaluate(r => N_somaMes(r, -1), daVez);
+  ok(await valor() === await esperado(ant) && await p.locator('.mesnav', { hasText: 'voltar à atual' }).isVisible(), `‹ mostra a fatura anterior (${ant}): ${await valor()}`);
+  ok((await p.locator('#main .fatbox').first().innerText()).includes('Fatura de ' + (await p.evaluate(r => MESES[+r.slice(5) - 1], ant))), 'cartão diz de qual mês é a fatura');
+  await p.screenshot({ path: __dirname + '/fotos11/01-anterior.png' });
+  await p.click('button[data-a="fatMes"][data-v="1"]'); await p.click('button[data-a="fatMes"][data-v="1"]'); await espera(200);
+  const prox = await p.evaluate(r => N_somaMes(r, 1), daVez);
+  ok(await valor() === await esperado(prox), `› › mostra a próxima (${prox}): ${await valor()}`);
+  await p.click('button[data-a="fatMesHoje"]'); await espera(200);
+  ok(await p.locator('#main svg.graf').count() === 1 && await p.locator('#main .leg', { hasText: 'Nubank Ana' }).isVisible(), 'gráfico mês a mês com a legenda dos cartões');
+  const cx = await p.evaluate(() => { const g = document.querySelector('#main .graf').getBoundingClientRect(), m = document.querySelector('#main').getBoundingClientRect(); return [Math.round(g.left - m.left), Math.round(g.top - m.top), Math.round(m.width)]; });
+  ok(cx[0] > cx[2] * .4 && cx[1] < 200, `no computador, o gráfico fica no canto superior direito (${cx})`);
+  const lado = await p.evaluate(() => [...document.querySelectorAll('#main .cartao')].map(e => Math.round(e.getBoundingClientRect().top)));
+  ok(lado.length >= 2 && lado[0] === lado[1], `cartões lado a lado (${lado})`);
+  const alt = await p.evaluate(() => Math.round(document.querySelector('#main .graf-fat').getBoundingClientRect().height));
+  ok(alt < 260, `gráfico compacto (${alt}px de altura)`);
+  const alvo = await p.evaluate(r => N_somaMes(r, -3), daVez);
+  await p.click(`#main rect.g-alvo[data-v="${alvo}"]`); await espera(200);
+  ok(await valor() === await esperado(alvo), `tocar numa coluna abre as faturas daquele mês (${alvo})`);
+  await p.screenshot({ path: __dirname + '/fotos11/03-grafico-mes-antigo.png' });
+  await p.click('button[data-a="fatMesHoje"]'); await espera(200);
+  ok(await valor() === await esperado(daVez) && !(await p.locator('.mesnav', { hasText: 'voltar à atual' }).count()), '"voltar à atual" volta para a fatura da vez');
+  await p.screenshot({ path: __dirname + '/fotos11/02-atual.png' });
+  await p.setViewportSize({ width: 390, height: 844 }); await espera(300);
+  await p.locator('#main svg.graf').scrollIntoViewIfNeeded(); await p.screenshot({ path: __dirname + '/fotos11/04-celular.png' });
+  ok(await p.evaluate(() => { const m = document.querySelector('#main'); return m.scrollWidth <= m.clientWidth + 1; }), 'celular sem rolagem lateral');
+  await b.close(); console.log(erros.length ? 'PROBLEMAS\n' + erros.join('\n') : 'Tudo certo, nenhum erro no console.');
+})();

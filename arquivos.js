@@ -34,6 +34,7 @@ function ligaInfo(liga) {
   if (col === 'eventos') return { rot: `📅 ${x.titulo}`, k: 'evento' };
   if (col === 'tarefas') return { rot: `✅ ${x.titulo}`, k: 'tarefa' };
   if (col === 'lancamentos') return { rot: `💸 ${x.desc || 'Lançamento'} · ${fmtCurta(x.dia)}`, k: 'lanc' };
+  if (col === 'compras') return { rot: `🛍️ ${x.item}`, k: 'compra' };
   return null;
 }
 function tagValidade(iso) {
@@ -64,6 +65,7 @@ function preArq(liga) {
   if (!x) return { cat: '', pessoas: [] };
   if (col === 'eventos') return { cat: { saude: 'saude', escola: 'escola', trabalho: 'trabalho', casa: 'casa' }[x.tipo] || catPorNome(x.titulo), pessoas: [...(x.pessoas || [])] };
   if (col === 'tarefas') return { cat: { saude: 'saude', docs: 'documentos', carro: 'carro', dinheiro: 'financas', casa: 'casa', trabalho: 'trabalho' }[x.area] || catPorNome(x.titulo), pessoas: x.resp && x.resp !== 'ambos' && x.resp !== 'rodizio' ? [x.resp] : [] };
+  if (col === 'compras') return { cat: 'casa', pessoas: x.resp && x.resp !== 'ambos' ? [x.resp] : [] };
   return { cat: col === 'contas' && /aluguel|condom|iptu/i.test(x.nome || '') ? 'casa' : 'financas', pessoas: [] };
 }
 function tituloDoArquivo(nome, mime) {

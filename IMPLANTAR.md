@@ -109,6 +109,15 @@ Entre 22h e 7h nenhum aviso é enviado, a não ser os lembretes de compromisso. 
 
 ---
 
+## Atualizar da versão 3.4 para a 3.5 (app 3.8: Para comprar, Análises, receita automática)
+
+1. No Apps Script, troque o conteúdo de `Dados`, `Api` e `Push` pelos novos.
+2. **Implantar › Gerenciar implantações › editar › Versão: Nova versão**.
+
+As colunas novas aparecem sozinhas na primeira gravação: `Lista`, `Fixo`, `Opcoes`, `Orcamento`, `Prazo`, `Resp`, `Prioridade`, `Categoria`, `Lancamento` e `Nota` em Compras; `Auto` e `AutoDesde` em Contas; `Projeto`, `Reembolso` e `Reembolsado` em Lancamentos. As regras de categoria ficam na aba Config (`regras`).
+
+Enquanto o servidor não for atualizado, o app mostra um aviso em Finanças e em Compras, e o que é novo (itens de Para comprar, receita automática, regras de categoria, viagem e reembolso) não fica guardado.
+
 ## Atualizar da versão 3.3 para a 3.4 (investimentos)
 
 1. No Apps Script, troque o conteúdo de `Dados` e `Api` pelos novos.

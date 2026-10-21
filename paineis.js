@@ -79,11 +79,13 @@ SH.troca = s => {
 /* ============================== compras ============================== */
 SH.compra = s => {
   const c = S.d.compras.get(s.id); if (!c) return sumiu('Item');
-  if (!s.f) s.f = { item: c.item, qtd: c.qtd || '', setor: c.setor || setorDe(c.item) };
+  if (ehPlano(c)) return shPlano(s, c);
+  if (!s.f) s.f = { item: c.item, qtd: c.qtd || '', setor: c.setor || setorDe(c.item), fixo: !!c.fixo };
   const f = s.f;
   return `${head('Lista de compras', esc(c.item))}
     <div class="grid2" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr)">${campo('Item', inp('item', f.item, 'maxlength="80" autocomplete="off"'))}${campo('Quantidade', inp('qtd', f.qtd, 'maxlength="30" placeholder="Ex.: 2 kg" autocomplete="off"'))}</div>
     ${grupo('Setor do mercado', escolha('setor', f.setor, SETORES.map(([k, e, n]) => [k, `${e} ${n}`])))}
+    ${toggle('fixo', f.fixo, 'Item da casa', 'Café, arroz, papel higiênico: depois de comprado fica guardado e, quando acabar, volta para a lista com um toque.')}
     <button class="btn block" data-a="salvarCompra">Salvar</button>`;
 };
 
