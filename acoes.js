@@ -224,14 +224,14 @@ const A = {
 
 
   // compras
-  comprado: d => { const c = S.d.compras.get(d.id); if (!c) return; const v = !c.comprado; enfileirar('salvar', { col: 'compras', item: { id: c.id, comprado: v, compradoPor: v ? S.eu : '', compradoEm: v ? new Date().toISOString() : '' } }); },
+  comprado: d => { const c = S.d.compras.get(d.id); if (!c) return; const v = !c.comprado; enfileirar('salvar', { col: 'compras', item: { id: c.id, comprado: v, compradoPor: v ? S.eu : '', compradoEm: v ? new Date().toISOString() : '' } }); if (v && c.fixo) toast(`${c.item} guardado em Itens da casa. Acabou? Um toque e volta.`); },
   rmCompra: d => { const c = S.d.compras.get(d.id); if (!c) return; enfileirar('excluir', { col: 'compras', id: d.id }); toast(`${c.item} saiu da lista.`, 3500, { rot: 'Desfazer', fn: () => addCompras([{ item: c.item, qtd: c.qtd }]) }); },
   readd: d => { addCompras([{ item: d.v, qtd: '' }]); },
   salvarCompra: () => {
     const s = S.sheet, f = s.f, item = f.item.trim(); if (!item) { toast('Escreva o item.'); return; }
-    closeSheet(); enfileirar('salvar', { col: 'compras', item: { id: s.id, item, qtd: f.qtd.trim(), setor: f.setor } });
+    closeSheet(); enfileirar('salvar', { col: 'compras', item: { id: s.id, item, qtd: f.qtd.trim(), setor: f.setor, fixo: !!f.fixo } });
   },
-  limparCompras: () => { const n = lista('compras').filter(c => c.comprado).length; enfileirar('limparCompras', {}); toast(`${n} ${plu(n, 'item saiu', 'itens saíram')} da lista.`); },
+  limparCompras: () => { const n = lista('compras').filter(c => c.comprado && !ehPlano(c) && !c.fixo).length; enfileirar('limparCompras', {}); toast(`${n} ${plu(n, 'item saiu', 'itens saíram')} da lista.`); },
   gastoCompras: () => { openSheet({ k: 'lanc', pre: { tipo: 'saida', cat: categorias('saida').some(c => c.id === 'mercado') ? 'mercado' : '', desc: 'Mercado', dia: hoje() } }); setTimeout(() => focar('f-v'), 280); },
 
   // genérico
@@ -282,6 +282,7 @@ document.addEventListener('submit', async e => {
     const el = $('#comtxt'), v = el.value.trim(); if (!v || !S.sheet) return;
     enfileirar('comentar', { id: S.sheet.id, cid: uidNovo(), texto: v.slice(0, 500) }); renderSheet(); focar('comtxt');
   }
+  if (f === 'plano') { const el = $('#planotxt'), v = el.value.trim(); if (!v) return; el.value = ''; addPlano(v); return; }
   if (f === 'compra') { const el = $('#comptxt'), v = el.value.trim(); if (!v) return; addCompras(lerItensCompra(v)); focar('comptxt'); }
   if (f === 'pin') {
     const atual = $('#pinAtual').value.trim(), novo = $('#pinNovo').value.trim();

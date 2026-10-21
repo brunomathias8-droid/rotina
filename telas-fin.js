@@ -277,7 +277,7 @@ function formLanc(l, pre) {
   const forma = pre.forma || (pre.cartao ? 'cartao' : lsGet('ultimaForma') || 'pix');
   return { tipo, v: pre.v ? reaisInput(pre.v) : '', desc: pre.desc || '', cat: pre.cat || (tipo === 'saida' || tipo === 'entrada' ? (cats[0] || {}).id || '' : ''), dia,
     forma: forma === 'cartao' && !cartoes().length ? 'pix' : forma, carteira: pre.carteira || conta1, cartao: pre.cartao || cart1, parcelas: 1, pago: pre.pago != null ? pre.pago : dia <= hoje(),
-    destino: pre.destino || (tipo === 'aporte' || tipo === 'resgate' ? (investimentos()[0] || {}).id || '' : ''), meta: pre.meta || '', conta: pre.conta || '', ref: pre.ref || '', nota: '', proj: pre.proj || '', reemb: '', reembOk: false };
+    destino: pre.destino || (tipo === 'aporte' || tipo === 'resgate' ? (investimentos()[0] || {}).id || '' : ''), meta: pre.meta || '', conta: pre.conta || '', ref: pre.ref || '', nota: pre.nota || '', compra: pre.compra || '', proj: pre.proj || '', reemb: '', reembOk: false };
 }
 SH.lanc = s => {
   const l = s.id && S.d.lancamentos.get(s.id);
@@ -334,6 +334,7 @@ SH.lanc = s => {
     ${valorInp('v', f.v)}
     ${(t === 'saida' && f.forma !== 'cartao') || t === 'entrada' || t === 'fatura' ? `<div class="panel soft pagobox">${toggle('pago', f.pago, t === 'entrada' ? 'Já recebeu' : t === 'fatura' ? 'Já foi paga' : 'Já foi pago', f.pago ? 'Desligue se ainda não saiu da conta' : `Fica em "Contas › ${t === 'entrada' ? 'A receber' : 'A pagar'}" até você marcar`)}</div>` : ''}
     ${corpo}
+    ${f.compra && S.d.compras.get(f.compra) ? `<div class="note"><span>🛍️ Ao salvar, <b>${esc(S.d.compras.get(f.compra).item)}</b> sai de Para comprar.</span></div>` : ''}
     ${conta ? `<div class="note"><span>${conta.tipo === 'entrada' ? 'Recebimento' : 'Pagamento'} de <b>${esc(conta.nome)}</b> referente a ${fmtMes(f.ref).toLowerCase()}.</span></div>` : ''}
     <div class="grid2">${campo('Data', inp('dia', f.dia, 'type="date"'))}<span></span></div>
     <details ${f.nota ? 'open' : ''}><summary class="small muted">Observação</summary>${area('nota', f.nota, 'maxlength="300" style="min-height:60px"')}</details>
@@ -556,6 +557,8 @@ SH.orcamento = s => {
 };
 
 /* ============================== ações ============================== */
+/* Para comprar › Comprei: o item fica como comprado, ligado ao lançamento */
+function marcarComprado(id, lanc) { if (S.d.compras.get(id)) enfileirar('salvar', { col: 'compras', item: { id, comprado: true, compradoPor: S.eu, compradoEm: new Date().toISOString(), lanc } }); }
 function lancarLote(itens) { if (itens.length === 1) enfileirar('salvar', { col: 'lancamentos', item: itens[0] }); else enfileirar('lote', { col: 'lancamentos', itens }); }
 Object.assign(A, {
   fv: d => { S.fv = d.v; if (d.v !== 'extrato') S.fCat = null; esconderDica(); render(false); },
@@ -643,10 +646,12 @@ Object.assign(A, {
     closeSheet();
     if (!antigo && cartao && n > 1) {
       const grupo = uidNovo(), datas = N_datasParcelas(f.dia, n), vals = N_valoresParcelas(v, n);
-      lancarLote(datas.map((d, i) => ({ ...base, id: uidNovo(), dia: d, v: vals[i], parc: `${i + 1}/${n}`, grupo })));
+      const ls = datas.map((d, i) => ({ ...base, id: uidNovo(), dia: d, v: vals[i], parc: `${i + 1}/${n}`, grupo }));
+      lancarLote(ls); if (f.compra) marcarComprado(f.compra, ls[0].id);
       toast(`Compra em ${n}x de ${reais(vals[1])} lançada.`);
     } else {
-      lancarLote([{ ...base, id: s.id || uidNovo() }]);
+      const novo = { ...base, id: s.id || uidNovo() };
+      lancarLote([novo]); if (f.compra && !antigo) marcarComprado(f.compra, novo.id);
       toast(antigo ? 'Lançamento atualizado.' : `${{ saida: 'Despesa de X lançada', entrada: 'Receita de X lançada', aporte: 'Aporte de X registrado', resgate: 'Resgate de X registrado', transf: 'Transferência de X registrada', fatura: 'Pagamento de X registrado' }[t].replace('X', reais(v))}.`);
     }
     if (trocouCat) {
