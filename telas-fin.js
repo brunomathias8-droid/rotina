@@ -2,7 +2,7 @@
    Carregado depois de acoes.js (acrescenta ações ao objeto A). As contas ficam em financas.js. */
 'use strict';
 
-const FIN_ABAS = [['resumo', 'Resumo'], ['extrato', 'Extrato'], ['contas', 'Contas'], ['cartoes', 'Cartões'], ['orcamento', 'Orçamento'], ['metas', 'Metas'], ['patrimonio', 'Patrimônio'], ['investimentos', 'Investimentos']];
+const FIN_ABAS = [['resumo', 'Resumo'], ['analises', 'Análises'], ['extrato', 'Extrato'], ['contas', 'Contas'], ['cartoes', 'Cartões'], ['orcamento', 'Orçamento'], ['metas', 'Metas'], ['patrimonio', 'Patrimônio'], ['investimentos', 'Investimentos']];
 const CORES_CARTAO = ['#5B3FA0', '#C62828', '#C8643C', '#2E6A57', '#1F2937', '#3B6EA5', '#B8860B'];
 const statusTag = st => st === 'pago' ? `<span class="tag good">${ic('check', 12, 2.6)} pago</span>` : st === 'vencido' ? `<span class="tag bad">${ic('alert', 12, 2.4)} vencido</span>` : '';
 const pctTxt = x => x == null ? '—' : Math.round(x * 100) + '%';
@@ -11,11 +11,11 @@ const opcConta = (vazio) => [...(vazio ? [['', vazio]] : []), ...contasBancarias
 /* ============================== tela ============================== */
 function scrFin() {
   const v = FIN_ABAS.some(a => a[0] === S.fv) ? S.fv : 'resumo';
-  const comMes = ['resumo', 'extrato', 'contas', 'orcamento'].includes(v) && !(v === 'extrato' && S.fExt === 'revisar'), atual = N_mes(hoje());
+  const comMes = ['resumo', 'analises', 'extrato', 'contas', 'orcamento'].includes(v) && !(v === 'extrato' && S.fExt === 'revisar'), atual = N_mes(hoje());
   return `<div class="between"><h1 class="display">Finanças</h1><button class="btn sm" data-a="novoLanc" data-tipo="saida">${ic('plus', 16, 2.4)} Lançar</button></div>
     <div class="chips scroll" role="tablist">${FIN_ABAS.map(([k, l]) => `<button class="chip ${v === k ? 'on' : ''}" role="tab" aria-selected="${v === k}" data-a="fv" data-v="${k}">${l}</button>`).join('')}</div>
     ${comMes ? `<div class="mesnav"><button class="x" data-a="mes" data-v="-1" aria-label="Mês anterior">${ic('chevl', 18)}</button><p class="h2" style="text-align:center;flex:1">${fmtMes(S.mes)}${S.mes !== atual ? ` <button class="link" data-a="mesHoje">voltar a ${MESES[+atual.slice(5) - 1]}</button>` : ''}</p><button class="x" data-a="mes" data-v="1" aria-label="Próximo mês">${ic('chev', 18)}</button></div>` : ''}
-    ${{ resumo: finResumo, extrato: finExtrato, contas: finContas, cartoes: finCartoes, orcamento: finOrcamento, metas: finMetas, patrimonio: finPatrimonio, investimentos: finInvestimentos }[v]()}`;
+    ${{ resumo: finResumo, analises: finAnalises, extrato: finExtrato, contas: finContas, cartoes: finCartoes, orcamento: finOrcamento, metas: finMetas, patrimonio: finPatrimonio, investimentos: finInvestimentos }[v]()}`;
 }
 
 /* ---------- Resumo ---------- */
@@ -46,7 +46,7 @@ function finResumo() {
       <div class="stack" style="gap:2px">${passos.map(([t, ok, k, cl]) => `<button class="passo ${ok ? 'ok' : ''}" ${ok ? 'disabled' : `data-a="sheet" data-k="${k}"${cl ? ` data-v="${cl}"` : ''}`}><span class="ck sm ${ok ? 'on' : ''}">${ic('check', 14, 2.6)}</span><span>${t}</span>${ok ? '' : ic('chev', 16)}</button>`).join('')}</div></div>` : ''}
     ${(n => n ? `<div class="note"><span>${ic('flag', 16)}</span><span style="flex:1">${n} ${plu(n, 'despesa está', 'despesas estão')} sem categoria certa: o orçamento e as análises ficam mais fiéis depois de revisar.</span><button class="link" data-a="irRevisar">Revisar</button></div>` : '')(ref === atual ? lancs().filter(aRevisar).length : 0)}
     ${alertas.length ? `<div class="stack">${alertas.slice(0, 6).map(a => `<div class="note ${a.nivel === 'bad' ? 'bad' : a.nivel === 'warn' ? 'warn' : ''}"><span>${ic(a.nivel === 'info' ? 'flag' : 'alert', 16)}</span><span style="flex:1">${esc(a.txt)}</span>${a.acao ? `<button class="link" data-a="pagar" data-k="${a.acao.k}" data-id="${a.acao.id}" data-ref="${a.acao.ref || ''}">Pagar</button>` : a.meta ? `<button class="link" data-a="sheet" data-k="meta" data-id="${a.meta}">Ver</button>` : ''}</div>`).join('')}</div>` : ''}
-    ${secao('Últimos 6 meses')}<div class="panel">${grafColunas(meses, [{ nome: 'Receitas', cor: VIZ.rec, vals: rs.map(x => x.rec) }, { nome: 'Despesas', cor: VIZ.desp, vals: rs.map(x => x.desp) }, { nome: 'Investido', cor: VIZ.inv, vals: rs.map(x => x.inv) }], 'Receitas, despesas e investimentos dos últimos 6 meses')}</div>
+    ${secao('Últimos 6 meses', `<button class="link" data-a="fv" data-v="analises">Análises</button>`)}<div class="panel">${grafColunas(meses, [{ nome: 'Receitas', cor: VIZ.rec, vals: rs.map(x => x.rec) }, { nome: 'Despesas', cor: VIZ.desp, vals: rs.map(x => x.desp) }, { nome: 'Investido', cor: VIZ.inv, vals: rs.map(x => x.inv) }], 'Receitas, despesas e investimentos dos últimos 6 meses')}</div>
     ${COL_MEIO}${secao('Para onde foi a renda', `<button class="link" data-a="fv" data-v="orcamento">Orçamento</button>`)}
     <div class="panel">${div.base ? grafPilha([{ nome: 'Essenciais', cor: VIZ.rec, v: div.essencial, pct: div.pct.essencial, meta: met.essencial }, { nome: 'Estilo de vida', cor: VIZ.desp, v: div.livre, pct: div.pct.livre, meta: met.livre }, { nome: 'Futuro (investimentos)', cor: VIZ.inv, v: div.futuro, pct: div.pct.futuro, meta: met.futuro }], div.base)
       + `<p class="tiny muted">Método ${met.essencial}/${met.livre}/${met.futuro}: até ${met.essencial}% da renda no essencial, ${met.livre}% no estilo de vida e pelo menos ${met.futuro}% para o futuro.</p>` : '<p class="small muted">Lance as receitas do mês para ver como a renda foi dividida.</p>'}</div>
@@ -97,18 +97,20 @@ const rotuloExt = (k, l) => k === 'revisar' ? (n => n ? `${l} <span class="tag w
 function finExtrato() {
   const f = S.fExt, q = S.busca.trim().toLowerCase();
   if (f === 'revisar') return `<div class="chips scroll">${FILTROS_EXT.map(([k, l]) => `<button class="chip ${f === k ? 'on' : ''}" data-a="fext" data-v="${k}">${rotuloExt(k, l)}</button>`).join('')}</div>${finRevisar()}`;
-  let ls = lancs().filter(l => mesCaixa(l) === S.mes);
+  const todos = !!(S.buscaTodos && q);
+  let ls = lancs().filter(l => todos || mesCaixa(l) === S.mes);
   if (f === 'saida' || f === 'entrada') ls = ls.filter(l => l.tipo === f);
   if (f === 'cartao') ls = ls.filter(l => l.forma === 'cartao' || l.tipo === 'fatura');
   if (f === 'invest') ls = ls.filter(l => ['aporte', 'resgate', 'transf'].includes(l.tipo));
   if (f === 'pendente') ls = ls.filter(l => !l.pago && l.forma !== 'cartao' && (l.tipo === 'saida' || l.tipo === 'entrada'));
   if (S.fCat) ls = ls.filter(l => l.cat === S.fCat);
-  if (q) ls = ls.filter(l => (tituloLanc(l) + ' ' + categoria(l.cat).nome + ' ' + (l.nota || '')).toLowerCase().includes(q));
+  if (q) ls = ls.filter(l => (tituloLanc(l) + ' ' + categoria(l.cat).nome + ' ' + (l.nota || '') + ' ' + (l.proj || '') + ' ' + (l.reemb || '')).toLowerCase().includes(q));
   ls.sort((a, b) => b.dia.localeCompare(a.dia) || String(b.em).localeCompare(String(a.em)));
   const sai = ls.filter(l => l.tipo === 'saida').reduce((a, l) => a + l.v, 0), ent = ls.filter(l => l.tipo === 'entrada').reduce((a, l) => a + l.v, 0);
   const dias = [...new Set(ls.map(l => l.dia))];
   return `<div class="chips scroll">${FILTROS_EXT.map(([k, l]) => `<button class="chip ${f === k ? 'on' : ''}" data-a="fext" data-v="${k}">${rotuloExt(k, l)}</button>`).join('')}</div>
     <input class="in" id="busca" data-i="busca" value="${esc(S.busca)}" placeholder="Buscar (ex.: farmácia, Netflix)" autocomplete="off" enterkeyhint="search">
+    ${q ? `<button class="chip sm ${todos ? 'on' : ''}" data-a="buscaTodos" style="align-self:flex-start">${todos ? ic('check', 12, 2.6) + ' ' : ''}Buscar em todos os meses</button>` : ''}
     ${S.fCat ? `<button class="chip on" data-a="fcat" data-v="${esc(S.fCat)}" style="align-self:flex-start">${esc(categoria(S.fCat).ic)} ${esc(categoria(S.fCat).nome)} ${ic('x', 12, 2.6)}</button>` : ''}
     <div id="extlista" class="stack" style="gap:10px">${extratoLista(ls, dias, sai, ent)}</div>`;
 }
@@ -566,6 +568,7 @@ Object.assign(A, {
   mesHoje: () => { S.mes = N_mes(hoje()); render(); },
   fcat: d => { S.fCat = S.fCat === d.v ? null : d.v; S.fv = 'extrato'; S.fExt = 'tudo'; render(false); },
   fext: d => { S.fExt = d.v; render(); },
+  buscaTodos: () => { S.buscaTodos = !S.buscaTodos; render(); },
   irRevisar: () => { S.fv = 'extrato'; S.fExt = 'revisar'; S.fCat = null; render(false); },
   revVer: d => { S.revAberto = S.revAberto === d.v ? null : d.v; render(); },
   revOk: d => {
