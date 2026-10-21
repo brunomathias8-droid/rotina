@@ -90,7 +90,7 @@ function agendaMes(ref) {
   const h = hoje(), out = [];
   recorrentesMes(ref).forEach(c => {
     if (c.forma === 'cartao' && c.tipo === 'saida' && c.status === 'pago') return; // assinatura no cartão: já está na fatura
-    out.push({ k: 'rec', id: c.id, ref, nome: c.nome, ic: c.tipo === 'aporte' ? '📈' : categoria(c.cat).ic, v: c.lanc ? c.lanc.v : c.v, venc: c.venc, entrada: c.tipo === 'entrada', aporte: c.tipo === 'aporte', status: c.status, cartao: c.forma === 'cartao' });
+    out.push({ k: 'rec', id: c.id, ref, nome: c.nome, ic: c.tipo === 'aporte' ? '📈' : categoria(c.cat).ic, v: c.lanc ? c.lanc.v : c.v, normal: c.v, temLanc: !!c.lanc, venc: c.venc, entrada: c.tipo === 'entrada', aporte: c.tipo === 'aporte', status: c.status, cartao: c.forma === 'cartao' });
   });
   lancs().forEach(l => {
     if (l.conta || l.pago || l.forma === 'cartao' || N_mes(l.dia) !== ref || (l.tipo !== 'saida' && l.tipo !== 'entrada')) return;
@@ -106,8 +106,8 @@ function agendaMes(ref) {
 /** O que ainda vai acontecer no mês (para o saldo previsto). */
 function previsaoMes(ref) {
   const ag = agendaMes(ref), pend = ag.filter(x => x.status !== 'pago');
-  const r = resumoMes(ref), recFalta = pend.filter(x => x.entrada && x.k === 'rec').reduce((a, x) => a + x.v, 0);
-  const despFalta = pend.filter(x => x.k === 'rec' && !x.entrada && !x.aporte).reduce((a, x) => a + x.v, 0);
+  const r = resumoMes(ref), recFalta = pend.filter(x => x.entrada && x.k === 'rec' && !x.temLanc).reduce((a, x) => a + x.v, 0);
+  const despFalta = pend.filter(x => x.k === 'rec' && !x.entrada && !x.aporte && !x.temLanc).reduce((a, x) => a + x.v, 0);
   return { rec: r.rec + recFalta, desp: r.desp + despFalta, saldo: r.rec + recFalta - r.desp - despFalta,
     aPagar: pend.filter(x => !x.entrada).reduce((a, x) => a + (x.resta != null ? x.resta : x.v), 0), aReceber: pend.filter(x => x.entrada).reduce((a, x) => a + x.v, 0) };
 }
@@ -399,21 +399,27 @@ const idAuto = (c, ref) => ('au' + c.id + ref.replace('-', '')).slice(0, 40);
 /** Depois de sincronizar: lança como recebido/pago o que venceu neste mês e no anterior (a partir do mês em que ligou). Mesmo ID nos dois aparelhos: não duplica. */
 function lancarAutomaticos() {
   if (!S.sessao) return;
-  const h = hoje(), atual = N_mes(h), novos = [];
+  const h = hoje(), atual = N_mes(h), novos = [], marcar = [];
   let tentados = []; try { tentados = JSON.parse(lsGet('autoFeitos') || '[]'); } catch (e) { /* vazio */ }
   recorrentes().filter(contaAuto).forEach(c => {
     [N_somaMes(atual, -1), atual].forEach(ref => {
       if (c.autoDesde && ref < c.autoDesde) return;
       if (c.fim && ref > c.fim) return;
       const venc = N_diaDoMes(ref, c.vence || 1), id = idAuto(c, ref);
-      if (venc > h || tentados.includes(id) || S.d.lancamentos.has(id) || lancs().some(l => l.conta === c.id && l.ref === ref)) return;
+      if (venc > h) return;
+      // Valor do mês já registrado (ex.: salário diferente este mês): no dia, só marca como recebido/pago
+      const ja = lancs().find(l => l.conta === c.id && l.ref === ref);
+      if (ja) { if (!ja.pago && !tentados.includes(id)) { marcar.push({ id: ja.id, pago: true }); tentados.push(id); } return; }
+      if (tentados.includes(id) || S.d.lancamentos.has(id)) return;
       novos.push({ id, tipo: c.tipo, v: c.v, dia: venc, desc: c.nome, cat: c.cat, forma: c.tipo === 'saida' ? 'auto' : '', cartao: '', carteira: c.carteira || (contasBancarias()[0] || {}).id || '',
         pago: true, destino: '', meta: '', conta: c.id, ref, nota: 'Lançado sozinho no dia' });
       tentados.push(id);
     });
   });
-  if (!novos.length) return;
+  if (!novos.length && !marcar.length) return;
   lsSet('autoFeitos', JSON.stringify(tentados.slice(-200)));
+  marcar.forEach(item => enfileirar('salvar', { col: 'lancamentos', item }));
+  if (!novos.length) return;
   if (novos.length === 1) enfileirar('salvar', { col: 'lancamentos', item: novos[0] }); else enfileirar('lote', { col: 'lancamentos', itens: novos });
 }
 

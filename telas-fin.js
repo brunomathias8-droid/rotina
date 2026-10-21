@@ -93,26 +93,31 @@ function finRevisar() {
     ${dups.length ? secao('Possíveis repetidos', `<span class="tiny muted">${dups.length}</span>`) + `<p class="tiny muted">Mesmo dia, valor e loja. Pode ser uma fatura importada duas vezes, ou duas compras iguais de verdade.</p>` + dups.slice(0, 20).map(d => `<div class="panel rev"><div class="lst">${d.ls.map(linhaLanc).join('')}</div>
       <div class="grid2"><button class="btn ghost sm" data-a="dupOk" data-v="${esc(d.k)}">Não é repetido</button><button class="btn danger sm" data-a="dupTirar" data-id="${d.ls[d.ls.length - 1].id}">${ic('trash', 14)} Excluir um</button></div></div>`).join('') : ''}`;
 }
+const FILTRO_EXT = {
+  tudo: () => true, saida: l => l.tipo === 'saida', entrada: l => l.tipo === 'entrada', cartao: l => l.forma === 'cartao' || l.tipo === 'fatura',
+  invest: l => ['aporte', 'resgate', 'transf'].includes(l.tipo), pendente: l => !l.pago && l.forma !== 'cartao' && (l.tipo === 'saida' || l.tipo === 'entrada')
+};
 const rotuloExt = (k, l) => k === 'revisar' ? (n => n ? `${l} <span class="tag warn" style="margin-left:2px">${n}</span>` : l)(lancs().filter(aRevisar).length) : l;
 function finExtrato() {
   const f = S.fExt, q = S.busca.trim().toLowerCase();
   if (f === 'revisar') return `<div class="chips scroll">${FILTROS_EXT.map(([k, l]) => `<button class="chip ${f === k ? 'on' : ''}" data-a="fext" data-v="${k}">${rotuloExt(k, l)}</button>`).join('')}</div>${finRevisar()}`;
   const todos = !!(S.buscaTodos && q);
-  let ls = lancs().filter(l => todos || mesCaixa(l) === S.mes);
-  if (f === 'saida' || f === 'entrada') ls = ls.filter(l => l.tipo === f);
-  if (f === 'cartao') ls = ls.filter(l => l.forma === 'cartao' || l.tipo === 'fatura');
-  if (f === 'invest') ls = ls.filter(l => ['aporte', 'resgate', 'transf'].includes(l.tipo));
-  if (f === 'pendente') ls = ls.filter(l => !l.pago && l.forma !== 'cartao' && (l.tipo === 'saida' || l.tipo === 'entrada'));
-  if (S.fCat) ls = ls.filter(l => l.cat === S.fCat);
-  if (q) ls = ls.filter(l => (tituloLanc(l) + ' ' + categoria(l.cat).nome + ' ' + (l.nota || '') + ' ' + (l.proj || '') + ' ' + (l.reemb || '')).toLowerCase().includes(q));
+  // Base: o mês (ou todos os meses, na busca), a categoria e a busca. Cada filtro mostra quantos lançamentos tem nessa base.
+  let base = lancs().filter(l => todos || mesCaixa(l) === S.mes);
+  if (S.fCat) base = base.filter(l => l.cat === S.fCat);
+  if (q) base = base.filter(l => (tituloLanc(l) + ' ' + categoria(l.cat).nome + ' ' + (l.nota || '') + ' ' + (l.proj || '') + ' ' + (l.reemb || '')).toLowerCase().includes(q));
+  const conta = {}; FILTROS_EXT.forEach(([k]) => { if (k !== 'revisar') conta[k] = base.filter(FILTRO_EXT[k]).length; });
+  let ls = base.filter(FILTRO_EXT[f] || FILTRO_EXT.tudo);
   ls.sort((a, b) => b.dia.localeCompare(a.dia) || String(b.em).localeCompare(String(a.em)));
   const sai = ls.filter(l => l.tipo === 'saida').reduce((a, l) => a + l.v, 0), ent = ls.filter(l => l.tipo === 'entrada').reduce((a, l) => a + l.v, 0);
   const dias = [...new Set(ls.map(l => l.dia))];
-  return `<div class="chips scroll">${FILTROS_EXT.map(([k, l]) => `<button class="chip ${f === k ? 'on' : ''}" data-a="fext" data-v="${k}">${rotuloExt(k, l)}</button>`).join('')}</div>
-    <input class="in" id="busca" data-i="busca" value="${esc(S.busca)}" placeholder="Buscar (ex.: farmácia, Netflix)" autocomplete="off" enterkeyhint="search">
-    ${q ? `<button class="chip sm ${todos ? 'on' : ''}" data-a="buscaTodos" style="align-self:flex-start">${todos ? ic('check', 12, 2.6) + ' ' : ''}Buscar em todos os meses</button>` : ''}
-    ${S.fCat ? `<button class="chip on" data-a="fcat" data-v="${esc(S.fCat)}" style="align-self:flex-start">${esc(categoria(S.fCat).ic)} ${esc(categoria(S.fCat).nome)} ${ic('x', 12, 2.6)}</button>` : ''}
-    <div id="extlista" class="stack" style="gap:10px">${extratoLista(ls, dias, sai, ent)}</div>`;
+  const nomeF = (FILTROS_EXT.find(x => x[0] === f) || ['', 'Tudo'])[1].toLowerCase(), onde = todos ? 'em todos os meses' : 'em ' + MESES[+S.mes.slice(5) - 1];
+  const vazioExt = ls.length ? '' : `<div class="panel">${vazio('🔎', base.length ? `Nenhum lançamento em <b>${esc(nomeF)}</b> ${q ? `com “${esc(S.busca.trim())}” ` : ''}${onde}. Há ${base.length} em outros filtros.` : q ? `Nada com “${esc(S.busca.trim())}” ${onde}.` : 'Nenhum lançamento aqui.')}
+    <div class="hrow" style="gap:8px;justify-content:center;flex-wrap:wrap">${f !== 'tudo' && base.length ? '<button class="btn ghost sm" data-a="fext" data-v="tudo">Ver todos os filtros</button>' : ''}${q ? '<button class="btn ghost sm" data-a="limparBusca">Limpar a busca</button>' : ''}${q && !todos ? '<button class="btn ghost sm" data-a="buscaTodos">Buscar em todos os meses</button>' : ''}${S.fCat ? '<button class="btn ghost sm" data-a="fcat" data-v="' + esc(S.fCat) + '">Tirar a categoria</button>' : ''}</div></div>`;
+  return `<div class="chips scroll">${FILTROS_EXT.map(([k, l]) => `<button class="chip ${f === k ? 'on' : ''}${k !== 'revisar' && !conta[k] && f !== k ? ' vazio' : ''}" data-a="fext" data-v="${k}">${k === 'revisar' ? rotuloExt(k, l) : `${l} <span class="n">${conta[k]}</span>`}</button>`).join('')}</div>
+    <div class="busca"><input class="in" id="busca" data-i="busca" value="${esc(S.busca)}" placeholder="Buscar (ex.: farmácia, Netflix, Bruxelas)" autocomplete="off" enterkeyhint="search">${q ? `<button class="x" data-a="limparBusca" aria-label="Limpar a busca">${ic('x', 16)}</button>` : ''}</div>
+    ${q || S.fCat ? `<div class="chips">${q ? `<div class="seg mini"><button class="${todos ? '' : 'on'}" data-a="buscaMes" data-v="">Em ${MESES[+S.mes.slice(5) - 1]}</button><button class="${todos ? 'on' : ''}" data-a="buscaMes" data-v="1">Todos os meses</button></div>` : ''}${S.fCat ? `<button class="chip sm on" data-a="fcat" data-v="${esc(S.fCat)}">${esc(categoria(S.fCat).ic)} ${esc(categoria(S.fCat).nome)} ${ic('x', 12, 2.6)}</button>` : ''}</div>` : ''}
+    <div id="extlista" class="stack" style="gap:10px">${vazioExt || extratoLista(ls, dias, sai, ent)}</div>`;
 }
 function extratoLista(ls, dias, sai, ent) {
   const doCartao = ls.some(l => l.tipo === 'saida' && l.forma === 'cartao' && N_mes(l.dia) !== S.mes);
@@ -134,16 +139,16 @@ function linhaAgenda(x) {
   const n = N_diasEntre(hoje(), x.venc), quando = x.status === 'pago' ? statusTag('pago') : x.status === 'vencido' ? (x.entrada ? `<span class="tag warn">esperado dia ${N_dataObj(x.venc).getDate()}</span>` : `<span class="tag bad">venceu ${rotuloDia(x.venc)}</span>`) : n === 0 ? '<span class="tag warn">vence hoje</span>' : `<span class="tag">${x.entrada ? 'dia' : 'vence'} ${n > 0 && n < 7 ? rotuloDia(x.venc) : fmtCurta(x.venc)}</span>`;
   const rot = x.k === 'fatura' ? (x.status === 'pago' ? 'Ver' : 'Pagar') : x.entrada ? 'Receber' : x.aporte ? 'Investir' : x.cartao ? 'Lançar' : 'Pagar';
   const abrir = x.k === 'fatura' ? `data-a="sheet" data-k="fatura" data-id="${x.id}" data-v="${x.ref}"` : x.k === 'rec' ? `data-a="sheet" data-k="conta" data-id="${x.id}" data-v="${x.ref || ''}"` : `data-a="sheet" data-k="lanc" data-id="${x.id}"`;
-  return `<div class="it"><span class="em-tile">${esc(x.ic)}</span><button class="main" ${abrir}><span class="t">${esc(x.nome)}</span><span class="s">${quando}${x.cartao ? '<span>no cartão</span>' : ''}${anexosAgenda(x) ? `<span>📎 ${anexosAgenda(x)}</span>` : ''}</span></button>
-    ${x.status === 'pago' ? `<span class="stack" style="gap:4px;align-items:flex-end"><span class="v ${x.entrada ? 'c-good' : ''}">${reais(x.v)}</span>${podeDespagar(x) ? `<button class="btn ghost sm" style="padding:6px 10px" data-a="despagar" data-k="${x.k}" data-id="${x.id}" data-ref="${x.ref || ''}">Não foi ${x.entrada ? 'recebido' : 'pago'}</button>` : ''}</span>` : `<span class="stack" style="gap:4px;align-items:flex-end"><span class="v ${x.entrada ? 'c-good' : ''}">${reais(x.resta != null ? x.resta : x.v)}</span><button class="btn sm ${x.entrada ? '' : 'warm'}" style="padding:7px 12px" data-a="pagar" data-k="${x.k}" data-id="${x.id}" data-ref="${x.ref || ''}">${rot}</button></span>`}</div>`;
+  const outroValor = x.k === 'rec' && x.normal && x.v !== x.normal ? `<span>este mês · normal ${reais(x.normal)}</span>` : '';
+  return `<div class="it${x.status === 'vencido' && !x.entrada ? ' venc' : ''}"><span class="em-tile">${esc(x.ic)}</span><button class="main" ${abrir}><span class="t">${esc(x.nome)}</span><span class="s">${quando}${outroValor}${x.cartao ? '<span>no cartão</span>' : ''}${anexosAgenda(x) ? `<span>📎 ${anexosAgenda(x)}</span>` : ''}</span></button>
+    ${x.status === 'pago' ? `<span class="stack" style="gap:4px;align-items:flex-end"><span class="v ${x.entrada ? 'c-good' : ''}">${reais(x.v)}</span>${podeDespagar(x) ? `<button class="btn ghost sm" style="padding:6px 10px" data-a="despagar" data-k="${x.k}" data-id="${x.id}" data-ref="${x.ref || ''}">Não foi ${x.entrada ? 'recebido' : 'pago'}</button>` : ''}</span>` : `<span class="stack" style="gap:4px;align-items:flex-end"><span class="v ${x.entrada ? 'c-good' : ''}">${reais(x.resta != null ? x.resta : x.v)}</span><button class="btn sm ${x.entrada ? '' : 'warm'}" style="padding:7px 12px" data-a="pagar" data-k="${x.k}" data-id="${x.id}" data-ref="${x.ref || ''}">${rot}</button>${x.k === 'rec' && !x.cartao && !x.aporte ? `<button class="link tiny" data-a="sheet" data-k="conta" data-id="${x.id}" data-v="${x.ref || ''}">outro valor</button>` : ''}</span>`}</div>`;
 }
 function finContas() {
   const ag = agendaMes(S.mes), pagar = ag.filter(x => !x.entrada && x.status !== 'pago'), receber = ag.filter(x => x.entrada && x.status !== 'pago'), ok = ag.filter(x => x.status === 'pago');
   const soma = l => l.reduce((a, x) => a + (x.resta != null ? x.resta : x.v), 0), venc = pagar.filter(x => x.status === 'vencido');
   const recs = recorrentes();
   return `${COL_INI}<div class="grid3"><div class="stat"><span class="tiny muted">A pagar</span><b>${compacto(soma(pagar))}</b></div><div class="stat"><span class="tiny muted">A receber</span><b>${compacto(soma(receber))}</b></div><div class="stat"><span class="tiny muted">Pago</span><b>${compacto(ok.filter(x => !x.entrada).reduce((a, x) => a + x.v, 0))}</b></div></div>
-    ${venc.length ? secao('Vencidas', `<span class="tag bad">${venc.length}</span>`) + listaOu(venc, linhaAgenda) : ''}
-    ${secao('A pagar', `<span class="tiny muted">${pagar.length - venc.length}</span>`)}${listaOu(pagar.filter(x => x.status !== 'vencido'), linhaAgenda, `<div class="panel">${vazio('🎉', ag.length ? 'Nada mais a pagar neste mês.' : 'Cadastre as contas fixas para elas aparecerem aqui todo mês.')}</div>`)}
+    ${secao('A pagar', `<span class="hrow" style="gap:6px">${venc.length ? `<span class="tag bad">${venc.length} ${plu(venc.length, 'vencida', 'vencidas')}</span>` : ''}<span class="tiny muted">${pagar.length}</span></span>`)}${listaOu([...venc, ...pagar.filter(x => x.status !== 'vencido')], linhaAgenda, `<div class="panel">${vazio('🎉', ag.length ? 'Nada mais a pagar neste mês.' : 'Cadastre as contas fixas para elas aparecerem aqui todo mês.')}</div>`)}
     ${receber.length ? secao('A receber') + listaOu(receber, linhaAgenda) : ''}
     ${ok.length ? `<details><summary>${secao('Pagas e recebidas', `<span class="tiny muted">${ok.length}</span>`)}</summary>${listaOu(ok, linhaAgenda)}</details>` : ''}
     ${COL_MEIO}${secao('Contas fixas e receitas', `<button class="link" data-a="sheet" data-k="conta">+ Nova</button>`)}
@@ -385,12 +390,23 @@ function formConta(c) {
   if (c) return { tipo: c.tipo || 'saida', nome: c.nome, v: reaisInput(c.v), vence: c.vence || 10, cat: c.cat || '', forma: c.forma || '', cartao: c.cartao || '', carteira: c.carteira || '', destino: c.destino || '', meta: c.meta || '', ativa: c.ativa !== false, fim: c.fim || '', nota: c.nota || '', auto: !!c.auto, autoDesde: c.autoDesde || '' };
   return { tipo: 'saida', nome: '', v: '', vence: 10, cat: 'contas', forma: 'boleto', cartao: (cartoes()[0] || {}).id || '', carteira: (contasBancarias()[0] || {}).id || '', destino: (investimentos()[0] || {}).id || '', meta: '', ativa: true, fim: '', nota: '', auto: false, autoDesde: '' };
 }
+/* Valor deste mês, diferente do de sempre (luz que veio mais alta, salário com bônus): fica como lançamento a pagar/receber do mês */
+function blocoValorMes(c, ref, f) {
+  const r = recorrentesMes(ref).find(x => x.id === c.id), nomeMes = MESES[+ref.slice(5) - 1], ent = c.tipo === 'entrada';
+  if (!r) return '';
+  if (r.status === 'pago' && r.lanc) return `<div class="panel soft"><span class="small">${ent ? 'Recebido' : 'Pago'} em ${nomeMes}: <b>${reais(r.lanc.v)}</b>${r.lanc.v !== c.v ? ` (normal ${reais(c.v)})` : ''}.</span></div>`;
+  if (f.vmes == null) f.vmes = reaisInput(r.lanc ? r.lanc.v : c.v);
+  return `<div class="panel soft valor-mes"><b>Valor de ${nomeMes}</b>
+    <div class="inrow">${inp('vmes', f.vmes, 'inputmode="decimal" placeholder="R$ 0,00" autocomplete="off" aria-label="Valor deste mês"')}<button class="btn" data-a="valorMes" data-v="${ref}">Salvar</button></div>
+    <span class="tiny muted">${r.lanc && r.lanc.v !== c.v ? `Este mês está em ${reais(r.lanc.v)}. ` : ''}Vale só para ${nomeMes}: o valor de sempre continua ${reais(c.v)}.${ent ? '' : ' Depois é só tocar em Pagar.'}</span></div>`;
+}
 SH.conta = s => {
   const c = s.id && S.d.contas.get(s.id);
   if (s.id && !c) return sumiu('Conta fixa');
   if (!s.f) s.f = formConta(c);
   const f = s.f, t = f.tipo, pags = c ? lancs().filter(l => l.conta === c.id).sort((a, b) => b.dia.localeCompare(a.dia)).slice(0, 8) : [];
   return `${head(c ? 'Editar' : 'Novo', t === 'entrada' ? 'Receita fixa' : t === 'aporte' ? 'Aporte todo mês' : 'Conta fixa')}
+    ${c && c.tipo !== 'aporte' && c.forma !== 'cartao' ? blocoValorMes(c, s.v || S.mes, f) : ''}
     ${segm('tipo', t, [['saida', 'Conta a pagar'], ['entrada', 'Receita'], ['aporte', 'Aporte']])}
     ${campo('Nome', inp('nome', f.nome, `maxlength="60" placeholder="${t === 'entrada' ? 'Ex.: Salário Ana' : t === 'aporte' ? 'Ex.: Tesouro todo mês' : 'Ex.: Aluguel, luz, Netflix'}" autocomplete="off"`))}
     <div class="grid2">${campo(t === 'saida' ? 'Valor de sempre' : 'Valor', inp('v', f.v, 'inputmode="decimal" placeholder="R$ 0,00" autocomplete="off"'))}${campo(t === 'saida' ? 'Vence todo dia' : 'Todo dia', inp('vence', f.vence, 'type="number" min="1" max="31" inputmode="numeric"'))}</div>
@@ -569,6 +585,8 @@ Object.assign(A, {
   fcat: d => { S.fCat = S.fCat === d.v ? null : d.v; S.fv = 'extrato'; S.fExt = 'tudo'; render(false); },
   fext: d => { S.fExt = d.v; render(); },
   buscaTodos: () => { S.buscaTodos = !S.buscaTodos; render(); },
+  buscaMes: d => { S.buscaTodos = !!d.v; render(); },
+  limparBusca: () => { S.busca = ''; S.buscaTodos = false; render(); focar('busca'); },
   irRevisar: () => { S.fv = 'extrato'; S.fExt = 'revisar'; S.fCat = null; render(false); },
   revVer: d => { S.revAberto = S.revAberto === d.v ? null : d.v; render(); },
   revOk: d => {
@@ -694,6 +712,15 @@ Object.assign(A, {
     item.autoDesde = item.auto ? (f.autoDesde || N_mes(hoje())) : '';
     closeSheet(); enfileirar('salvar', { col: 'contas', item }); if (item.auto) lancarAutomaticos();
     toast(s.id ? 'Atualizado.' : `${nome} cadastrado. Aparece em Contas todo mês, dia ${item.vence}.`);
+  },
+  valorMes: d => {
+    const s = S.sheet, c = S.d.contas.get(s.id), ref = d.v, v = lerReais(s.f.vmes || ''); if (!c) return;
+    if (v <= 0) { toast('Digite o valor deste mês.'); focar('f-vmes'); return; }
+    const r = recorrentesMes(ref).find(x => x.id === c.id);
+    if (r && r.lanc) enfileirar('salvar', { col: 'lancamentos', item: { id: r.lanc.id, v } });
+    else enfileirar('salvar', { col: 'lancamentos', item: { id: ('vm' + c.id + ref.replace('-', '')).slice(0, 40), tipo: c.tipo, v, dia: N_diaDoMes(ref, c.vence || 1), desc: c.nome, cat: c.cat,
+      forma: c.tipo === 'saida' ? c.forma || 'boleto' : '', cartao: '', carteira: c.carteira || (contasBancarias()[0] || {}).id || '', pago: false, conta: c.id, ref, destino: '', meta: '', nota: '' } });
+    closeSheet(); toast(`${c.nome} de ${MESES[+ref.slice(5) - 1]}: ${reais(v)}. O valor de sempre continua ${reais(c.v)}.`, 4500);
   },
   saldoPat: () => { S.sheet.f = { modo: 'saldo', saldo: '', dia: hoje() }; renderSheet(); setTimeout(() => focar('f-saldo'), 100); },
   editarPat: () => { S.sheet.f = formPat(S.d.patrimonio.get(S.sheet.id)); renderSheet(); },

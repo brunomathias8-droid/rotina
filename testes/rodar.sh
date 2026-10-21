@@ -6,7 +6,7 @@
 set -u
 cd "$(dirname "$0")"
 PORTA=8787
-TODOS="fluxo3 fluxo4 fluxo5 fluxo6 fluxo7 fluxo8 fluxo11 fluxo12 fluxo13 fluxo14 fluxo15 fluxo16 fluxo17 estilo"
+TODOS="fluxo3 fluxo4 fluxo5 fluxo6 fluxo7 fluxo8 fluxo11 fluxo12 fluxo13 fluxo14 fluxo15 fluxo16 fluxo17 fluxo18 estilo"
 LISTA="${*:-$TODOS}"
 case " $LISTA " in *" fluxo3 "*) ;; *) LISTA="fluxo3 $LISTA" ;; esac
 node servidor-falso.js .. $PORTA > servidor.log 2>&1 &

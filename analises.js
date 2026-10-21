@@ -54,8 +54,8 @@ function gastosQueSeRepetem() {
   const g = {};
   lancs().filter(l => l.tipo === 'saida' && !l.grupo && !l.conta && l.desc).forEach(l => {
     const k = lojaDe(l.desc); if (!k) return;
-    const x = g[k] = g[k] || { k, nome: l.desc, cat: l.cat, meses: {}, n: 0 };
-    const m = N_mes(l.dia); x.meses[m] = (x.meses[m] || 0) + l.v; x.n++;
+    const x = g[k] = g[k] || { k, nome: l.desc, cat: l.cat, meses: {}, n: 0, ls: [] };
+    const m = N_mes(l.dia); x.meses[m] = (x.meses[m] || 0) + l.v; x.n++; x.ls.push(l);
   });
   const fixas = new Set(recorrentes().map(c => lojaDe(c.nome)));
   return Object.values(g).map(x => {
@@ -110,8 +110,8 @@ function finAnalises() {
     <div class="panel">${cartMes.length ? cartMes.map(x => `<button class="orc" data-a="sheet" data-k="fatura" data-id="${x.k.id}" data-v="${ref}"><div class="between"><span><b>${esc(x.k.nome)}</b></span><span class="num">${reais(x.v)} <span class="tiny muted">${Math.round(x.v / totCart * 100)}%</span></span></div>${bar(x.v, cartMes[0].v, x.cor)}</button>`).join('')
       + `<p class="tiny muted" style="margin:0">No cartão: ${reais(r.cartao)}${foraCartao > 0 ? ` · fora do cartão (Pix, boleto, débito): ${reais(foraCartao)}` : ''}.</p>` : '<p class="small muted" style="margin:0">Nenhuma fatura neste mês.</p>'}</div>
 
-    ${secao('Gastos que se repetem', rep.length ? `<span class="tiny muted">${reais(rep.reduce((a, x) => a + x.anual, 0))} por ano</span>` : '')}
-    <div class="panel">${rep.length ? `<div class="lst">${rep.slice(0, 12).map(x => `<button class="it" data-a="buscaExt" data-v="${esc(x.nome)}"><span class="em-tile">${esc(categoria(x.cat).ic)}</span><span class="main"><span class="t">${esc(x.nome)}</span><span class="s"><span>${reais(x.media)} por mês · ${x.ms.length} meses</span>${x.negociar ? '<span class="tag warn">dá para negociar</span>' : ''}</span></span><span class="stack" style="gap:2px;align-items:flex-end"><span class="v">${compacto(x.anual)}</span><span class="tiny muted">por ano</span></span></button>`).join('')}</div>
+    ${secao('Gastos que se repetem', rep.length ? `<button class="link" data-a="sheet" data-k="repetem">${reais(rep.reduce((a, x) => a + x.anual, 0))} por ano · ver todos</button>` : '')}
+    <div class="panel">${rep.length ? `<div class="lst">${rep.slice(0, 6).map(x => `<button class="it" data-a="sheet" data-k="repetem" data-v="${esc(x.k)}"><span class="em-tile">${esc(categoria(x.cat).ic)}</span><span class="main"><span class="t">${esc(x.nome)}</span><span class="s"><span>${reais(x.media)} por mês · ${x.ms.length} meses</span>${x.negociar ? '<span class="tag warn">dá para negociar</span>' : ''}</span></span><span class="stack" style="gap:2px;align-items:flex-end"><span class="v">${compacto(x.anual)}</span><span class="tiny muted">por ano</span></span></button>`).join('')}</div>
       <p class="tiny muted" style="margin:0">Cobranças com valor parecido em meses seguidos, fora das contas fixas e das compras parceladas. Vale olhar uma vez por ano: o que não usam, cancelem; anuidade e seguro, negociem.</p>`
       : '<p class="small muted" style="margin:0">Assinaturas, seguros e anuidades aparecem aqui quando houver dois meses ou mais de faturas.</p>'}</div>
 
@@ -121,9 +121,23 @@ function finAnalises() {
     ${COL_FIM}`;
 }
 
+/* Painel com a lista completa dos gastos que se repetem; o tocado vem aberto, com mês a mês e os lançamentos */
+SH.repetem = s => {
+  const rep = gastosQueSeRepetem(), anual = rep.reduce((a, x) => a + x.anual, 0), neg = rep.filter(x => x.negociar);
+  const porCat = {}; rep.forEach(x => { porCat[x.cat] = (porCat[x.cat] || 0) + x.anual; });
+  return `${head('Análises', 'Gastos que se repetem')}
+    <div class="panel soft"><div class="grid2"><div class="stat"><span class="tiny muted">Por mês</span><b>${reais(Math.round(anual / 12))}</b></div><div class="stat"><span class="tiny muted">Por ano</span><b>${reais(anual)}</b></div></div>
+      <p class="small muted" style="margin:0">${rep.length} ${plu(rep.length, 'cobrança', 'cobranças')}: ${Object.entries(porCat).sort((a, b) => b[1] - a[1]).map(([id, v]) => `${esc(categoria(id).ic)} ${esc(categoria(id).nome)} ${compacto(v)}`).join(' · ')}${neg.length ? `. ${neg.length} ${plu(neg.length, 'dá', 'dão')} para negociar.` : '.'}</p></div>
+    ${rep.length ? rep.map(x => `<details class="panel rep" ${x.k === s.v ? 'open' : ''}><summary class="it" style="padding:0"><span class="em-tile">${esc(categoria(x.cat).ic)}</span><span class="main"><span class="t">${esc(x.nome)}</span><span class="s"><span>${reais(x.media)} por mês · ${x.ms.length} meses</span>${x.negociar ? '<span class="tag warn">dá para negociar</span>' : ''}</span></span><span class="stack" style="gap:2px;align-items:flex-end"><span class="v">${compacto(x.anual)}</span><span class="tiny muted">por ano</span></span></summary>
+      <div class="chips" style="margin-top:8px">${x.ms.map(m => `<span class="chip sm">${mesCurto(m)} ${reais(x.meses[m])}</span>`).join('')}</div>
+      <div class="lst">${x.ls.slice().sort((a, b) => b.dia.localeCompare(a.dia)).slice(0, 12).map(linhaLanc).join('')}</div>
+      <button class="btn ghost sm" data-a="buscaExt" data-v="${esc(x.nome)}">Ver no Extrato</button></details>`).join('')
+      : vazio('🔁', 'Nada se repete ainda. Com dois meses ou mais de faturas, as assinaturas aparecem aqui.')}
+    <p class="tiny muted">Cobranças com valor parecido em meses seguidos, fora das contas fixas e das compras parceladas.</p>`;
+};
 Object.assign(A, {
   // Busca no Extrato em todos os meses do texto (loja ou projeto)
-  buscaExt: d => { S.fv = 'extrato'; S.fExt = 'tudo'; S.fCat = null; S.busca = d.v; S.buscaTodos = true; render(false); },
+  buscaExt: d => { closeSheet(); S.tab = 'financas'; S.fv = 'extrato'; S.fExt = 'tudo'; S.fCat = null; S.busca = d.v; S.buscaTodos = true; render(false); },
   devolveu: d => {
     const g = aReceberDeTerceiros().find(x => x.nome === d.v); if (!g) return;
     if (!confirm(`${g.nome} devolveu ${reais(g.v)}?`)) return;

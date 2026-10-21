@@ -1,7 +1,7 @@
 /* acoes.js — o que cada toque faz, login, roteamento e a inicialização do app. */
 'use strict';
 
-const VERSAO_APP = '3.8.0';
+const VERSAO_APP = '3.8.1';
 /* Versão mínima do servidor (Apps Script) para os recursos desta versão: Para comprar, receita automática, regras de categoria, projetos e reembolso */
 const API_MINIMA = '3.5.0';
 const servidorAntigo = () => !!S.apiVersao && S.apiVersao.localeCompare(API_MINIMA, undefined, { numeric: true }) < 0;

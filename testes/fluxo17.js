@@ -69,7 +69,7 @@ function ok(c, m) { if (!c) { erros.push('FALHOU: ' + m); console.log('  ✗', m
     if (w === 390) {
       console.log('3. Ações');
       await p.locator('#main .it', { hasText: 'Viagem 17' }).click(); await espera(300);
-      ok(await p.locator('#main .chip.on', { hasText: 'todos os meses' }).isVisible() && (await p.locator('#main #extlista .it').count()) === 2, 'tocar na viagem mostra os 2 gastos, em todos os meses');
+      ok(await p.locator('#main .seg.mini button.on', { hasText: 'Todos os meses' }).isVisible() && (await p.locator('#main #extlista .it').count()) === 2, 'tocar na viagem mostra os 2 gastos, em todos os meses');
       await p.evaluate(() => { S.fv = 'analises'; S.busca = ''; render(false); });
       await p.locator('#main button[data-a="devolveu"][data-v="Pessoa 17"]').click(); await fila();
       ok(await p.evaluate(() => !aReceberDeTerceiros().some(x => x.nome === 'Pessoa 17')), '"Devolveu" tira a Pessoa 17 de A receber');
