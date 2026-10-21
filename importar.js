@@ -146,14 +146,17 @@ const PISTAS_CAT = [
   ['moradia', /aluguel|condominio|imobili/]
 ];
 const chaveDesc = t => normImp(t).replace(/\d+\s*\/\s*\d+/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+/** Categoria pelo nome da loja (palavras conhecidas), ou vazio. */
+function pistaCat(desc) { const d = normImp(desc), cats = categorias('saida'), p = PISTAS_CAT.find(([id, r]) => r.test(d) && cats.some(x => x.id === id)); return p ? p[0] : ''; }
 function catPara(txtCat, desc, historico) {
   const cats = categorias('saida');
   if (txtCat) {
     const c = normImp(txtCat), ach = cats.find(x => normImp(x.nome) === c || x.id === c) || cats.find(x => normImp(x.nome).includes(c) || c.includes(normImp(x.nome).split(' ')[0]));
     if (ach) return ach.id;
   }
-  const h = historico.get(chaveDesc(desc)); // a mesma loja já foi lançada antes: usa a mesma categoria
-  if (h && cats.some(x => x.id === h)) return h;
+  // A mesma loja já foi categorizada antes (regra da casa ou o que vocês mais usaram): usa a mesma categoria
+  const h = sugerirCat(desc) || historico.get(chaveDesc(desc));
+  if (h && !CAT_VAGA(h) && cats.some(x => x.id === h)) return h;
   const d = normImp(desc), p = PISTAS_CAT.find(([id, r]) => r.test(d) && cats.some(x => x.id === id));
   return p ? p[0] : (cats.find(x => x.id === 'outros') || cats[0] || {}).id || '';
 }
@@ -163,7 +166,7 @@ function lerLinhas(m, k, ref) {
   const cab = acharCabecalho(m);
   if (!cab) throw erroApp('Não encontrei as colunas de data e valor. Use a planilha modelo ou confira o arquivo.', 'VALIDACAO');
   const c = cab.col, corpo = m.slice(cab.lin + 1).slice(0, IMP_MAX), rows = [], ruins = [];
-  const historico = new Map(); lancs().filter(l => l.tipo === 'saida' && l.cat && l.desc).sort((a, b) => a.dia.localeCompare(b.dia)).forEach(l => historico.set(chaveDesc(l.desc), l.cat));
+  const historico = new Map(); lancs().filter(l => l.tipo === 'saida' && !CAT_VAGA(l.cat) && !aConfirmar(l) && l.desc).sort((a, b) => a.dia.localeCompare(b.dia)).forEach(l => historico.set(chaveDesc(l.desc), l.cat));
   corpo.forEach(l => {
     const cel = j => j == null ? '' : l[j];
     const dia = lerData(cel(c.dia), ref, k), v = lerValor(cel(c.v));

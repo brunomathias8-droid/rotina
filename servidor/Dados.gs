@@ -17,12 +17,12 @@ var ABAS = {
   Afazeres: ['ID', 'Nome', 'Icone', 'Freq', 'Dias', 'N', 'DiaMes', 'Resp', 'Vez', 'Prox', 'Peso', 'Troca', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Feitos: ['ID', 'Afazer', 'Nome', 'Pessoa', 'Dia', 'Hora', 'Peso', 'Pulou', 'Antes', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Pendencias: ['ID', 'Titulo', 'Nota', 'Area', 'Resp', 'Prazo', 'Alta', 'Itens', 'Repete', 'Feita', 'FeitaPor', 'FeitaEm', 'Seguinte', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
-  Lancamentos: ['ID', 'Dia', 'Tipo', 'Valor', 'Descricao', 'Categoria', 'Forma', 'Pago', 'Carteira', 'Cartao', 'Parcela', 'Grupo', 'Conta', 'Ref', 'Destino', 'Meta', 'Nota', 'Fatura', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
-  Contas: ['ID', 'Nome', 'Tipo', 'Valor', 'Vence', 'Categoria', 'Forma', 'Cartao', 'Carteira', 'Destino', 'Meta', 'Ativa', 'Fim', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
+  Lancamentos: ['ID', 'Dia', 'Tipo', 'Valor', 'Descricao', 'Categoria', 'Forma', 'Pago', 'Carteira', 'Cartao', 'Parcela', 'Grupo', 'Conta', 'Ref', 'Destino', 'Meta', 'Nota', 'Fatura', 'Projeto', 'Reembolso', 'Reembolsado', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
+  Contas: ['ID', 'Nome', 'Tipo', 'Valor', 'Vence', 'Categoria', 'Forma', 'Cartao', 'Carteira', 'Destino', 'Meta', 'Ativa', 'Fim', 'Nota', 'Auto', 'AutoDesde', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Cartoes: ['ID', 'Nome', 'Cor', 'Limite', 'Fecha', 'Vence', 'Carteira', 'Ativo', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Patrimonio: ['ID', 'Nome', 'Icone', 'Natureza', 'Classe', 'Instituicao', 'Historico', 'Taxa', 'Ativo', 'Nota', 'Aplicado', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Metas: ['ID', 'Nome', 'Icone', 'Tipo', 'Alvo', 'Prazo', 'Inicio', 'Itens', 'Metrica', 'Categoria', 'Base', 'Ativa', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
-  Compras: ['ID', 'Item', 'Qtd', 'Setor', 'Comprado', 'CompradoPor', 'CompradoEm', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
+  Compras: ['ID', 'Item', 'Qtd', 'Setor', 'Comprado', 'CompradoPor', 'CompradoEm', 'Lista', 'Fixo', 'Opcoes', 'Orcamento', 'Prazo', 'Resp', 'Prioridade', 'Categoria', 'Lancamento', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Push: ['Token', 'Pessoa', 'Plataforma', 'Tipos', 'CriadoEm', 'AtualizadoEm', 'Ativo', 'UltimoErro']
 };
 
@@ -162,7 +162,7 @@ function metodo_() { var m = json_(cfg_().metodo, null); return m && m.essencial
 
 function casaPublica_() {
   var c = cfg_();
-  return { nome: c.nome_casa || 'Nossa casa', convite: c.convite || '', categorias: categorias_(), metodo: metodo_(), fuso: fuso_(), hoje: hoje_(), ics: icsToken_() };
+  return { nome: c.nome_casa || 'Nossa casa', convite: c.convite || '', categorias: categorias_(), metodo: metodo_(), regras: json_(c.regras, null) || {}, fuso: fuso_(), hoje: hoje_(), ics: icsToken_() };
 }
 
 /** Rodar uma vez no editor do Apps Script (e de novo sem medo: não apaga nada). */
@@ -219,11 +219,12 @@ var COLECOES = {
   lancamentos: { aba: 'Lancamentos', exigir: 'dia', campos: {
     dia: ['Dia', 'd'], tipo: ['Tipo', 'e', TIPOS_LANC], v: ['Valor', 'c'], desc: ['Descricao', 't', 120], cat: ['Categoria', 't', 30],
     forma: ['Forma', 't', 20], pago: ['Pago', 'b'], carteira: ['Carteira', 't', 40], cartao: ['Cartao', 't', 40], parc: ['Parcela', 't', 9],
-    grupo: ['Grupo', 't', 40], conta: ['Conta', 't', 40], ref: ['Ref', 't', 7], destino: ['Destino', 't', 40], meta: ['Meta', 't', 40], nota: ['Nota', 't', 300], fat: ['Fatura', 'f'] } },
+    grupo: ['Grupo', 't', 40], conta: ['Conta', 't', 40], ref: ['Ref', 't', 7], destino: ['Destino', 't', 40], meta: ['Meta', 't', 40], nota: ['Nota', 't', 300], fat: ['Fatura', 'f'],
+    proj: ['Projeto', 't', 40], reemb: ['Reembolso', 't', 40], reembOk: ['Reembolsado', 'b'] } },
   contas: { aba: 'Contas', exigir: 'nome', campos: {
     nome: ['Nome', 't', 60], tipo: ['Tipo', 'e', ['saida', 'entrada', 'aporte']], v: ['Valor', 'c'], vence: ['Vence', 'n'], cat: ['Categoria', 't', 30],
     forma: ['Forma', 't', 20], cartao: ['Cartao', 't', 40], carteira: ['Carteira', 't', 40], destino: ['Destino', 't', 40], meta: ['Meta', 't', 40],
-    ativa: ['Ativa', 'b'], fim: ['Fim', 't', 7], nota: ['Nota', 't', 300] } },
+    ativa: ['Ativa', 'b'], fim: ['Fim', 't', 7], nota: ['Nota', 't', 300], auto: ['Auto', 'b'], autoDesde: ['AutoDesde', 'f'] } },
   cartoes: { aba: 'Cartoes', exigir: 'nome', campos: {
     nome: ['Nome', 't', 40], cor: ['Cor', 't', 10], limite: ['Limite', 'c'], fecha: ['Fecha', 'n'], vence: ['Vence', 'n'],
     carteira: ['Carteira', 't', 40], ativo: ['Ativo', 'b'], nota: ['Nota', 't', 300] } },
@@ -238,7 +239,10 @@ var COLECOES = {
     titulo: ['Titulo', 't', 120], tipo: ['Tipo', 'e', ['link', 'arquivo']], url: ['Url', 'u'], cat: ['Categoria', 'e', CATS_ARQ], pessoas: ['Pessoas', 'L'],
     liga: ['Liga', 'g'], fixo: ['Fixo', 'b'], validade: ['Validade', 'd'], nota: ['Nota', 't', 500] } },
   compras: { aba: 'Compras', exigir: 'item', campos: {
-    item: ['Item', 't', 80], qtd: ['Qtd', 't', 30], setor: ['Setor', 't', 20], comprado: ['Comprado', 'b'], compradoPor: ['CompradoPor', 'p'], compradoEm: ['CompradoEm', 't', 30] } },
+    item: ['Item', 't', 80], qtd: ['Qtd', 't', 30], setor: ['Setor', 't', 20], comprado: ['Comprado', 'b'], compradoPor: ['CompradoPor', 'p'], compradoEm: ['CompradoEm', 't', 30],
+    // lista: 'mercado' (a lista do mercado; vazio nas versões antigas) ou 'plano' (coisa para comprar, com opções e orçamento)
+    lista: ['Lista', 'e', ['mercado', 'plano']], fixo: ['Fixo', 'b'], opcoes: ['Opcoes', 'j', 8000], orc: ['Orcamento', 'c'], prazo: ['Prazo', 'd'],
+    resp: ['Resp', 'r'], prio: ['Prioridade', 'e', ['', 'alta', 'baixa']], cat: ['Categoria', 't', 30], lanc: ['Lancamento', 't', 40], nota: ['Nota', 't', 800] } },
   feitos: { aba: 'Feitos', somenteLeitura: true, campos: {
     afazer: ['Afazer', 't', 40], nome: ['Nome', 't', 60], quem: ['Pessoa', 'p'], dia: ['Dia', 'd'], hora: ['Hora', 't', 5], peso: ['Peso', 'n'], pulou: ['Pulou', 'b'] } }
 };
@@ -260,7 +264,7 @@ function valorParaPlanilha_(tipo, op, v, ids) {
     case 'p': return ids.indexOf(String(v)) >= 0 ? String(v) : '';
     case 'f': return /^\d{4}-(0[1-9]|1[0-2])$/.test(String(v)) ? String(v) : '';
     case 'u': return /^https?:\/\/[^\s]+$/i.test(String(v).trim()) ? String(v).trim().slice(0, 1500) : '';
-    case 'g': return /^(eventos|tarefas|lancamentos|contas):[A-Za-z0-9_-]{6,40}(:\d{4}-\d{2})?$/.test(String(v)) ? String(v) : '';
+    case 'g': return /^(eventos|tarefas|lancamentos|contas|compras):[A-Za-z0-9_-]{6,40}(:\d{4}-\d{2})?$/.test(String(v)) ? String(v) : '';
     case 'r': return v === 'rodizio' || v === 'ambos' || ids.indexOf(String(v)) >= 0 ? String(v) : 'ambos';
   }
   return String(v);
@@ -367,7 +371,7 @@ function limparCompras_(s, req) {
   return comLock_(function () {
     var agora = String(Date.now()), itens = [];
     ler_('Compras').forEach(function (r) {
-      if (r.Excluido !== 'sim' && r.Comprado === 'sim') { atualizar_('Compras', r._lin, { Excluido: 'sim', Atualizado: agora }); itens.push(paraApp_('compras', porId_('Compras', r.ID))); }
+      if (r.Excluido !== 'sim' && r.Comprado === 'sim' && r.Lista !== 'plano' && r.Fixo !== 'sim') { atualizar_('Compras', r._lin, { Excluido: 'sim', Atualizado: agora }); itens.push(paraApp_('compras', porId_('Compras', r.ID))); }
     });
     return { col: 'compras', itens: itens };
   });
@@ -622,6 +626,18 @@ function salvarCasa_(s, req) {
         return o;
       });
       cfgSet_('categorias', JSON.stringify(cats));
+    }
+    // Regras de categoria por estabelecimento ({ "health center": "saude" }): o que chega é mesclado; categoria vazia apaga a regra
+    if (req.regras !== undefined) {
+      if (!req.regras || typeof req.regras !== 'object' || Array.isArray(req.regras)) throw apiErro_('Regras inválidas.', 'VALIDACAO');
+      var rg = json_(cfg_().regras, null) || {};
+      Object.keys(req.regras).slice(0, 200).forEach(function (k) {
+        var chave = String(k).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40), cat = String(req.regras[k] || '').slice(0, 24);
+        if (!chave) return;
+        if (cat && /^[a-z0-9_-]+$/i.test(cat)) rg[chave] = cat; else delete rg[chave];
+      });
+      var ks = Object.keys(rg); if (ks.length > 700) ks.slice(0, ks.length - 700).forEach(function (k) { delete rg[k]; });
+      cfgSet_('regras', JSON.stringify(rg));
     }
     if (req.metodo !== undefined) {
       var m = req.metodo || {}, e = Math.round(Number(m.essencial)), l = Math.round(Number(m.livre)), f = Math.round(Number(m.futuro));

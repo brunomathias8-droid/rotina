@@ -214,7 +214,7 @@ function aplicarLocal(f) {
   if (f.acao === 'lote') d.itens.forEach(it => aplicarSalvar(d.col, it));
   if (f.acao === 'enviarArquivo') { const a = S.d.arquivos.get(d.item.id); if (!a || !a.drive) aplicarSalvar('arquivos', { ...d.item, enviando: true }); }
   if (f.acao === 'excluir') (d.ids || [d.id]).forEach(id => S.d[d.col].delete(id));
-  if (f.acao === 'limparCompras') lista('compras').filter(c => c.comprado).forEach(c => S.d.compras.delete(c.id));
+  if (f.acao === 'limparCompras') lista('compras').filter(c => c.comprado && c.lista !== 'plano' && !c.fixo).forEach(c => S.d.compras.delete(c.id));
   if (f.acao === 'concluir') {
     const a = S.d.tarefas.get(d.id);
     const pode = a && !S.d.feitos.has(d.feito) && (a.freq ? a.prox === d.prox : !a.feita);
@@ -255,7 +255,7 @@ function aplicarLocal(f) {
     const l = e.coments || [];
     if (!l.some(c => c.id === d.cid)) S.d.eventos.set(e.id, { ...e, coments: [...l, { id: d.cid, p: S.eu, t: d.texto, em: new Date().toISOString(), pend: true }], pend: true });
   }
-  if (f.acao === 'casa' && S.casa) { if (d.categorias) S.casa.categorias = d.categorias; if (d.metodo) S.casa.metodo = d.metodo; if (d.nome) S.casa.nome = d.nome; }
+  if (f.acao === 'casa' && S.casa) { if (d.regras) S.casa.regras = { ...(S.casa.regras || {}), ...d.regras }; if (d.categorias) S.casa.categorias = d.categorias; if (d.metodo) S.casa.metodo = d.metodo; if (d.nome) S.casa.nome = d.nome; }
 }
 /* Formulário aberto (S.sheet.f) não é redesenhado: não atropela o que está sendo digitado. Prévia de arquivo (estavel) também não, para não piscar. */
 function redesenharSheet() { if (S.sheet && !S.sheet.f && !S.sheet.estavel) renderSheet(); }
@@ -387,6 +387,7 @@ async function sincronizar(completo) {
     aplicarSinc(r);
     render(); redesenharSheet();
     guardarImportantes();
+    if (typeof lancarAutomaticos === 'function') lancarAutomaticos();
   } catch (e) { /* tenta de novo no próximo ciclo */ }
   finally { S.sincronizando = false; renderTop(); }
 }
