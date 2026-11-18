@@ -153,6 +153,7 @@ function bancoFechamentos_() {
   return out;
 }
 
+var PARCELA_FOLGA = 100; // centavos: parcela lançada à mão pode diferir do banco no arredondamento
 function bancoLancar_() {
   var c = cfg_(), mapa = json_(c.banco_mapa, {}) || {}, desde = c.banco_desde || '';
   if (!Object.keys(mapa).length) return { criados: 0, ligados: 0 };
@@ -184,12 +185,14 @@ function bancoLancar_() {
     var m = mapa[t.Conta]; if (!m) return false;
     if (m.tipo === 'cartao') {
       if (l.cartao !== m.id) return true;
-      var k = cartoes[m.id];
-      return !!(k && l.tipo === 'saida' && (/^\d+\/\d+$/.test(t.Parcela) || t.Status === 'PENDING') && l.fat && l.fat !== bancoFatura_(k, t));
+      var k = cartoes[m.id]; if (!k || l.tipo !== 'saida') return false;
+      if ((/^\d+\/\d+$/.test(t.Parcela) || t.Status === 'PENDING') && l.fat && l.fat !== bancoFatura_(k, t)) return true;
+      // Parcela que já estava lançada à mão (o valor pode diferir em centavos de arredondamento): fica só a de vocês
+      return !!(l.parc && lancs.some(function (x) { return x.id !== l.id && !/^o[f-k]/.test(x.id) && !ligados[x.id] && x.tipo === 'saida' && x.cartao === l.cartao && x.parc === l.parc && N_faturaDe(k, x) === N_faturaDe(k, l) && Math.abs(x.v - l.v) <= PARCELA_FOLGA; }));
     }
     return l.forma === 'cartao' || (l.carteira !== m.id && l.destino !== m.id);
   };
-  banco.forEach(function (t) { var id = t.Lancamento; if (id && t.Status !== 'SUMIU' && /^o[f-j]/.test(id) && porId[id] && errado(t, porId[id])) apagar[id] = 1; });
+  banco.forEach(function (t) { var id = t.Lancamento; if (id && t.Status !== 'SUMIU' && /^o[f-k]/.test(id) && porId[id] && errado(t, porId[id])) apagar[id] = 1; });
   Object.keys(apagar).forEach(function (id) { if (todos[id]) { atualizar_('Lancamentos', todos[id]._lin, { Excluido: 'sim', Atualizado: agoraMs }); refeitos++; } delete porId[id]; delete ligados[id]; });
   if (refeitos) {
     lancs = lancs.filter(function (l) { return !apagar[l.id]; });
@@ -242,7 +245,7 @@ function bancoLancar_() {
       if (t.Tipo === 'entrada' && /pagamento|pagto|pgto|pag fat|credito de pagamento|payment/.test(d)) { marca[t._lin] = '-'; return; } // pagamento da fatura: entra pela conta
       if (t.Tipo === 'entrada') v = -v; // estorno: crédito na fatura
       var parc = /^\d+\/\d+$/.test(t.Parcela) ? t.Parcela : '', fat = bancoFatura_(k, t);
-      dup = achar(function (l) { return l.tipo === 'saida' && l.cartao === k.id && l.v === v && (parc ? (l.parc || '') === parc && N_faturaDe(k, l) === fat : !l.parc && Math.abs(N_diasEntre(l.dia, t.Dia)) <= 3); });
+      dup = achar(function (l) { return l.tipo === 'saida' && l.cartao === k.id && (parc ? (l.parc || '') === parc && N_faturaDe(k, l) === fat && Math.abs(l.v - v) <= PARCELA_FOLGA : !l.parc && l.v === v && Math.abs(N_diasEntre(l.dia, t.Dia)) <= 3); });
       item = { tipo: 'saida', forma: 'cartao', cartao: k.id, dia: t.Dia, v: v, desc: desc, parc: parc, fat: fat, pago: true, cat: bancoCategoria_(desc, regras, hist, cats) };
     } else if (t.Tipo === 'saida' && /fatura|pagamento cartao|pag cartao|pgto cartao|card payment/.test(d)) {
       // Pagamento de fatura: vira o pagamento do cartão que é pago por esta conta (se houver um só, ou se o nome aparecer)

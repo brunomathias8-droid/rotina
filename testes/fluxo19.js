@@ -90,6 +90,9 @@ const luar = q => fetch('http://localhost:8787/__luar?' + q).then(r => r.json())
   await luar('mapa=' + encodeURIComponent(JSON.stringify({ conta1: { tipo: 'cartao', id: 'cart19aaaaaa' }, cart1: { tipo: 'cartao', id: 'cart19aaaaaa' } })));
   await p.evaluate(() => sincronizar()); await espera(1500);
   ok(await p.evaluate(() => (lista('lancamentos').find(l => l.id === 'oftx1') || {}).forma === 'cartao'), 'com o mapa errado, o Pix virou compra no cartão');
+  // A mesma parcela já lançada à mão, com 3 centavos de diferença (arredondamento): a do banco tem de sair
+  await p.evaluate(() => enfileirar('salvar', { col: 'lancamentos', item: { id: 'lanc19parcel', tipo: 'saida', forma: 'cartao', cartao: 'cart19aaaaaa', dia: hoje(), v: 12003, parc: '2/3', desc: 'Loja dezenove (à mão)', cat: 'compras', pago: true } }));
+  await p.waitForFunction(() => S.fila.length === 0, null, { timeout: 20000 });
   await p.click('#main button[data-a="sheet"][data-k="luarAjustes"]');
   ok(!(await p.locator('.sheet select[data-i="ofmapa:conta1"] option').allInnerTexts()).some(t => /Cartão/.test(t)), 'conta corrente do banco não oferece cartões');
   ok(!(await p.locator('.sheet select[data-i="ofmapa:cart1"] option').allInnerTexts()).some(t => /^Conta/.test(t)), 'cartão do banco não oferece contas');
@@ -99,11 +102,11 @@ const luar = q => fetch('http://localhost:8787/__luar?' + q).then(r => r.json())
   await foto('mapa-banco');
   await p.click('.sheet button[data-a="luarMapa"]');
   await p.locator('#toast', { hasText: 'refeitos' }).waitFor({ timeout: 15000 });
-  ok(await p.locator('#toast', { hasText: '5 lançamentos criados e 7 refeitos' }).isVisible(), 'refaz os 7 do mapa errado e cria 5 no lugar certo: ' + await p.locator('#toast').innerText());
+  ok(await p.locator('#toast', { hasText: '5 lançamentos criados, 1 que já estavam no app reconhecidos e 8 refeitos' }).isVisible(), 'refaz os 7 do mapa errado e a parcela duplicada, e cria 5 no lugar certo: ' + await p.locator('#toast').innerText());
   await espera(1500); await p.evaluate(() => sincronizar()); await espera(1500);
   const L = await p.evaluate(() => lista('lancamentos').filter(l => /^o[f-j]/.test(l.id) && !l.excluido).map(l => ({ id: l.id, tipo: l.tipo, forma: l.forma, cat: l.cat, cartao: l.cartao, carteira: l.carteira, parc: l.parc, fat: l.fat, ref: l.ref, v: l.v, dia: l.dia, conta: l.conta, desc: l.desc })));
   const por = id => L.find(l => l.id.slice(2) === id.slice(2)) || {};
-  ok(L.length === 9, 'nove lançamentos do banco no app (4 do cartão, 5 da conta): ' + L.map(l => l.id).join(','));
+  ok(L.length === 8, 'oito lançamentos do banco no app (3 do cartão, 5 da conta): ' + L.map(l => l.id).join(','));
   ok(por('oftx1').tipo === 'saida' && por('oftx1').forma !== 'cartao' && por('oftx1').cat === 'delivery' && por('oftx1').carteira === 'pat19conta01', 'iFood da conta vira saída de delivery na conta');
   ok(por('oftx3').tipo === 'entrada' && por('oftx3').cat === 'salario', 'salário vira entrada');
   ok(por('oftx4').tipo === 'fatura' && por('oftx4').cartao === 'cart19aaaaaa' && por('oftx4').v === 30000, 'pagamento da fatura vira pagamento do cartão');
@@ -111,7 +114,8 @@ const luar = q => fetch('http://localhost:8787/__luar?' + q).then(r => r.json())
   ok(await p.evaluate(() => recorrentesMes(N_mes(hoje())).find(c => c.id === 'conta19alugu').status === 'pago'), 'conta fixa aparece paga, sem duplicar');
   ok(!por('oftx6').id && !por('oftx7').id, 'Pix entre vocês e entre contas da mesma pessoa não viram receita');
   const fatC2 = await p.evaluate(() => N_faturaRef(S.d.cartoes.get('cart19aaaaaa'), hoje()));
-  ok(por('ofc2').parc === '2/3' && por('ofc2').fat === fatC2 && por('ofc2').forma === 'cartao', 'parcela 2/3 cai na fatura da data (como o C6 manda)');
+  ok(!por('ofc2').id && await p.evaluate(() => lista('lancamentos').filter(l => l.parc === '2/3' && l.cartao === 'cart19aaaaaa' && !l.excluido).length) === 1, 'parcela lançada à mão com centavos de diferença não duplica (a do banco sai)');
+  ok(await p.evaluate(fat => N_faturaDe(S.d.cartoes.get('cart19aaaaaa'), lista('lancamentos').find(l => l.id === 'lanc19parcel')) === fat, fatC2), 'e fica na fatura da data');
   ok(por('ofc4').cat === '' && await p.evaluate(() => lancs().filter(aRevisar).some(l => /^o[f-j]c4$/.test(l.id))), 'sem categoria vai para Revisar');
   ok(!por('ofc1').id && !por('ofc3').id, 'não duplica o Netflix e ignora o pagamento recebido');
   ok(por('ofc5').v === 1000, 'compra pendente (fatura aberta) já entra');
