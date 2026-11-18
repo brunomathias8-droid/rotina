@@ -91,6 +91,13 @@ function luarMapaBanco(s, bc) {
   return `<div class="panel soft"><p class="small" style="margin:0"><b>O que vira lançamento.</b> Diga qual conta do banco é qual cartão ou conta do app. As transações viram lançamentos sozinhas a cada busca (de 4 em 4 horas) e entram em tudo: extrato, orçamento, faturas, resumo e Luar. O que vocês já lançaram à mão é reconhecido e não duplica; o que ficar sem categoria vai para Extrato › Revisar.</p>
     ${lista.map(c => campo(`${c.tipo === 'cartao' ? '💳 Cartão do banco' : '🏦 Conta corrente do banco'}: ${esc(c.nome)}`, `<select class="in" data-i="ofmapa:${esc(c.id)}">${opc(c)}</select>`)).join('')}
     ${!cs.length ? '<p class="tiny muted" style="margin:0">Para lançar o que sai da conta corrente (Pix, débito, boletos), cadastre as contas em Finanças › Patrimônio › Conta.</p>' : ''}
+    ${(bc.fechamentos || []).map(fc => {
+      // O app fecha a fatura no dia "fecha"; no banco, a última fatura fechou depois de fc.fechada e antes de fc.aberta
+      const k = S.d.cartoes.get(fc.cartao); if (!k) return '';
+      const ini = +fc.fechada.slice(8), fim = +fc.aberta.slice(8), dia = +k.fecha;
+      const bate = fc.fechada.slice(0, 7) === fc.aberta.slice(0, 7) ? dia >= ini && dia < fim : dia >= ini || dia < fim;
+      return bate ? '' : `<div class="note warn"><span>No banco, a última fatura do <b>${esc(k.nome)}</b> fechou entre ${fmtCurta(fc.fechada)} e ${fmtCurta(fc.aberta)}, mas no app ele fecha no dia ${dia}. Ajuste em Finanças › Cartões para as compras caírem na fatura certa. (As que vêm do banco já entram na fatura certa.)</span></div>`;
+    }).join('')}
     ${campo('Lançar a partir de', inp('ofdesde', s.f.ofdesde, 'type="date"'))}
     <button class="btn block" data-a="luarMapa" ${s.salvandoMapa ? 'disabled' : ''}>${s.salvandoMapa ? 'Lançando…' : 'Salvar e lançar'}</button>
     ${bc.pendentes ? `<p class="tiny muted" style="margin:0">${bc.pendentes} ${plu(bc.pendentes, 'transação', 'transações')} do banco ainda sem lançamento (contas marcadas “Não lançar”, de antes da data ou pagamento de fatura sem cartão definido).</p>` : ''}</div>`;

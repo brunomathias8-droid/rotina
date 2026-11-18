@@ -85,7 +85,7 @@ function bancoResumoApp_() {
   var lista = ler_('BancoContas').map(function (r) { return { id: r.ID, nome: r.Nome, inst: r.Instituicao, tipo: r.Tipo }; });
   var pend = ler_('Banco').filter(function (t) { return !t.Lancamento; }).length;
   return { ligado: true, quando: u.quando || '', contas: u.contas || 0, transacoes: u.transacoes || 0, criados: u.criados || 0, erros: u.erros || [],
-    lista: lista, mapa: json_(c.banco_mapa, {}) || {}, desde: c.banco_desde || '', pendentes: pend };
+    lista: lista, mapa: json_(c.banco_mapa, {}) || {}, desde: c.banco_desde || '', pendentes: pend, fechamentos: bancoFechamentos_() };
 }
 
 /* ------------------------------ do banco para os lançamentos ------------------------------ */
@@ -130,6 +130,29 @@ function bancoCategoria_(desc, regras, hist, cats) {
   for (var i = 0; i < PISTAS_BANCO.length; i++) if (PISTAS_BANCO[i][1].test(d) && cats[PISTAS_BANCO[i][0]]) return PISTAS_BANCO[i][0];
   return '';
 }
+/**
+ * Fatura de uma compra do cartão vinda do banco. Parcela: a 1ª vem com a data da compra e as seguintes com a data do ciclo
+ * em que entram (conferido no C6), então a data diz a fatura. Compra pendente é da fatura aberta: nunca de uma que já fechou,
+ * mesmo que o dia de fechamento do app esteja diferente do banco.
+ */
+function bancoFatura_(k, t) {
+  var f = N_faturaRef(k, t.Dia);
+  if (t.Status === 'PENDING') { var aberta = N_faturaRef(k, hoje_()); if (aberta > f) f = aberta; }
+  return f;
+}
+/** Onde o banco fechou a última fatura de cada cartão: entre a última compra já fechada e a primeira pendente. */
+function bancoFechamentos_() {
+  var mapa = json_(cfg_().banco_mapa, {}) || {}, out = [], porConta = {};
+  ler_('Banco').forEach(function (t) {
+    var m = mapa[t.Conta]; if (!m || m.tipo !== 'cartao' || t.Tipo !== 'saida' || /^\d+\/\d+$/.test(t.Parcela)) return;
+    var c = porConta[t.Conta] = porConta[t.Conta] || { cartao: m.id, fechada: '', aberta: '' };
+    if (t.Status === 'POSTED' && t.Dia > c.fechada) c.fechada = t.Dia;
+    if (t.Status === 'PENDING' && (!c.aberta || t.Dia < c.aberta)) c.aberta = t.Dia;
+  });
+  Object.keys(porConta).forEach(function (k) { var c = porConta[k]; if (c.fechada && c.aberta && c.fechada < c.aberta) out.push(c); });
+  return out;
+}
+
 function bancoLancar_() {
   var c = cfg_(), mapa = json_(c.banco_mapa, {}) || {}, desde = c.banco_desde || '';
   if (!Object.keys(mapa).length) return { criados: 0, ligados: 0 };
@@ -162,7 +185,7 @@ function bancoLancar_() {
     if (m.tipo === 'cartao') {
       if (l.cartao !== m.id) return true;
       var k = cartoes[m.id];
-      return !!(k && l.tipo === 'saida' && /^\d+\/\d+$/.test(t.Parcela) && l.fat && l.fat !== N_faturaRef(k, t.Dia));
+      return !!(k && l.tipo === 'saida' && (/^\d+\/\d+$/.test(t.Parcela) || t.Status === 'PENDING') && l.fat && l.fat !== bancoFatura_(k, t));
     }
     return l.forma === 'cartao' || (l.carteira !== m.id && l.destino !== m.id);
   };
@@ -218,8 +241,7 @@ function bancoLancar_() {
       var k = cartoes[m.id]; if (!k) return;
       if (t.Tipo === 'entrada' && /pagamento|pagto|pgto|pag fat|credito de pagamento|payment/.test(d)) { marca[t._lin] = '-'; return; } // pagamento da fatura: entra pela conta
       if (t.Tipo === 'entrada') v = -v; // estorno: crédito na fatura
-      var parc = /^\d+\/\d+$/.test(t.Parcela) ? t.Parcela : '', fat = N_faturaRef(k, t.Dia);
-      // Parcela: a 1ª vem com a data da compra e as seguintes com a data do ciclo em que entram (conferido no C6), então a data já diz a fatura
+      var parc = /^\d+\/\d+$/.test(t.Parcela) ? t.Parcela : '', fat = bancoFatura_(k, t);
       dup = achar(function (l) { return l.tipo === 'saida' && l.cartao === k.id && l.v === v && (parc ? (l.parc || '') === parc && N_faturaDe(k, l) === fat : !l.parc && Math.abs(N_diasEntre(l.dia, t.Dia)) <= 3); });
       item = { tipo: 'saida', forma: 'cartao', cartao: k.id, dia: t.Dia, v: v, desc: desc, parc: parc, fat: fat, pago: true, cat: bancoCategoria_(desc, regras, hist, cats) };
     } else if (t.Tipo === 'saida' && /fatura|pagamento cartao|pag cartao|pgto cartao|card payment/.test(d)) {

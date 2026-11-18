@@ -97,6 +97,7 @@ function urlFalsa(url, o) {
         { id: 'c-2', date: d + 'T10:00:00Z', description: 'LOJA DEZENOVE', amount: 120, type: 'DEBIT', creditCardMetadata: { installmentNumber: 2, totalInstallments: 3 } },
         { id: 'c-3', date: d + 'T10:00:00Z', description: 'PAGAMENTO RECEBIDO', amount: -300, type: 'CREDIT' },
         { id: 'c-4', date: d + 'T10:00:00Z', description: 'XYZ DESCONHECIDA LTDA', amount: 42, type: 'DEBIT' },
+        { id: 'c-6', date: d.slice(0, 8) + '01T10:00:00Z', description: 'PEDAGIO PENDENTE', amount: 3.7, type: 'DEBIT', status: 'PENDING' },
         externo.postada ? { id: 'c-5b', date: d + 'T10:00:00Z', description: 'COMPRA PENDENTE', amount: 10, type: 'DEBIT', status: 'POSTED' } : { id: 'c-5', date: d + 'T10:00:00Z', description: 'COMPRA PENDENTE', amount: 10, type: 'DEBIT', status: 'PENDING' }] });
       if (u.searchParams.get('after') === 'CUR2') return resposta(200, { next: null, results: [{ id: 'tx4', date: d + 'T13:00:00Z', description: 'PAGAMENTO FATURA CARTAO', amount: -300, type: 'DEBIT' },
         { id: 'tx5', date: d + 'T13:00:00Z', description: 'Pix enviado para Locador Dezenove', amount: -1180, type: 'DEBIT', category: 'Transfer - PIX' },

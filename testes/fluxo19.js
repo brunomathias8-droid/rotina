@@ -70,12 +70,12 @@ const luar = q => fetch('http://localhost:8787/__luar?' + q).then(r => r.json())
   await luar('banco=1');
   await p.click('.sheet [data-a="close"]'); await p.evaluate(() => A.luarRecarregar()); await espera(800);
   await p.click('#main button[data-a="sheet"][data-k="luarAjustes"]');
-  await p.click('.sheet button[data-a="luarBanco"]'); await p.locator('.sheet .note', { hasText: '12 transações' }).waitFor({ timeout: 15000 });
+  await p.click('.sheet button[data-a="luarBanco"]'); await p.locator('.sheet .note', { hasText: '13 transações' }).waitFor({ timeout: 15000 });
   r = await luar('contexto=1');
   ok(r.pluggy.some(u => u.includes('/v2/transactions') && u.includes('after=CUR1')) && !r.pluggy.some(u => u.startsWith('/transactions')), 'usa /v2/transactions e segue o cursor até o fim');
   ok(/Conta corrente: saldo R\$ 1\.234,50/.test(r.contexto) && /Delivery\/restaurante no banco: 1 compras, R\$ 89,90/.test(r.contexto) && /entradas R\$ 5\.000,00/.test(r.contexto), 'Luar lê saldo, delivery e entradas do banco');
   await p.click('.sheet button[data-a="luarBanco"]'); await espera(1500);
-  ok(await p.locator('.sheet .note', { hasText: '12 transações' }).isVisible(), 'buscar de novo não duplica');
+  ok(await p.locator('.sheet .note', { hasText: '13 transações' }).isVisible(), 'buscar de novo não duplica');
 
   console.log('5c. Do banco para os lançamentos');
   await p.click('.sheet [data-a="close"]');
@@ -103,7 +103,7 @@ const luar = q => fetch('http://localhost:8787/__luar?' + q).then(r => r.json())
   await espera(1500); await p.evaluate(() => sincronizar()); await espera(1500);
   const L = await p.evaluate(() => lista('lancamentos').filter(l => /^o[f-j]/.test(l.id) && !l.excluido).map(l => ({ id: l.id, tipo: l.tipo, forma: l.forma, cat: l.cat, cartao: l.cartao, carteira: l.carteira, parc: l.parc, fat: l.fat, ref: l.ref, v: l.v, dia: l.dia, conta: l.conta, desc: l.desc })));
   const por = id => L.find(l => l.id.slice(2) === id.slice(2)) || {};
-  ok(L.length === 8, 'oito lançamentos do banco no app (3 do cartão, 5 da conta): ' + L.map(l => l.id).join(','));
+  ok(L.length === 9, 'nove lançamentos do banco no app (4 do cartão, 5 da conta): ' + L.map(l => l.id).join(','));
   ok(por('oftx1').tipo === 'saida' && por('oftx1').forma !== 'cartao' && por('oftx1').cat === 'delivery' && por('oftx1').carteira === 'pat19conta01', 'iFood da conta vira saída de delivery na conta');
   ok(por('oftx3').tipo === 'entrada' && por('oftx3').cat === 'salario', 'salário vira entrada');
   ok(por('oftx4').tipo === 'fatura' && por('oftx4').cartao === 'cart19aaaaaa' && por('oftx4').v === 30000, 'pagamento da fatura vira pagamento do cartão');
@@ -115,6 +115,7 @@ const luar = q => fetch('http://localhost:8787/__luar?' + q).then(r => r.json())
   ok(por('ofc4').cat === '' && await p.evaluate(() => lancs().filter(aRevisar).some(l => /^o[f-j]c4$/.test(l.id))), 'sem categoria vai para Revisar');
   ok(!por('ofc1').id && !por('ofc3').id, 'não duplica o Netflix e ignora o pagamento recebido');
   ok(por('ofc5').v === 1000, 'compra pendente (fatura aberta) já entra');
+  ok(por('ofc6').fat === await p.evaluate(() => N_faturaRef(S.d.cartoes.get('cart19aaaaaa'), hoje())), 'pendente de antes do fechamento do app vai para a fatura aberta, como no banco');
   r = await luar('');
   await p.click('.sheet button[data-a="luarMapa"]'); await p.locator('#toast', { hasText: 'Nada novo' }).waitFor({ timeout: 15000 });
   ok(true, 'rodar de novo não cria nada');
