@@ -97,9 +97,11 @@ function bancoResumoApp_() {
  * Categoria: regra da casa, depois a mais usada para a mesma loja, depois pistas do nome; sem categoria vai para a fila Revisar.
  */
 function bancoSalvarMapa_(mapa, desde) {
-  var limpo = {};
+  var limpo = {}, tipos = {};
+  ler_('BancoContas').forEach(function (r) { tipos[r.ID] = r.Tipo; });
   Object.keys(mapa || {}).slice(0, 40).forEach(function (k) {
     var m = mapa[k]; if (!m || !/^[A-Za-z0-9_-]{3,80}$/.test(k) || (m.tipo !== 'cartao' && m.tipo !== 'carteira')) return;
+    if ((tipos[k] === 'conta' && m.tipo !== 'carteira') || (tipos[k] === 'cartao' && m.tipo !== 'cartao')) return; // conta corrente só vira conta; cartão só vira cartão
     limpo[k] = { tipo: m.tipo, id: String(m.id || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) };
   });
   cfgSet_('banco_mapa', JSON.stringify(limpo));
@@ -131,6 +133,7 @@ function bancoCategoria_(desc, regras, hist, cats) {
 function bancoLancar_() {
   var c = cfg_(), mapa = json_(c.banco_mapa, {}) || {}, desde = c.banco_desde || '';
   if (!Object.keys(mapa).length) return { criados: 0, ligados: 0 };
+  var novos = [], marca = {}; // marca: linha da aba Banco -> id do lançamento
   var lancs = ativos_('lancamentos'), banco = ler_('Banco'), cartoes = {}, ligados = {}, porId = {}, criados = 0, ligadosAgora = 0;
   ativos_('cartoes').forEach(function (k) { cartoes[k.id] = k; });
   lancs.forEach(function (l) { porId[l.id] = l; });
@@ -140,9 +143,57 @@ function bancoLancar_() {
   lancs.forEach(function (l) { if (l.tipo === 'saida' && l.cat && l.cat !== 'outros' && !/categoria a confirmar/i.test(l.nota || '')) { var k = N_lojaDe(l.desc); if (k) { hist[k] = hist[k] || {}; hist[k][l.cat] = (hist[k][l.cat] || 0) + 1; } } });
   var cents = function (t) { return Math.round((parseFloat(t) || 0) * 100); };
   var norm = function (t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); };
-  var novos = [], marca = {}; // marca: linha da aba Banco -> id do lançamento
   var achar = function (f) { for (var i = 0; i < lancs.length; i++) { var l = lancs[i]; if (!ligados[l.id] && f(l)) return l; } return null; };
   var ligar = function (t, id) { marca[t._lin] = id; ligados[id] = 1; };
+  // Já lançado à mão nesta conta: mesmo valor até 3 dias, ou a conta fixa do mês (valor até 15% diferente, até 10 dias)
+  var acharNaConta = function (tipo, v, dia, carteira) {
+    return achar(function (l) {
+      if (l.tipo !== tipo || l.forma === 'cartao' || (l.carteira && l.carteira !== carteira)) return false;
+      var dd = Math.abs(N_diasEntre(l.dia, dia));
+      return (l.v === v && dd <= 3) || (l.conta && l.ref === N_mes(dia) && dd <= 10 && Math.abs(l.v - v) <= Math.max(100, Math.round(l.v * 0.15)));
+    });
+  };
+
+  // Refaz o que foi lançado com outra regra: conta ligada ao lugar errado (mapa mudou) ou parcela numa fatura que não é a da data
+  var todos = {}, apagar = {}, agoraMs = String(Date.now()), refeitos = 0;
+  ler_('Lancamentos').forEach(function (r) { todos[r.ID] = r; });
+  var errado = function (t, l) {
+    var m = mapa[t.Conta]; if (!m) return false;
+    if (m.tipo === 'cartao') {
+      if (l.cartao !== m.id) return true;
+      var k = cartoes[m.id];
+      return !!(k && l.tipo === 'saida' && /^\d+\/\d+$/.test(t.Parcela) && l.fat && l.fat !== N_faturaRef(k, t.Dia));
+    }
+    return l.forma === 'cartao' || (l.carteira !== m.id && l.destino !== m.id);
+  };
+  banco.forEach(function (t) { var id = t.Lancamento; if (id && t.Status !== 'SUMIU' && /^o[f-j]/.test(id) && porId[id] && errado(t, porId[id])) apagar[id] = 1; });
+  Object.keys(apagar).forEach(function (id) { if (todos[id]) { atualizar_('Lancamentos', todos[id]._lin, { Excluido: 'sim', Atualizado: agoraMs }); refeitos++; } delete porId[id]; delete ligados[id]; });
+  if (refeitos) {
+    lancs = lancs.filter(function (l) { return !apagar[l.id]; });
+    banco.forEach(function (t) { if (apagar[t.Lancamento]) { t.Lancamento = ''; marca[t._lin] = ''; } });
+  }
+  // ID do lançamento: "of" + ID da Pluggy; se esse já foi usado por um lançamento apagado, og, oh…
+  var idDe = function (t) {
+    var x = String(t.ID).replace(/[^A-Za-z0-9]/g, '').slice(0, 36), ps = ['of', 'og', 'oh', 'oi', 'oj'];
+    for (var i = 0; i < ps.length; i++) { var id = ps[i] + x; if (porId[id] && !ligados[id]) return { ja: id }; if (!todos[id]) { todos[id] = { novo: 1 }; return { id: id }; } }
+    return { id: 'ok' + x };
+  };
+  // Pix entre vocês ou entre contas da mesma pessoa não é receita nem gasto (quando as duas contas estão no mapa, vira transferência)
+  var nomes = pessoasAtivas_().map(function (p) { return norm(p.Nome).split(' ')[0]; }).filter(function (n) { return n.length >= 3; });
+  var interno = function (t, d) { return /same person transfer/i.test(t.Categoria) || nomes.some(function (n) { return new RegExp('pix (recebido de|enviado para|enviado a|de|para) ' + n + '\\b').test(d); }); };
+  // Contas fixas do mês ainda sem lançamento: o Pix ou boleto do banco vira o pagamento delas
+  var fixas = ativos_('contas').filter(function (c) { return c.ativa !== false && c.forma !== 'cartao' && (c.tipo === 'saida' || c.tipo === 'entrada'); });
+  var pagas = {}; lancs.forEach(function (l) { if (l.conta && l.ref) pagas[l.conta + '|' + l.ref] = 1; });
+  var contaFixa = function (tipo, v, dia, carteira) {
+    var mes = N_mes(dia), melhor = null, nota = 1e9;
+    fixas.forEach(function (c) {
+      if (c.tipo !== tipo || (c.fim && c.fim < mes) || pagas[c.id + '|' + mes] || (c.carteira && c.carteira !== carteira)) return;
+      var dd = Math.abs(N_diasEntre(N_diaDoMes(mes, c.vence || 1), dia)), dv = Math.abs(v - (c.v || 0));
+      if (dd > 10 || dv > Math.max(100, Math.round((c.v || 0) * 0.15))) return;
+      if (dv / 100 + dd < nota) { nota = dv / 100 + dd; melhor = c; }
+    });
+    return melhor;
+  };
   var pend = banco.filter(function (t) { return !t.Lancamento && mapa[t.Conta] && (!desde || t.Dia >= desde) && t.Status !== 'SUMIU'; });
 
   // Transferência entre contas de vocês: sai de uma, entra na outra com o mesmo valor em até 1 dia
@@ -150,17 +201,18 @@ function bancoLancar_() {
     if (marca[t._lin] || t.Tipo !== 'saida' || mapa[t.Conta].tipo !== 'carteira') return;
     var par = pend.filter(function (u) { return !marca[u._lin] && u.Tipo === 'entrada' && u.Conta !== t.Conta && mapa[u.Conta].tipo === 'carteira' && u.Valor === t.Valor && Math.abs(N_diasEntre(u.Dia, t.Dia)) <= 1; })[0];
     if (!par) return;
-    var id = 'of' + String(t.ID).replace(/[^A-Za-z0-9]/g, '').slice(0, 36);
-    if (porId[id]) { ligar(t, id); ligar(par, id); return; }
+    var ni = idDe(t);
+    if (ni.ja) { ligar(t, ni.ja); ligar(par, ni.ja); return; }
+    var id = ni.id;
     novos.push({ id: id, tipo: 'transf', dia: t.Dia, v: cents(t.Valor), desc: 'Transferência entre contas', carteira: mapa[t.Conta].id, destino: mapa[par.Conta].id, pago: true, nota: 'Open Finance' });
     ligar(t, id); ligar(par, id);
   });
 
   pend.forEach(function (t) {
     if (marca[t._lin]) return;
-    var m = mapa[t.Conta], v = cents(t.Valor), desc = String(t.Descricao || '').slice(0, 120), d = norm(desc), id = 'of' + String(t.ID).replace(/[^A-Za-z0-9]/g, '').slice(0, 36);
-    if (porId[id]) { ligar(t, id); return; }
+    var m = mapa[t.Conta], v = cents(t.Valor), desc = String(t.Descricao || '').replace(/\s+/g, ' ').trim().slice(0, 120), d = norm(desc);
     if (!v) { marca[t._lin] = '-'; return; }
+    if (m.tipo === 'carteira' && interno(t, d)) { marca[t._lin] = '-'; return; }
     var item = null, dup = null;
     if (m.tipo === 'cartao') {
       var k = cartoes[m.id]; if (!k) return;
@@ -184,16 +236,27 @@ function bancoLancar_() {
       item = { tipo: 'fatura', cartao: kk.id, ref: ref, dia: t.Dia, v: v, desc: 'Fatura ' + kk.nome, carteira: m.id, pago: true };
     } else if (t.Tipo === 'entrada') {
       var catE = /salario|folha|remunera|proventos|pagto salario/.test(d) ? 'salario' : /rendiment|juros s|dividend|remuneracao basica/.test(d) ? 'rendimentos' : /estorno|devolu|reembols/.test(d) ? 'reembolso' : 'outrasent';
-      dup = achar(function (l) { return l.tipo === 'entrada' && l.v === v && (!l.carteira || l.carteira === m.id) && Math.abs(N_diasEntre(l.dia, t.Dia)) <= 3; });
+      dup = acharNaConta('entrada', v, t.Dia, m.id);
       item = { tipo: 'entrada', dia: t.Dia, v: v, desc: desc, cat: cats[catE] ? catE : 'outrasent', carteira: m.id, pago: true };
     } else {
       var forma = /boleto|titulo|pagamento de conta|pag conta/.test(d) ? 'boleto' : /deb.? ?aut|debito automatico/.test(d) ? 'auto' : /compra|debito|elo|visa|maestro/.test(d) && !/pix/.test(d) ? 'debito' : 'pix';
-      dup = achar(function (l) { return l.tipo === 'saida' && l.forma !== 'cartao' && l.v === v && (!l.carteira || l.carteira === m.id) && Math.abs(N_diasEntre(l.dia, t.Dia)) <= 3; });
+      dup = acharNaConta('saida', v, t.Dia, m.id);
       item = { tipo: 'saida', forma: forma, dia: t.Dia, v: v, desc: desc, carteira: m.id, pago: true, cat: bancoCategoria_(desc, regras, hist, cats) };
     }
-    if (dup) { ligar(t, dup.id); ligadosAgora++; return; }
-    item.id = id; item.nota = 'Open Finance';
-    novos.push(item); ligar(t, id);
+    if (dup) {
+      // Conta fixa que estava agendada (sem pagar): o banco confirma o pagamento
+      if (dup.conta && !dup.pago && todos[dup.id] && todos[dup.id]._lin) atualizar_('Lancamentos', todos[dup.id]._lin, { Pago: 'sim', Dia: t.Dia, Valor: (v / 100).toFixed(2), Atualizado: agoraMs });
+      ligar(t, dup.id); ligadosAgora++; return;
+    }
+    item.nota = 'Open Finance';
+    if (m.tipo === 'carteira' && (item.tipo === 'saida' || item.tipo === 'entrada')) {
+      var cf = contaFixa(item.tipo, v, t.Dia, m.id);
+      if (cf) { item.conta = cf.id; item.ref = N_mes(t.Dia); item.cat = cf.cat || item.cat; item.desc = cf.nome; item.nota = 'Open Finance: ' + desc; pagas[cf.id + '|' + item.ref] = 1; }
+    }
+    var ni = idDe(t);
+    if (ni.ja) { ligar(t, ni.ja); return; }
+    item.id = ni.id;
+    novos.push(item); ligar(t, item.id);
   });
 
   if (novos.length) {
@@ -217,7 +280,7 @@ function bancoLancar_() {
     }
   }
   _cache = {};
-  return { criados: criados, ligados: ligadosAgora };
+  return { criados: criados, ligados: ligadosAgora, refeitos: refeitos };
 }
 
 /** O que a Luar lê do banco: saldos, faturas e gastos do mês direto da fonte, mesmo que ninguém tenha lançado nada no app. */
@@ -232,9 +295,11 @@ function bancoContexto_(hoje) {
     L.push('- ' + c.Instituicao + ' · ' + c.Nome + ': ' + (c.Tipo === 'cartao' ? 'fatura atual ' + reais_(cents(c.Saldo)) + (c.Limite ? ', limite ' + reais_(cents(c.Limite)) + ', disponível ' + reais_(cents(c.Disponivel)) : '') : 'saldo ' + reais_(cents(c.Saldo))));
   });
   var porCat = {}, sai = 0, ent = 0, del = 0, nDel = 0, maiores = [], recentes = [];
-  var lim = N_somaDias(hoje, -2);
+  var lim = N_somaDias(hoje, -2), nomes = pessoasAtivas_().map(function (p) { return String(p.Nome).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(' ')[0]; }).filter(function (n) { return n.length >= 3; });
   txs.forEach(function (t) {
     if (N_mes(t.Dia) !== mes) return;
+    var dn = String(t.Descricao).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (/same person transfer/i.test(t.Categoria) || nomes.some(function (n) { return dn.indexOf('pix recebido de ' + n) >= 0 || dn.indexOf('pix enviado para ' + n) >= 0; })) return; // dinheiro entre vocês
     var v = cents(t.Valor);
     if (/pagamento|pagto|pgto|pag fat|credit card payment/i.test(t.Descricao + ' ' + t.Categoria) && /fatura|cartao|cartão|recebido|card/i.test(t.Descricao + ' ' + t.Categoria)) return; // pagamento de fatura: não conta duas vezes
     if (t.Tipo === 'entrada') { ent += v; return; }

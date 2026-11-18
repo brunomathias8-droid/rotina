@@ -105,7 +105,7 @@ function luarApi_(s, req) {
   if (op === 'banco') { bancoSincronizar(); return { banco: bancoResumoApp_() }; }
   if (op === 'bancoMapa') {
     var r = comLock_(function () { return bancoSalvarMapa_(req.mapa, req.desde); });
-    return { banco: bancoResumoApp_(), criados: r.criados, ligados: r.ligados };
+    return { banco: bancoResumoApp_(), criados: r.criados, ligados: r.ligados, refeitos: r.refeitos || 0 };
   }
   throw apiErro_('Ação desconhecida.', 'ACAO');
 }

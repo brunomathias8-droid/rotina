@@ -98,7 +98,10 @@ function urlFalsa(url, o) {
         { id: 'c-3', date: d + 'T10:00:00Z', description: 'PAGAMENTO RECEBIDO', amount: -300, type: 'CREDIT' },
         { id: 'c-4', date: d + 'T10:00:00Z', description: 'XYZ DESCONHECIDA LTDA', amount: 42, type: 'DEBIT' },
         externo.postada ? { id: 'c-5b', date: d + 'T10:00:00Z', description: 'COMPRA PENDENTE', amount: 10, type: 'DEBIT', status: 'POSTED' } : { id: 'c-5', date: d + 'T10:00:00Z', description: 'COMPRA PENDENTE', amount: 10, type: 'DEBIT', status: 'PENDING' }] });
-      if (u.searchParams.get('after') === 'CUR2') return resposta(200, { results: [{ id: 'tx4', date: d + 'T13:00:00Z', description: 'PAGAMENTO FATURA CARTAO', amount: -300, type: 'DEBIT' }], next: null });
+      if (u.searchParams.get('after') === 'CUR2') return resposta(200, { next: null, results: [{ id: 'tx4', date: d + 'T13:00:00Z', description: 'PAGAMENTO FATURA CARTAO', amount: -300, type: 'DEBIT' },
+        { id: 'tx5', date: d + 'T13:00:00Z', description: 'Pix enviado para Locador Dezenove', amount: -1180, type: 'DEBIT', category: 'Transfer - PIX' },
+        { id: 'tx6', date: d + 'T13:00:00Z', description: 'Pix recebido de ANA SILVA SOUZA', amount: 300, type: 'CREDIT', category: 'Transfer - PIX' },
+        { id: 'tx7', date: d + 'T13:00:00Z', description: 'Pix recebido de FULANO', amount: 500, type: 'CREDIT', category: 'Same person transfer' }] });
       if (u.searchParams.get('after') === 'CUR1') return resposta(200, { results: [{ id: 'tx3', date: d + 'T12:00:00Z', description: 'SALARIO TESTE', amount: 5000, type: 'CREDIT' }], next: '?after=CUR2' });
       return resposta(200, { results: [{ id: 'tx1', date: d + 'T10:00:00Z', description: 'IFOOD TESTE', amount: -89.9, type: 'DEBIT', category: 'Food delivery' },
         { id: 'tx2', date: d + 'T11:00:00Z', description: 'MERCADO TESTE', amount: -250, type: 'DEBIT', category: 'Groceries' }], next: '?accountId=conta1&dateFrom=x&after=CUR1' });
@@ -155,6 +158,7 @@ http.createServer((req, res) => {
     const q = new URL(req.url, 'http://x').searchParams;
     if (q.get('chave')) vm.runInContext(`PropertiesService.getScriptProperties().setProperty('ANTHROPIC_API_KEY', 'chave-teste')`, ctx);
     if (q.get('postada')) externo.postada = true;
+    if (q.get('mapa')) vm.runInContext(`_cache = {}; _cfg = null; comLock_(function () { cfgSet_('banco_mapa', ${JSON.stringify(q.get('mapa'))}); cfgSet_('banco_desde', '2020-01-01'); return bancoLancar_(); })`, ctx);
     if (q.get('banco')) vm.runInContext(`var _p = PropertiesService.getScriptProperties(); _p.setProperty('PLUGGY_CLIENT_ID', 'id'); _p.setProperty('PLUGGY_CLIENT_SECRET', 's'); _p.setProperty('PLUGGY_ITENS', 'item1')`, ctx);
     if (q.get('telegram')) vm.runInContext(`PropertiesService.getScriptProperties().setProperty('TELEGRAM_TOKEN', '123:abc')`, ctx);
     let enviados = [];

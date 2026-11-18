@@ -84,11 +84,12 @@ function luarMapaBanco(s, bc) {
   if (!s.f.mapa) { s.f.mapa = {}; Object.entries(bc.mapa || {}).forEach(([k, m]) => { s.f.mapa[k] = m.tipo + ':' + m.id; }); s.f.ofdesde = bc.desde || N_somaMes(N_mes(hoje()), -1) + '-01'; }
   const ks = cartoes(), cs = contasBancarias();
   const op = (c, v, l) => `<option value="${esc(v)}"${(s.f.mapa[c.id] || '') === v ? ' selected' : ''}>${esc(l)}</option>`;
-  const opc = c => op(c, '', 'Não lançar')
-    + (ks.length ? `<optgroup label="Cartões">${ks.map(k => op(c, 'cartao:' + k.id, k.nome)).join('')}</optgroup>` : '')
-    + (cs.length ? `<optgroup label="Contas">${cs.map(p => op(c, 'carteira:' + p.id, p.nome)).join('')}</optgroup>` : '');
+  // Conta corrente do banco só pode ser uma conta do app; cartão do banco, só um cartão
+  const opc = c => op(c, '', 'Não lançar') + (c.tipo === 'cartao'
+    ? ks.map(k => op(c, 'cartao:' + k.id, 'Cartão ' + k.nome)).join('')
+    : cs.map(p => op(c, 'carteira:' + p.id, 'Conta ' + p.nome)).join(''));
   return `<div class="panel soft"><p class="small" style="margin:0"><b>O que vira lançamento.</b> Diga qual conta do banco é qual cartão ou conta do app. As transações viram lançamentos sozinhas a cada busca (de 4 em 4 horas) e entram em tudo: extrato, orçamento, faturas, resumo e Luar. O que vocês já lançaram à mão é reconhecido e não duplica; o que ficar sem categoria vai para Extrato › Revisar.</p>
-    ${lista.map(c => campo(`${esc(c.inst)} · ${esc(c.nome)}${c.tipo === 'cartao' ? ' (cartão)' : ''}`, `<select class="in" data-i="ofmapa:${esc(c.id)}">${opc(c)}</select>`)).join('')}
+    ${lista.map(c => campo(`${c.tipo === 'cartao' ? '💳 Cartão do banco' : '🏦 Conta corrente do banco'}: ${esc(c.nome)}`, `<select class="in" data-i="ofmapa:${esc(c.id)}">${opc(c)}</select>`)).join('')}
     ${!cs.length ? '<p class="tiny muted" style="margin:0">Para lançar o que sai da conta corrente (Pix, débito, boletos), cadastre as contas em Finanças › Patrimônio › Conta.</p>' : ''}
     ${campo('Lançar a partir de', inp('ofdesde', s.f.ofdesde, 'type="date"'))}
     <button class="btn block" data-a="luarMapa" ${s.salvandoMapa ? 'disabled' : ''}>${s.salvandoMapa ? 'Lançando…' : 'Salvar e lançar'}</button>
@@ -143,7 +144,7 @@ Object.assign(A, {
     try {
       const r = await api('luar', { op: 'bancoMapa', mapa, desde: s.f.ofdesde || '' }, { timeout: 300000 });
       if (LUAR.dados) LUAR.dados.banco = r.banco;
-      toast(r.criados || r.ligados ? `${r.criados} ${plu(r.criados, 'lançamento criado', 'lançamentos criados')}${r.ligados ? ` e ${r.ligados} que já estavam no app reconhecidos` : ''}.` : 'Guardado. Nada novo para lançar agora.', 7000);
+      toast(r.criados || r.ligados || r.refeitos ? `${r.criados} ${plu(r.criados, 'lançamento criado', 'lançamentos criados')}${r.ligados ? `, ${r.ligados} que já estavam no app reconhecidos` : ''}${r.refeitos ? ` e ${r.refeitos} ${plu(r.refeitos, 'refeito', 'refeitos')} (estavam no lugar errado)` : ''}.` : 'Guardado. Nada novo para lançar agora.', 8000);
       sincronizar();
     } finally { if (S.sheet) { S.sheet.salvandoMapa = false; renderSheet(); } }
   },
