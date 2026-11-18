@@ -340,12 +340,7 @@ function alertasFinanceiros() {
 
 /* ============================== categorias aprendidas ============================== */
 /** Chave da loja: "PG *HEALTH CENTER LTDA 03/10" → "health center ltda". Igual para o mesmo estabelecimento em faturas diferentes. */
-function lojaDe(desc) {
-  const t = String(desc || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-    .replace(/^(pg|mp|pag|ec|sumup|picpay|pp|iz|sq|dl|ebn|htm|pagseguro|mercadopago)\s*\*\s*/, '')
-    .replace(/\d+\s*\/\s*\d+/g, ' ').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
-  return t.split(' ').slice(0, 3).join(' ');
-}
+const lojaDe = N_lojaDe;
 const regrasCat = () => (S.casa && S.casa.regras) || {};
 const CAT_VAGA = id => !id || id === 'outros' || !categorias().some(c => c.id === id);
 const aConfirmar = l => /categoria a confirmar/i.test(l.nota || '');

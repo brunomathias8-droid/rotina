@@ -103,6 +103,10 @@ function luarApi_(s, req) {
   }
   if (op === 'telegram') return telegramCodigo_(s.pessoa);
   if (op === 'banco') { bancoSincronizar(); return { banco: bancoResumoApp_() }; }
+  if (op === 'bancoMapa') {
+    var r = comLock_(function () { return bancoSalvarMapa_(req.mapa, req.desde); });
+    return { banco: bancoResumoApp_(), criados: r.criados, ligados: r.ligados };
+  }
   throw apiErro_('Ação desconhecida.', 'ACAO');
 }
 function luarEstado_(s) {

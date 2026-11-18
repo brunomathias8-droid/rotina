@@ -88,11 +88,18 @@ function urlFalsa(url, o) {
     if (u.pathname === '/auth') return resposta(200, { apiKey: 'chave-pluggy' });
     if ((o.headers || {})['X-API-KEY'] !== 'chave-pluggy') return resposta(403, {});
     if (u.pathname.startsWith('/items/')) return resposta(200, { id: 'item1', connector: { name: 'Banco Teste' } });
-    if (u.pathname === '/accounts') return resposta(200, { results: [{ id: 'conta1', type: 'BANK', name: 'Conta corrente', balance: 1234.5 }] });
+    if (u.pathname === '/accounts') return resposta(200, { results: [{ id: 'conta1', type: 'BANK', name: 'Conta corrente', balance: 1234.5 }, { id: 'cart1', type: 'CREDIT', name: 'Black', balance: 500, creditData: { creditLimit: 10000, availableCreditLimit: 9500 } }] });
     if (u.pathname === '/transactions') return resposta(410, { message: 'This endpoint is deprecated.' });
     if (u.pathname === '/v2/transactions') {
-      const d = new Date().toISOString().slice(0, 10);
-      if (u.searchParams.get('after') === 'CUR1') return resposta(200, { results: [{ id: 'tx3', date: d + 'T12:00:00Z', description: 'SALARIO TESTE', amount: 5000, type: 'CREDIT' }], next: null });
+      const d = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10); // dia de hoje em Fortaleza
+      if (u.searchParams.get('accountId') === 'cart1') return resposta(200, { next: null, results: [
+        { id: 'c-1', date: d + 'T10:00:00Z', description: 'NETFLIX.COM', amount: 55.9, type: 'DEBIT' },
+        { id: 'c-2', date: d + 'T10:00:00Z', description: 'LOJA DEZENOVE', amount: 120, type: 'DEBIT', creditCardMetadata: { installmentNumber: 2, totalInstallments: 3 } },
+        { id: 'c-3', date: d + 'T10:00:00Z', description: 'PAGAMENTO RECEBIDO', amount: -300, type: 'CREDIT' },
+        { id: 'c-4', date: d + 'T10:00:00Z', description: 'XYZ DESCONHECIDA LTDA', amount: 42, type: 'DEBIT' },
+        { id: 'c-5', date: d + 'T10:00:00Z', description: 'COMPRA PENDENTE', amount: 10, type: 'DEBIT', status: 'PENDING' }] });
+      if (u.searchParams.get('after') === 'CUR2') return resposta(200, { results: [{ id: 'tx4', date: d + 'T13:00:00Z', description: 'PAGAMENTO FATURA CARTAO', amount: -300, type: 'DEBIT' }], next: null });
+      if (u.searchParams.get('after') === 'CUR1') return resposta(200, { results: [{ id: 'tx3', date: d + 'T12:00:00Z', description: 'SALARIO TESTE', amount: 5000, type: 'CREDIT' }], next: '?after=CUR2' });
       return resposta(200, { results: [{ id: 'tx1', date: d + 'T10:00:00Z', description: 'IFOOD TESTE', amount: -89.9, type: 'DEBIT', category: 'Food delivery' },
         { id: 'tx2', date: d + 'T11:00:00Z', description: 'MERCADO TESTE', amount: -250, type: 'DEBIT', category: 'Groceries' }], next: '?accountId=conta1&dateFrom=x&after=CUR1' });
     }

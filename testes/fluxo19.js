@@ -70,12 +70,43 @@ const luar = q => fetch('http://localhost:8787/__luar?' + q).then(r => r.json())
   await luar('banco=1');
   await p.click('.sheet [data-a="close"]'); await p.evaluate(() => A.luarRecarregar()); await espera(800);
   await p.click('#main button[data-a="sheet"][data-k="luarAjustes"]');
-  await p.click('.sheet button[data-a="luarBanco"]'); await p.locator('.sheet .note', { hasText: '3 transações' }).waitFor({ timeout: 15000 });
+  await p.click('.sheet button[data-a="luarBanco"]'); await p.locator('.sheet .note', { hasText: '9 transações' }).waitFor({ timeout: 15000 });
   r = await luar('contexto=1');
   ok(r.pluggy.some(u => u.includes('/v2/transactions') && u.includes('after=CUR1')) && !r.pluggy.some(u => u.startsWith('/transactions')), 'usa /v2/transactions e segue o cursor até o fim');
   ok(/Conta corrente: saldo R\$ 1\.234,50/.test(r.contexto) && /Delivery\/restaurante no banco: 1 compras, R\$ 89,90/.test(r.contexto) && /entradas R\$ 5\.000,00/.test(r.contexto), 'Luar lê saldo, delivery e entradas do banco');
   await p.click('.sheet button[data-a="luarBanco"]'); await espera(1500);
-  ok(await p.locator('.sheet .note', { hasText: '3 transações' }).isVisible(), 'buscar de novo não duplica');
+  ok(await p.locator('.sheet .note', { hasText: '9 transações' }).isVisible(), 'buscar de novo não duplica');
+
+  console.log('5c. Do banco para os lançamentos');
+  await p.click('.sheet [data-a="close"]');
+  await p.evaluate(() => {
+    enfileirar('salvar', { col: 'patrimonio', item: { id: 'pat19conta01', nome: 'Conta 19', classe: 'conta', nat: 'ativo', ativo: true, hist: [[hoje(), 100000]] } });
+    enfileirar('salvar', { col: 'cartoes', item: { id: 'cart19aaaaaa', nome: 'Cartão 19', fecha: 1, vence: 8, carteira: 'pat19conta01', ativo: true, limite: 1000000 } });
+    enfileirar('salvar', { col: 'lancamentos', item: { id: 'lanc19netflx', tipo: 'saida', forma: 'cartao', cartao: 'cart19aaaaaa', dia: hoje(), v: 5590, desc: 'Netflix manual', cat: 'assinaturas', pago: true } });
+  });
+  await p.waitForFunction(() => S.fila.length === 0, null, { timeout: 20000 });
+  await p.click('#main button[data-a="sheet"][data-k="luarAjustes"]');
+  await p.selectOption('.sheet select[data-i="ofmapa:conta1"]', 'carteira:pat19conta01');
+  await p.selectOption('.sheet select[data-i="ofmapa:cart1"]', 'cartao:cart19aaaaaa');
+  await p.fill('#f-ofdesde', '2020-01-01');
+  await foto('mapa-banco');
+  await p.click('.sheet button[data-a="luarMapa"]');
+  await p.locator('#toast', { hasText: 'lançamentos criados' }).waitFor({ timeout: 15000 });
+  ok(await p.locator('#toast', { hasText: '6 lançamentos criados e 1 que já estavam no app reconhecidos' }).isVisible(), 'cria 6 e reconhece o lançado à mão: ' + await p.locator('#toast').innerText());
+  await espera(1500); await p.evaluate(() => sincronizar()); await espera(1500);
+  const L = await p.evaluate(() => lista('lancamentos').filter(l => /^of/.test(l.id)).map(l => ({ id: l.id, tipo: l.tipo, forma: l.forma, cat: l.cat, cartao: l.cartao, carteira: l.carteira, parc: l.parc, fat: l.fat, ref: l.ref, v: l.v, dia: l.dia })));
+  const por = id => L.find(l => l.id === id) || {};
+  ok(L.length === 6, 'seis lançamentos do banco chegaram ao app');
+  ok(por('oftx1').tipo === 'saida' && por('oftx1').cat === 'delivery' && por('oftx1').carteira === 'pat19conta01', 'iFood da conta vira saída de delivery');
+  ok(por('oftx3').tipo === 'entrada' && por('oftx3').cat === 'salario', 'salário vira entrada');
+  ok(por('oftx4').tipo === 'fatura' && por('oftx4').cartao === 'cart19aaaaaa' && por('oftx4').v === 30000, 'pagamento da fatura vira pagamento do cartão');
+  const fatC2 = await p.evaluate(() => N_somaMes(N_faturaRef(S.d.cartoes.get('cart19aaaaaa'), hoje()), 1));
+  ok(por('ofc2').parc === '2/3' && por('ofc2').fat === fatC2 && por('ofc2').forma === 'cartao', 'parcela 2/3 cai na fatura certa');
+  ok(por('ofc4').cat === '' && await p.evaluate(() => lancs().filter(aRevisar).some(l => l.id === 'ofc4')), 'sem categoria vai para Revisar');
+  ok(!por('ofc1').id && !por('ofc3').id && !por('ofc5').id, 'não duplica o Netflix, ignora o pagamento recebido e a compra pendente');
+  r = await luar('');
+  await p.click('.sheet button[data-a="luarMapa"]'); await p.locator('#toast', { hasText: 'Nada novo' }).waitFor({ timeout: 15000 });
+  ok(true, 'rodar de novo não cria nada');
   await p.click('.sheet [data-a="close"]');
 
   console.log('6. Turnos');

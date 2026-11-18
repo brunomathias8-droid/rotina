@@ -1,7 +1,7 @@
 /* acoes.js — o que cada toque faz, login, roteamento e a inicialização do app. */
 'use strict';
 
-const VERSAO_APP = '3.9.0';
+const VERSAO_APP = '3.10.0';
 /* Versão mínima do servidor (Apps Script) para os recursos desta versão: Para comprar, receita automática, regras de categoria, projetos e reembolso */
 const API_MINIMA = '3.5.0';
 const servidorAntigo = () => !!S.apiVersao && S.apiVersao.localeCompare(API_MINIMA, undefined, { numeric: true }) < 0;
@@ -302,6 +302,7 @@ function aoDigitar(e) {
   if (k === 'luartxt') { LUAR.txt = t.value; return; }
   if (!k || !S.sheet || !S.sheet.f) return;
   const s = S.sheet, f = s.f;
+  if (k.startsWith('ofmapa:')) { f.mapa[k.slice(7)] = t.value; return; }
   if (k.startsWith('impcat:')) { const r = s.rows && s.rows[+k.slice(7)]; if (r) r.cat = t.value; return; }
   if (k.startsWith('met:')) { f.met[k.slice(4)] = t.value; return; }
   if (k.startsWith('cnome:')) { f.cats[+k.slice(6)].nome = t.value; return; }

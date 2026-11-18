@@ -141,6 +141,19 @@ O bot só conversa com quem vinculou por código; para os outros ele responde qu
 
 As transações ficam nas abas `Banco` e `BancoContas`; a Luar lê de lá saldos, faturas e gastos do mês, mesmo sem ninguém lançar nada no app.
 
+**5. Do banco para os lançamentos (servidor 3.7, app 3.10)**
+1. No Apps Script, troque `Nucleo`, `Dados`, `Api`, `Luar` e `Banco` pelos novos e faça **Nova versão** na implantação.
+2. Cadastre no app as contas correntes (Finanças › Patrimônio › Conta), se ainda não estiverem lá, e diga em cada cartão qual conta paga a fatura.
+3. Em Luar › Ajustes › Bancos, escolha para cada conta do banco qual cartão ou conta do app ela é, e a data a partir da qual lançar. **Salvar e lançar**.
+
+Daí em diante, a cada busca (de 4 em 4 horas) as transações viram lançamentos e aparecem em tudo: extrato, faturas, orçamento, resumo, análises e Luar.
+- O que vocês já tinham lançado à mão (mesmo valor e conta ou cartão, até 3 dias de diferença, ou a mesma parcela) é reconhecido e não duplica.
+- Pagamento de fatura que sai da conta vira o pagamento do cartão. O pagamento que aparece no próprio cartão fica de fora.
+- Transferência entre as contas de vocês vira transferência, não gasto.
+- A categoria vem das regras da casa, do que vocês mais usaram para a mesma loja ou do nome da loja. O que ficar sem categoria vai para Extrato › Revisar.
+- Compra ainda pendente no banco só entra quando for confirmada.
+- Cada lançamento traz a nota "Open Finance"; na aba `Banco`, a coluna `Lancamento` mostra qual lançamento veio de cada transação.
+
 **Segurança**: nenhuma chave fica no código nem no GitHub, só nas propriedades do script. Nada aqui consegue pagar ou transferir dinheiro. As conversas e os números vão para a API da Anthropic na hora de cada resposta.
 
 ## Atualizar da versão 3.4 para a 3.5 (app 3.8: Para comprar, Análises, receita automática)

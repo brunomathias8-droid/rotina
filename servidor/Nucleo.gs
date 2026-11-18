@@ -170,3 +170,11 @@ function N_momentosAlerta(e, diaOcorrencia) {
     return N_somaDias(diaOcorrencia, dias) + ' ' + N_pad(Math.floor(min / 60)) + ':' + N_pad(min % 60);
   });
 }
+
+/* Loja de uma descrição de compra ("PG *IFOOD 3/10" → "ifood"): chave das categorias aprendidas, no app e no servidor */
+function N_lojaDe(desc) {
+  var t = String(desc || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/^(pg|mp|pag|ec|sumup|picpay|pp|iz|sq|dl|ebn|htm|pagseguro|mercadopago)\s*\*\s*/, '')
+    .replace(/\d+\s*\/\s*\d+/g, ' ').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+  return t.split(' ').slice(0, 3).join(' ');
+}

@@ -76,6 +76,25 @@ function cartaoLuar() {
   return `${secao('🌙 Luar', `<button class="link" data-a="irLuar">Responder</button>`)}<div class="panel luar-hoje" data-a="irLuar"><p class="tiny muted">${luarQuando(u.quando)}</p><p class="small">${luarTexto(u.texto.length > 280 ? u.texto.slice(0, 277) + '…' : u.texto)}</p></div>`;
 }
 
+/* ============ do banco para o app: qual conta do banco é qual cartão ou conta do Rotina ============ */
+function luarMapaBanco(s, bc) {
+  if (!bc.lista) return `<div class="note warn"><span>Para as transações do banco virarem lançamentos, atualize o servidor para a versão 3.7 (IMPLANTAR.md, “Do banco para os lançamentos”).</span></div>`;
+  const lista = bc.lista;
+  if (!lista.length) return '';
+  if (!s.f.mapa) { s.f.mapa = {}; Object.entries(bc.mapa || {}).forEach(([k, m]) => { s.f.mapa[k] = m.tipo + ':' + m.id; }); s.f.ofdesde = bc.desde || N_somaMes(N_mes(hoje()), -1) + '-01'; }
+  const ks = cartoes(), cs = contasBancarias();
+  const op = (c, v, l) => `<option value="${esc(v)}"${(s.f.mapa[c.id] || '') === v ? ' selected' : ''}>${esc(l)}</option>`;
+  const opc = c => op(c, '', 'Não lançar')
+    + (ks.length ? `<optgroup label="Cartões">${ks.map(k => op(c, 'cartao:' + k.id, k.nome)).join('')}</optgroup>` : '')
+    + (cs.length ? `<optgroup label="Contas">${cs.map(p => op(c, 'carteira:' + p.id, p.nome)).join('')}</optgroup>` : '');
+  return `<div class="panel soft"><p class="small" style="margin:0"><b>O que vira lançamento.</b> Diga qual conta do banco é qual cartão ou conta do app. As transações viram lançamentos sozinhas a cada busca (de 4 em 4 horas) e entram em tudo: extrato, orçamento, faturas, resumo e Luar. O que vocês já lançaram à mão é reconhecido e não duplica; o que ficar sem categoria vai para Extrato › Revisar.</p>
+    ${lista.map(c => campo(`${esc(c.inst)} · ${esc(c.nome)}${c.tipo === 'cartao' ? ' (cartão)' : ''}`, `<select class="in" data-i="ofmapa:${esc(c.id)}">${opc(c)}</select>`)).join('')}
+    ${!cs.length ? '<p class="tiny muted" style="margin:0">Para lançar o que sai da conta corrente (Pix, débito, boletos), cadastre as contas em Finanças › Patrimônio › Conta.</p>' : ''}
+    ${campo('Lançar a partir de', inp('ofdesde', s.f.ofdesde, 'type="date"'))}
+    <button class="btn block" data-a="luarMapa" ${s.salvandoMapa ? 'disabled' : ''}>${s.salvandoMapa ? 'Lançando…' : 'Salvar e lançar'}</button>
+    ${bc.pendentes ? `<p class="tiny muted" style="margin:0">${bc.pendentes} ${plu(bc.pendentes, 'transação', 'transações')} do banco ainda sem lançamento (contas marcadas “Não lançar”, de antes da data ou pagamento de fatura sem cartão definido).</p>` : ''}</div>`;
+}
+
 /* ============ painel de ajustes ============ */
 SH.luarAjustes = s => {
   const D = LUAR.dados || {};
@@ -92,8 +111,9 @@ SH.luarAjustes = s => {
         <button class="btn ghost block" data-a="luarTelegram">${tg.vinculado ? 'Vincular outro aparelho' : 'Gerar código para vincular'}</button>`}
     ${secao('Bancos (Open Finance)')}
     ${!bc.ligado ? `<div class="note"><span>Desligado. Com o MeuPluggy (gratuito, só leitura) a Luar vê saldos, faturas e gastos direto dos bancos, todo dia, mesmo sem ninguém lançar. Passo a passo em IMPLANTAR.md.</span></div>`
-      : `<div class="note"><span>Última busca: ${bc.quando ? luarQuando(bc.quando) : 'ainda não'} · ${bc.contas} contas · ${bc.transacoes} transações dos últimos 40 dias.${bc.erros && bc.erros.length ? ' Erro: ' + esc(bc.erros[0]) : ''}</span></div>
-        <button class="btn ghost block" data-a="luarBanco" ${s.buscando ? 'disabled' : ''}>${s.buscando ? 'Buscando…' : 'Buscar agora'}</button>`}
+      : `<div class="note"><span>Última busca: ${bc.quando ? luarQuando(bc.quando) : 'ainda não'} · ${bc.contas} contas · ${bc.transacoes} transações dos últimos 95 dias${bc.criados ? ` · ${bc.criados} ${plu(bc.criados, 'lançamento novo', 'lançamentos novos')}` : ''}.${bc.erros && bc.erros.length ? ' Erro: ' + esc(bc.erros[0]) : ''}</span></div>
+        <button class="btn ghost block" data-a="luarBanco" ${s.buscando ? 'disabled' : ''}>${s.buscando ? 'Buscando…' : 'Buscar agora'}</button>
+        ${luarMapaBanco(s, bc)}`}
     <p class="tiny muted">Modelo: ${esc(D.modelo || '')}. Custo neste mês: US$ ${fmt(D.custoMes || 0, 2)}.</p>
   </div>`;
 };
@@ -116,9 +136,20 @@ Object.assign(A, {
     const r = await api('luar', { op: 'telegram' });
     S.sheet.codigo = r.codigo; if (LUAR.dados) LUAR.dados.telegram = r; renderSheet();
   },
+  luarMapa: async () => {
+    const s = S.sheet, mapa = {};
+    Object.entries(s.f.mapa || {}).forEach(([k, v]) => { if (v) { const [tipo, id] = v.split(':'); mapa[k] = { tipo, id }; } });
+    s.salvandoMapa = true; renderSheet();
+    try {
+      const r = await api('luar', { op: 'bancoMapa', mapa, desde: s.f.ofdesde || '' }, { timeout: 300000 });
+      if (LUAR.dados) LUAR.dados.banco = r.banco;
+      toast(r.criados || r.ligados ? `${r.criados} ${plu(r.criados, 'lançamento criado', 'lançamentos criados')}${r.ligados ? ` e ${r.ligados} que já estavam no app reconhecidos` : ''}.` : 'Guardado. Nada novo para lançar agora.', 7000);
+      sincronizar();
+    } finally { if (S.sheet) { S.sheet.salvandoMapa = false; renderSheet(); } }
+  },
   luarBanco: async () => {
     S.sheet.buscando = true; renderSheet();
-    try { const r = await api('luar', { op: 'banco' }, { timeout: 300000 }); if (LUAR.dados) LUAR.dados.banco = r.banco; toast('Bancos atualizados.'); }
+    try { const r = await api('luar', { op: 'banco' }, { timeout: 300000 }); if (LUAR.dados) LUAR.dados.banco = r.banco; toast('Bancos atualizados.'); sincronizar(); }
     finally { if (S.sheet) { S.sheet.buscando = false; renderSheet(); } }
   }
 });
