@@ -97,7 +97,7 @@ function urlFalsa(url, o) {
         { id: 'c-2', date: d + 'T10:00:00Z', description: 'LOJA DEZENOVE', amount: 120, type: 'DEBIT', creditCardMetadata: { installmentNumber: 2, totalInstallments: 3 } },
         { id: 'c-3', date: d + 'T10:00:00Z', description: 'PAGAMENTO RECEBIDO', amount: -300, type: 'CREDIT' },
         { id: 'c-4', date: d + 'T10:00:00Z', description: 'XYZ DESCONHECIDA LTDA', amount: 42, type: 'DEBIT' },
-        { id: 'c-5', date: d + 'T10:00:00Z', description: 'COMPRA PENDENTE', amount: 10, type: 'DEBIT', status: 'PENDING' }] });
+        externo.postada ? { id: 'c-5b', date: d + 'T10:00:00Z', description: 'COMPRA PENDENTE', amount: 10, type: 'DEBIT', status: 'POSTED' } : { id: 'c-5', date: d + 'T10:00:00Z', description: 'COMPRA PENDENTE', amount: 10, type: 'DEBIT', status: 'PENDING' }] });
       if (u.searchParams.get('after') === 'CUR2') return resposta(200, { results: [{ id: 'tx4', date: d + 'T13:00:00Z', description: 'PAGAMENTO FATURA CARTAO', amount: -300, type: 'DEBIT' }], next: null });
       if (u.searchParams.get('after') === 'CUR1') return resposta(200, { results: [{ id: 'tx3', date: d + 'T12:00:00Z', description: 'SALARIO TESTE', amount: 5000, type: 'CREDIT' }], next: '?after=CUR2' });
       return resposta(200, { results: [{ id: 'tx1', date: d + 'T10:00:00Z', description: 'IFOOD TESTE', amount: -89.9, type: 'DEBIT', category: 'Food delivery' },
@@ -154,6 +154,7 @@ http.createServer((req, res) => {
     // ?chave=1 liga a Luar; ?telegram=1 liga o bot; ?turno=1&hora=8&dia=... roda o turno; ?tg=CHAT&texto=... simula mensagem no Telegram
     const q = new URL(req.url, 'http://x').searchParams;
     if (q.get('chave')) vm.runInContext(`PropertiesService.getScriptProperties().setProperty('ANTHROPIC_API_KEY', 'chave-teste')`, ctx);
+    if (q.get('postada')) externo.postada = true;
     if (q.get('banco')) vm.runInContext(`var _p = PropertiesService.getScriptProperties(); _p.setProperty('PLUGGY_CLIENT_ID', 'id'); _p.setProperty('PLUGGY_CLIENT_SECRET', 's'); _p.setProperty('PLUGGY_ITENS', 'item1')`, ctx);
     if (q.get('telegram')) vm.runInContext(`PropertiesService.getScriptProperties().setProperty('TELEGRAM_TOKEN', '123:abc')`, ctx);
     let enviados = [];

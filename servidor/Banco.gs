@@ -40,7 +40,7 @@ function bancoSincronizar() {
       var it = pluggyGet_('/items/' + encodeURIComponent(item)), inst = (it.connector && it.connector.name) || 'Banco';
       (pluggyGet_('/accounts?itemId=' + encodeURIComponent(item)).results || []).forEach(function (a) {
         var cred = a.creditData || {};
-        contas.push({ ID: a.id, Nome: a.name || a.marketingName || a.type, Tipo: a.type === 'CREDIT' ? 'cartao' : 'conta', Instituicao: inst,
+        contas.push({ ID: a.id, Nome: String(a.marketingName || a.name || a.type).replace(/\s+/g, ' ').trim(), Tipo: a.type === 'CREDIT' ? 'cartao' : 'conta', Instituicao: inst,
           Saldo: (Number(a.balance) || 0).toFixed(2), Limite: cred.creditLimit != null ? Number(cred.creditLimit).toFixed(2) : '',
           Disponivel: cred.availableCreditLimit != null ? Number(cred.availableCreditLimit).toFixed(2) : '', Atualizado: agora });
         // /v2/transactions pagina por cursor: "next" traz o parâmetro after da próxima página (ou vem vazio no fim)
@@ -64,6 +64,9 @@ function bancoSincronizar() {
   });
   comLock_(function () {
     bancoGravar_('BancoContas', contas);
+    // Compra pendente que sumiu da busca foi substituída pela confirmada (às vezes com outro ID): o lançamento dela fica livre para a confirmada
+    var vistos = {}; txs.forEach(function (t) { vistos[t.ID] = 1; });
+    if (!erros.length) ler_('Banco').forEach(function (r) { if (r.Status === 'PENDING' && !vistos[r.ID] && r.Dia >= desde) txs.push({ ID: r.ID, Status: 'SUMIU' }); });
     bancoGravar_('Banco', txs);
   });
   var lanc = { criados: 0, ligados: 0 };
@@ -90,6 +93,7 @@ function bancoResumoApp_() {
  * Cada conta do banco aponta para um cartão ou uma conta do app (banco_mapa na aba Config) e só entra o que for de banco_desde em diante.
  * O lançamento ganha o ID "of" + ID da Pluggy, então rodar de novo nunca duplica. O que vocês já tinham lançado à mão
  * (mesmo valor, mesma conta ou cartão, data até 3 dias de diferença, ou mesma parcela) é reconhecido e só fica ligado.
+ * Compras pendentes (a fatura aberta) também entram; se a confirmada chegar com outro ID, ela se liga ao mesmo lançamento.
  * Categoria: regra da casa, depois a mais usada para a mesma loja, depois pistas do nome; sem categoria vai para a fila Revisar.
  */
 function bancoSalvarMapa_(mapa, desde) {
@@ -130,7 +134,7 @@ function bancoLancar_() {
   var lancs = ativos_('lancamentos'), banco = ler_('Banco'), cartoes = {}, ligados = {}, porId = {}, criados = 0, ligadosAgora = 0;
   ativos_('cartoes').forEach(function (k) { cartoes[k.id] = k; });
   lancs.forEach(function (l) { porId[l.id] = l; });
-  banco.forEach(function (t) { if (t.Lancamento) ligados[t.Lancamento] = 1; });
+  banco.forEach(function (t) { if (t.Lancamento && t.Status !== 'SUMIU') ligados[t.Lancamento] = 1; });
   var regras = json_(c.regras, {}) || {}, cats = {}, hist = {};
   categorias_().forEach(function (x) { cats[x.id] = 1; });
   lancs.forEach(function (l) { if (l.tipo === 'saida' && l.cat && l.cat !== 'outros' && !/categoria a confirmar/i.test(l.nota || '')) { var k = N_lojaDe(l.desc); if (k) { hist[k] = hist[k] || {}; hist[k][l.cat] = (hist[k][l.cat] || 0) + 1; } } });
@@ -139,7 +143,7 @@ function bancoLancar_() {
   var novos = [], marca = {}; // marca: linha da aba Banco -> id do lançamento
   var achar = function (f) { for (var i = 0; i < lancs.length; i++) { var l = lancs[i]; if (!ligados[l.id] && f(l)) return l; } return null; };
   var ligar = function (t, id) { marca[t._lin] = id; ligados[id] = 1; };
-  var pend = banco.filter(function (t) { return !t.Lancamento && mapa[t.Conta] && (!desde || t.Dia >= desde) && t.Status !== 'PENDING'; });
+  var pend = banco.filter(function (t) { return !t.Lancamento && mapa[t.Conta] && (!desde || t.Dia >= desde) && t.Status !== 'SUMIU'; });
 
   // Transferência entre contas de vocês: sai de uma, entra na outra com o mesmo valor em até 1 dia
   pend.forEach(function (t) {
@@ -163,7 +167,7 @@ function bancoLancar_() {
       if (t.Tipo === 'entrada' && /pagamento|pagto|pgto|pag fat|credito de pagamento|payment/.test(d)) { marca[t._lin] = '-'; return; } // pagamento da fatura: entra pela conta
       if (t.Tipo === 'entrada') v = -v; // estorno: crédito na fatura
       var parc = /^\d+\/\d+$/.test(t.Parcela) ? t.Parcela : '', fat = N_faturaRef(k, t.Dia);
-      if (parc) fat = N_somaMes(fat, Number(parc.split('/')[0]) - 1); // a parcela vem com a data da compra
+      // Parcela: a 1ª vem com a data da compra e as seguintes com a data do ciclo em que entram (conferido no C6), então a data já diz a fatura
       dup = achar(function (l) { return l.tipo === 'saida' && l.cartao === k.id && l.v === v && (parc ? (l.parc || '') === parc && N_faturaDe(k, l) === fat : !l.parc && Math.abs(N_diasEntre(l.dia, t.Dia)) <= 3); });
       item = { tipo: 'saida', forma: 'cartao', cartao: k.id, dia: t.Dia, v: v, desc: desc, parc: parc, fat: fat, pago: true, cat: bancoCategoria_(desc, regras, hist, cats) };
     } else if (t.Tipo === 'saida' && /fatura|pagamento cartao|pag cartao|pgto cartao|card payment/.test(d)) {
