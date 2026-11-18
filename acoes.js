@@ -1,7 +1,7 @@
 /* acoes.js — o que cada toque faz, login, roteamento e a inicialização do app. */
 'use strict';
 
-const VERSAO_APP = '3.8.1';
+const VERSAO_APP = '3.9.0';
 /* Versão mínima do servidor (Apps Script) para os recursos desta versão: Para comprar, receita automática, regras de categoria, projetos e reembolso */
 const API_MINIMA = '3.5.0';
 const servidorAntigo = () => !!S.apiVersao && S.apiVersao.localeCompare(API_MINIMA, undefined, { numeric: true }) < 0;
@@ -271,6 +271,7 @@ document.addEventListener('click', e => {
 document.addEventListener('submit', async e => {
   e.preventDefault(); const f = e.target.dataset.f;
   if (f === 'login') { enviarLogin(); return; }
+  if (f === 'luar') { enviarLuar(LUAR.txt); return; }
   if (f === 'tarefa') {
     const el = $('#tartxt'), v = el.value.trim(); if (!v) return;
     const resp = S.fTar !== 'todas' && S.fTar !== 'casa' ? S.fTar : 'ambos';
@@ -298,6 +299,7 @@ function aoDigitar(e) {
   const t = e.target, k = t.dataset.i;
   if (k === 'busca') { S.busca = t.value; const L = $('#extlista'); if (L) { const y = $('#main').scrollTop; render(); const b = $('#busca'); if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(b.value.length, b.value.length); } $('#main').scrollTop = y; } return; }
   if (k === 'arqbusca') { S.arqBusca = t.value; const y = $('#main').scrollTop; render(); const b = $('#arqbusca'); if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(b.value.length, b.value.length); } $('#main').scrollTop = y; return; }
+  if (k === 'luartxt') { LUAR.txt = t.value; return; }
   if (!k || !S.sheet || !S.sheet.f) return;
   const s = S.sheet, f = s.f;
   if (k.startsWith('impcat:')) { const r = s.rows && s.rows[+k.slice(7)]; if (r) r.cat = t.value; return; }

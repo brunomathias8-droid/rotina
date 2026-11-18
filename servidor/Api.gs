@@ -6,7 +6,7 @@
  * Login: nome + PIN. Cinco tentativas erradas bloqueiam aquele nome por 15 minutos.
  * Sessão: token aleatório de 64 caracteres; na planilha fica só o hash (aba Sessoes). Validade: Config › dias_sessao.
  */
-var API_VERSAO = '3.5.0';
+var API_VERSAO = '3.6.0';
 
 function doGet(e) {
   // Agenda para assinar: .../exec?agenda=SENHA (a senha fica em Config › agenda_ics e aparece no app)
@@ -53,6 +53,7 @@ function apiRotear_(req) {
     case 'casa': return salvarCasa_(s, req);
     case 'trocarPin': return trocarPin_(s, req);
     case 'sair': return apiEncerrar_(s.pessoa, req.token);
+    case 'luar': return luarApi_(s, req);
     case 'pushConfig': case 'registrarPush': case 'preferenciasPush': case 'removerPush': case 'testarPush':
       return pushApi_(req.acao, s, req);
   }

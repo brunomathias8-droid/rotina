@@ -23,7 +23,12 @@ var ABAS = {
   Patrimonio: ['ID', 'Nome', 'Icone', 'Natureza', 'Classe', 'Instituicao', 'Historico', 'Taxa', 'Ativo', 'Nota', 'Aplicado', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Metas: ['ID', 'Nome', 'Icone', 'Tipo', 'Alvo', 'Prazo', 'Inicio', 'Itens', 'Metrica', 'Categoria', 'Base', 'Ativa', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Compras: ['ID', 'Item', 'Qtd', 'Setor', 'Comprado', 'CompradoPor', 'CompradoEm', 'Lista', 'Fixo', 'Opcoes', 'Orcamento', 'Prazo', 'Resp', 'Prioridade', 'Categoria', 'Lancamento', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
-  Push: ['Token', 'Pessoa', 'Plataforma', 'Tipos', 'CriadoEm', 'AtualizadoEm', 'Ativo', 'UltimoErro']
+  Push: ['Token', 'Pessoa', 'Plataforma', 'Tipos', 'CriadoEm', 'AtualizadoEm', 'Ativo', 'UltimoErro'],
+  // A conversa com a Luar (Luar.gs). Custo em dólares, para o app mostrar quanto a Luar gastou no mês
+  Luar: ['ID', 'Quando', 'Papel', 'Pessoa', 'Canal', 'Texto', 'Custo'],
+  // O que veio dos bancos pelo Open Finance (Banco.gs); o ID é o da Pluggy
+  Banco: ['ID', 'Dia', 'Valor', 'Tipo', 'Descricao', 'Categoria', 'Conta', 'Instituicao', 'Parcela', 'Status', 'Lancamento', 'Atualizado'],
+  BancoContas: ['ID', 'Nome', 'Tipo', 'Instituicao', 'Saldo', 'Limite', 'Disponivel', 'Atualizado']
 };
 
 /* Categorias de quem começa. Dá para mudar tudo pelo app (Finanças › Orçamento). orc = orçamento do mês em centavos (0 = sem limite). */

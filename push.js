@@ -9,7 +9,13 @@ const _scripts = {};
 
 function pushSuportado() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
 function plataformaPush() { return IOS ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : 'computador'; }
-function pushTiposLocais() { const t = lsGet('pushTipos'); return (t === null ? 'tarefas,agenda,agendanovo,contas,trocas,atribuidas,resumo,fechamento' : t.includes('agenda') ? t : t + ',tarefas,agenda,agendanovo').split(',').filter(Boolean); }
+function pushTiposLocais() {
+  let t = lsGet('pushTipos');
+  t = t === null ? 'tarefas,agenda,agendanovo,contas,trocas,atribuidas,resumo,fechamento,luar' : t.includes('agenda') ? t : t + ',tarefas,agenda,agendanovo';
+  // 3.9: a Luar chega ligada também para quem já tinha escolhido os avisos (dá para desligar em Perfil)
+  if (!lsGet('pushLuar')) { lsSet('pushLuar', '1'); if (!t.includes('luar')) { t += ',luar'; if (lsGet('pushTipos') !== null) { lsSet('pushTipos', t); lsSet('pushVerif', null); } } }
+  return t.split(',').filter(Boolean);
+}
 
 function carregarPushConfig() {
   if (PUSH.cfg || PUSH.carregando || !navigator.onLine || !S.sessao) return;
@@ -84,7 +90,7 @@ function secaoPush() {
   }
   if (Notification.permission === 'denied') return `<div class="note warn"><span>As notificações estão bloqueadas para o Rotina neste aparelho. ${IOS ? 'Libere em <b>Ajustes do iPhone › Notificações › Rotina</b>.' : 'Libere nas configurações do app ou do site (cadeado ao lado do endereço).'}</span></div>`;
   if (tok && Notification.permission === 'granted') {
-    const tipos = pushTiposLocais(), nomes = (PUSH.cfg && PUSH.cfg.tipos) || { tarefas: 'Agenda e tarefas do dia, de manhã', agenda: 'Lembretes dos compromissos', agendanovo: 'Compromisso novo, mudado ou comentado', contas: 'Contas e faturas vencendo', trocas: 'Pedidos de troca de tarefa', atribuidas: 'Tarefa passada para você ou concluída', compras: 'Itens novos na lista de compras e em Para comprar', resumo: 'Resumo da semana e o combinado de domingo', fechamento: 'Fechamento do mês, no dia 1' };
+    const tipos = pushTiposLocais(), nomes = (PUSH.cfg && PUSH.cfg.tipos) || { tarefas: 'Agenda e tarefas do dia, de manhã', agenda: 'Lembretes dos compromissos', agendanovo: 'Compromisso novo, mudado ou comentado', contas: 'Contas e faturas vencendo', trocas: 'Pedidos de troca de tarefa', atribuidas: 'Tarefa passada para você ou concluída', compras: 'Itens novos na lista de compras e em Para comprar', resumo: 'Resumo da semana e o combinado de domingo', fechamento: 'Fechamento do mês, no dia 1', luar: 'Luar, a coach financeira: manhã, tarde e noite' };
     if (!PUSH.cfg) carregarPushConfig();
     return `<p class="small"><span class="chip good">ligadas</span> neste aparelho. Escolha o que quer receber:</p>
       <div class="stack">${Object.keys(nomes).map(k => `<div class="between"><span class="small">${esc(nomes[k])}</span><button class="tog ${tipos.includes(k) ? 'on' : ''}" data-a="push-tipo" data-t="${k}" aria-pressed="${tipos.includes(k)}" aria-label="${esc(nomes[k])}"></button></div>`).join('')}</div>

@@ -106,6 +106,16 @@ p{margin:0}
 .note{background:var(--s2);border-radius:var(--r-sm);padding:11px 13px;font-size:13px;color:var(--mut);display:flex;gap:10px;align-items:flex-start;line-height:1.45}
 .note b{color:var(--fg)}
 .note.warn{background:var(--warn-soft);color:var(--fg)}
+.luar-msgs{display:flex;flex-direction:column;gap:8px;max-height:62vh;overflow-y:auto;padding:2px}
+.bolha{max-width:88%;padding:9px 12px;border-radius:16px;font-size:14px;line-height:1.45;background:var(--s1);box-shadow:0 0 0 1px var(--line);overflow-wrap:anywhere}
+.bolha p.tiny{margin-bottom:2px}
+.bolha.luar{align-self:flex-start;border-bottom-left-radius:5px}
+.bolha.eu{align-self:flex-end;background:var(--accent-soft);box-shadow:none;border-bottom-right-radius:5px}
+.bolha.outro{align-self:flex-end;background:var(--s2);box-shadow:none;border-bottom-right-radius:5px}
+.bolha.pensando div{color:var(--mut);font-style:italic}
+.luar-form{display:flex;gap:8px;align-items:flex-end}
+.luar-form textarea{flex:1;resize:vertical;min-height:46px}
+.luar-hoje{cursor:pointer;gap:4px}
 .vazio{text-align:center;padding:18px 8px;color:var(--mut);font-size:14px;display:flex;flex-direction:column;gap:6px;align-items:center}
 .vazio .em{font-size:30px;line-height:1}
 
@@ -472,6 +482,7 @@ kbd{font:600 11px var(--fb);background:var(--s2);border-radius:5px;padding:1px 5
 <script src="compras.js"></script>
 <script src="invest.js"></script>
 <script src="analises.js"></script>
+<script src="luar.js"></script>
 <script src="push.js"></script>
 <script>iniciar();</script>
 </body>

@@ -57,10 +57,37 @@ const ctx = {
     getFolderById(id) { const p = this._pastas[id]; if (!p) throw new Error('não achou'); return p; },
     getFileById(id) { const f = this._f[id]; if (!f) throw new Error('não achou'); return f; }
   },
-  ScriptApp: { getProjectTriggers: () => [], newTrigger: () => ({ timeBased: () => ({ everyHours: () => ({ create() { } }), everyMinutes: () => ({ create() { } }) }) }) }
+  ScriptApp: { getProjectTriggers: () => [], newTrigger: () => ({ timeBased: () => ({ everyHours: () => ({ create() { } }), everyMinutes: () => ({ create() { } }) }) }) },
+  UrlFetchApp: { fetch: (url, o) => urlFalsa(url, o || {}) }
 };
+/* ---------- serviços de fora: Anthropic (Luar), Telegram e Banco Central ---------- */
+const externo = { anthropic: [], telegram: [], updates: [] };
+const resposta = (cod, obj) => ({ getResponseCode: () => cod, getContentText: () => JSON.stringify(obj) });
+function urlFalsa(url, o) {
+  if (url.startsWith('https://api.anthropic.com/')) {
+    const corpo = JSON.parse(o.payload); externo.anthropic.push(corpo);
+    if (o.headers['x-api-key'] !== 'chave-teste') return resposta(401, { error: { message: 'chave inválida' } });
+    const ult = corpo.messages[corpo.messages.length - 1], txt = typeof ult.content === 'string' ? ult.content : '';
+    const uso = { input_tokens: 1000, output_tokens: 100, cache_read_input_tokens: 2000 };
+    if (Array.isArray(ult.content) && ult.content[0].type === 'tool_result') return resposta(200, { stop_reason: 'end_turn', usage: uso, content: [{ type: 'text', text: 'Teto do delivery definido. ' + ult.content[0].content }] });
+    if (/Turno da tarde/.test(txt)) return resposta(200, { stop_reason: 'end_turn', usage: uso, content: [{ type: 'text', text: 'PULAR' }] });
+    if (/\[Sistema do Rotina\]/.test(txt)) return resposta(200, { stop_reason: 'end_turn', usage: uso, content: [{ type: 'text', text: 'Bom dia, casa. *Delivery* já passou do teto. Hoje: zero pedido.' }] });
+    if (/^\[[^\]]+\] .*teto/i.test(txt)) return resposta(200, { stop_reason: 'tool_use', usage: uso, content: [{ type: 'thinking', thinking: '', signature: 'x' }, { type: 'tool_use', id: 'tu1', name: 'definir_teto', input: { categoria: 'delivery', reais: 800 } }] });
+    const temDados = corpo.system.some(b => /DADOS DA CASA/.test(b.text));
+    return resposta(200, { stop_reason: 'end_turn', usage: uso, content: [{ type: 'text', text: 'Luar responde: ' + txt.replace(/^\[[^\]]+\] /, '').slice(0, 80) + (temDados ? ' (li os dados)' : '') }] });
+  }
+  if (url.startsWith('https://api.telegram.org/')) {
+    const metodo = url.split('/').pop(), d = o.payload ? JSON.parse(o.payload) : {};
+    if (metodo === 'getMe') return resposta(200, { ok: true, result: { username: 'luar_teste_bot' } });
+    if (metodo === 'getUpdates') { const u = externo.updates.filter(x => x.update_id >= (d.offset || 0)); externo.updates = []; return resposta(200, { ok: true, result: u }); }
+    if (metodo === 'sendMessage') externo.telegram.push(d);
+    return resposta(200, { ok: true, result: {} });
+  }
+  if (url.startsWith('https://api.bcb.gov.br/')) return resposta(200, [{ data: '17/11/2026', valor: '10.50' }]);
+  return resposta(404, {});
+}
 vm.createContext(ctx);
-for (const f of ['Nucleo', 'Dados', 'Api', 'Push']) vm.runInContext(fs.readFileSync(path.join(RAIZ, 'servidor', f + '.gs'), 'utf8'), ctx, { filename: f + '.gs' });
+for (const f of ['Nucleo', 'Dados', 'Api', 'Push', 'Luar', 'Telegram', 'Banco']) vm.runInContext(fs.readFileSync(path.join(RAIZ, 'servidor', f + '.gs'), 'utf8'), ctx, { filename: f + '.gs' });
 ctx.configurar();
 const convite = vm.runInContext('cfg_().convite', ctx);
 fs.writeFileSync(path.join(__dirname, 'convite.txt'), convite);
@@ -100,6 +127,32 @@ http.createServer((req, res) => {
     const nomes = Object.fromEntries(vm.runInContext('ler_("Pessoas").map(function (p) { return [p.ID, p.Nome]; })', ctx));
     const out = vm.runInContext('_enviados', ctx).map(l => l.replace(/^P\w+/, id => nomes[id] || id));
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end(out.join('\n') || '(nada enviado)'); return;
+  }
+  if (req.url.startsWith('/__luar')) {
+    // ?chave=1 liga a Luar; ?telegram=1 liga o bot; ?turno=1&hora=8&dia=... roda o turno; ?tg=CHAT&texto=... simula mensagem no Telegram
+    const q = new URL(req.url, 'http://x').searchParams;
+    if (q.get('chave')) vm.runInContext(`PropertiesService.getScriptProperties().setProperty('ANTHROPIC_API_KEY', 'chave-teste')`, ctx);
+    if (q.get('telegram')) vm.runInContext(`PropertiesService.getScriptProperties().setProperty('TELEGRAM_TOKEN', '123:abc')`, ctx);
+    let enviados = [];
+    if (q.get('turno')) {
+      vm.runInContext(`_cache = {}; _cfg = null; var _enviados = [];
+        horaAgora_ = function () { return ${+q.get('hora')}; };
+        hoje_ = function () { return '${q.get('dia')}'; };
+        pushStatus_ = function () { return { ativo: true, falta: [] }; };
+        pushAparelhos_ = function (p, tipo) { return ['tok-' + p + '-' + tipo]; };
+        pushEnviar_ = function (tok, msg) { _enviados.push(tok.replace(/^tok-/, '').replace(/-[a-z]+$/, function (t) { return ' [' + t.slice(1) + ']'; }) + ' → ' + msg.titulo + ' | ' + msg.corpo); return { ok: true }; };
+        luarTurno();`, ctx);
+      enviados = vm.runInContext('_enviados', ctx);
+    }
+    if (q.get('tg')) {
+      externo.updates.push({ update_id: Date.now(), message: { chat: { id: +q.get('tg'), type: 'private' }, text: q.get('texto') } });
+      vm.runInContext('_cache = {}; _cfg = null; _cabs = {}; telegramVerificar();', ctx);
+    }
+    const nomes = Object.fromEntries(vm.runInContext('ler_("Pessoas").map(function (p) { return [p.ID, p.Nome]; })', ctx));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ push: enviados.map(l => l.replace(/^P\w+/, id => nomes[id] || id)), telegram: externo.telegram.splice(0), anthropic: externo.anthropic.splice(0).map(c => ({ model: c.model, effort: c.output_config && c.output_config.effort, tools: (c.tools || []).length, fallbacks: c.fallbacks, sys: c.system.map(b => b.text.length), ultima: JSON.stringify(c.messages[c.messages.length - 1]).slice(0, 300), papeis: c.messages.map(m => m.role).join(',') })),
+      categorias: vm.runInContext('categorias_()', ctx).filter(c => c.orc), caderno: vm.runInContext('luarCaderno_()', ctx) }));
+    return;
   }
   if (req.url.startsWith('/__legado')) {
     // simula uma planilha da versão 2: afazeres e pendências que precisam virar tarefas

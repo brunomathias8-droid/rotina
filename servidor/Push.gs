@@ -18,9 +18,10 @@ var PUSH_TIPOS = {
   atribuidas: 'Tarefa passada para você ou concluída',
   compras: 'Itens novos na lista de compras e em Para comprar',
   resumo: 'Resumo da semana e o combinado de domingo, às 19h',
-  fechamento: 'Fechamento do mês e das metas, no dia 1'
+  fechamento: 'Fechamento do mês e das metas, no dia 1',
+  luar: 'Luar, a coach financeira: manhã, tarde e noite'
 };
-var PUSH_PADRAO = ['tarefas', 'agenda', 'agendanovo', 'contas', 'trocas', 'atribuidas', 'resumo', 'fechamento'];
+var PUSH_PADRAO = ['tarefas', 'agenda', 'agendanovo', 'contas', 'trocas', 'atribuidas', 'resumo', 'fechamento', 'luar'];
 var PUSH_V3 = ['tarefas', 'agenda', 'agendanovo'];
 
 /* ------------------------------ configuração ------------------------------ */

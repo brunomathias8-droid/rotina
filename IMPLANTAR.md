@@ -109,6 +109,40 @@ Entre 22h e 7h nenhum aviso é enviado, a não ser os lembretes de compromisso. 
 
 ---
 
+## Ligar a Luar, a coach financeira (servidor 3.6, app 3.9)
+
+A Luar lê os números do Rotina, conversa em Finanças › Luar (e no Telegram) e manda no máximo uma mensagem por turno: 8h, 13h e 20h. Domingo à noite faz o check-in da semana; no dia 1, o fechamento do mês.
+
+**1. Atualizar o servidor**
+1. No Apps Script, troque o conteúdo de `Dados`, `Api` e `Push` pelos novos e crie três arquivos novos com o conteúdo de `servidor/Luar.gs`, `servidor/Telegram.gs` e `servidor/Banco.gs` (botão **+ › Script**, nomes `Luar`, `Telegram` e `Banco`).
+2. **Implantar › Gerenciar implantações › editar › Versão: Nova versão**.
+
+**2. Chave da Anthropic (obrigatória)**
+1. Em [console.anthropic.com](https://console.anthropic.com): crie a conta, ponha crédito (US$ 10 dá para começar) e crie uma chave em **API Keys**. Em **Limits**, ponha um limite mensal de gasto (por exemplo US$ 12) para nunca passar do combinado.
+2. No Apps Script: **Configurações do projeto (engrenagem) › Propriedades do script › Adicionar**: `ANTHROPIC_API_KEY` = a chave.
+3. Opcional: `LUAR_MODELO`. O padrão é `claude-opus-5-5`, a melhor. Cada resposta custa uns US$ 0,04 a 0,06: só os turnos dão uns US$ 5 por mês, e cada 10 conversas por dia somam uns US$ 15. Para caber em R$ 50 conversando bastante, use `claude-sonnet-5-5` (cerca da metade do preço, ainda muito boa). `claude-haiku-5-5` custa centavos, mas é bem menos esperta. O app mostra o gasto do mês em Luar › Ajustes.
+4. Escolha a função `ativarLuar` e clique em **Executar** (autorize se pedir). Ela cria as abas `Luar`, `Banco` e `BancoContas` e os gatilhos.
+5. No app: Finanças › Luar › **Ajustes** › preencha o **Perfil da família** (renda, dívidas, filhos, metas). Isso fica só nas propriedades do script, nunca no GitHub.
+
+Para conferir sem gastar: `verContextoLuar` mostra no registro tudo o que a Luar recebe. `testarLuar` faz uma pergunta de verdade.
+
+**3. Telegram (opcional)**
+1. No Telegram, fale com **@BotFather**, mande `/newbot`, escolha nome e usuário. Ele devolve um token.
+2. Propriedade do script `TELEGRAM_TOKEN` = o token. Rode `ativarLuar` de novo.
+3. No app: Finanças › Luar › Ajustes › **Gerar código para vincular** e mande `/vincular CÓDIGO` para o bot. Cada um vincula o seu. `/sair` desvincula.
+
+O bot só conversa com quem vinculou por código; para os outros ele responde que é particular. As mensagens chegam em até 1 minuto.
+
+**4. Bancos pelo Open Finance (opcional, só leitura)**
+1. Crie conta em [meu.pluggy.ai](https://meu.pluggy.ai) e conecte os bancos (BB, Santander, Nubank, C6, Inter…). Cada banco pede a autorização no app dele; a permissão é só de leitura e pode ser revogada lá a qualquer hora.
+2. Em [dashboard.pluggy.ai](https://dashboard.pluggy.ai): crie a conta de desenvolvedor, inclua o conector **MeuPluggy** na aplicação, crie uma **aplicação de desenvolvimento** (anote `client_id` e `client_secret`) e, pela aplicação demo, autorize o MeuPluggy uma vez por banco. Cada autorização gera um **item**; copie os IDs.
+3. Propriedades do script: `PLUGGY_CLIENT_ID`, `PLUGGY_CLIENT_SECRET` e `PLUGGY_ITENS` (IDs separados por vírgula). Rode `ativarLuar` de novo.
+4. No app: Luar › Ajustes › **Buscar agora**. Depois disso o servidor busca de 4 em 4 horas (o MeuPluggy atualiza os bancos uma vez por dia).
+
+As transações ficam nas abas `Banco` e `BancoContas`; a Luar lê de lá saldos, faturas e gastos do mês, mesmo sem ninguém lançar nada no app.
+
+**Segurança**: nenhuma chave fica no código nem no GitHub, só nas propriedades do script. Nada aqui consegue pagar ou transferir dinheiro. As conversas e os números vão para a API da Anthropic na hora de cada resposta.
+
 ## Atualizar da versão 3.4 para a 3.5 (app 3.8: Para comprar, Análises, receita automática)
 
 1. No Apps Script, troque o conteúdo de `Dados`, `Api` e `Push` pelos novos.

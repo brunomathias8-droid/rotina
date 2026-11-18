@@ -2,7 +2,7 @@
    Carregado depois de acoes.js (acrescenta ações ao objeto A). As contas ficam em financas.js. */
 'use strict';
 
-const FIN_ABAS = [['resumo', 'Resumo'], ['analises', 'Análises'], ['extrato', 'Extrato'], ['contas', 'Contas'], ['cartoes', 'Cartões'], ['orcamento', 'Orçamento'], ['metas', 'Metas'], ['patrimonio', 'Patrimônio'], ['investimentos', 'Investimentos']];
+const FIN_ABAS = [['resumo', 'Resumo'], ['luar', '🌙 Luar'], ['analises', 'Análises'], ['extrato', 'Extrato'], ['contas', 'Contas'], ['cartoes', 'Cartões'], ['orcamento', 'Orçamento'], ['metas', 'Metas'], ['patrimonio', 'Patrimônio'], ['investimentos', 'Investimentos']];
 const CORES_CARTAO = ['#5B3FA0', '#C62828', '#C8643C', '#2E6A57', '#1F2937', '#3B6EA5', '#B8860B'];
 const statusTag = st => st === 'pago' ? `<span class="tag good">${ic('check', 12, 2.6)} pago</span>` : st === 'vencido' ? `<span class="tag bad">${ic('alert', 12, 2.4)} vencido</span>` : '';
 const pctTxt = x => x == null ? '—' : Math.round(x * 100) + '%';
@@ -15,7 +15,7 @@ function scrFin() {
   return `<div class="between"><h1 class="display">Finanças</h1><button class="btn sm" data-a="novoLanc" data-tipo="saida">${ic('plus', 16, 2.4)} Lançar</button></div>
     ${avisoServidor()}<div class="chips scroll" role="tablist">${FIN_ABAS.map(([k, l]) => `<button class="chip ${v === k ? 'on' : ''}" role="tab" aria-selected="${v === k}" data-a="fv" data-v="${k}">${l}</button>`).join('')}</div>
     ${comMes ? `<div class="mesnav"><button class="x" data-a="mes" data-v="-1" aria-label="Mês anterior">${ic('chevl', 18)}</button><p class="h2" style="text-align:center;flex:1">${fmtMes(S.mes)}${S.mes !== atual ? ` <button class="link" data-a="mesHoje">voltar a ${MESES[+atual.slice(5) - 1]}</button>` : ''}</p><button class="x" data-a="mes" data-v="1" aria-label="Próximo mês">${ic('chev', 18)}</button></div>` : ''}
-    ${{ resumo: finResumo, analises: finAnalises, extrato: finExtrato, contas: finContas, cartoes: finCartoes, orcamento: finOrcamento, metas: finMetas, patrimonio: finPatrimonio, investimentos: finInvestimentos }[v]()}`;
+    ${{ resumo: finResumo, luar: finLuar, analises: finAnalises, extrato: finExtrato, contas: finContas, cartoes: finCartoes, orcamento: finOrcamento, metas: finMetas, patrimonio: finPatrimonio, investimentos: finInvestimentos }[v]()}`;
 }
 
 /* ---------- Resumo ---------- */
