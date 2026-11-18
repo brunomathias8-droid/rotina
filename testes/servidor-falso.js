@@ -83,6 +83,21 @@ function urlFalsa(url, o) {
     if (metodo === 'sendMessage') externo.telegram.push(d);
     return resposta(200, { ok: true, result: {} });
   }
+  if (url.startsWith('https://api.pluggy.ai/')) {
+    const u = new URL(url); externo.pluggy = (externo.pluggy || []).concat(u.pathname + u.search);
+    if (u.pathname === '/auth') return resposta(200, { apiKey: 'chave-pluggy' });
+    if ((o.headers || {})['X-API-KEY'] !== 'chave-pluggy') return resposta(403, {});
+    if (u.pathname.startsWith('/items/')) return resposta(200, { id: 'item1', connector: { name: 'Banco Teste' } });
+    if (u.pathname === '/accounts') return resposta(200, { results: [{ id: 'conta1', type: 'BANK', name: 'Conta corrente', balance: 1234.5 }] });
+    if (u.pathname === '/transactions') return resposta(410, { message: 'This endpoint is deprecated.' });
+    if (u.pathname === '/v2/transactions') {
+      const d = new Date().toISOString().slice(0, 10);
+      if (u.searchParams.get('after') === 'CUR1') return resposta(200, { results: [{ id: 'tx3', date: d + 'T12:00:00Z', description: 'SALARIO TESTE', amount: 5000, type: 'CREDIT' }], next: null });
+      return resposta(200, { results: [{ id: 'tx1', date: d + 'T10:00:00Z', description: 'IFOOD TESTE', amount: -89.9, type: 'DEBIT', category: 'Food delivery' },
+        { id: 'tx2', date: d + 'T11:00:00Z', description: 'MERCADO TESTE', amount: -250, type: 'DEBIT', category: 'Groceries' }], next: '?accountId=conta1&dateFrom=x&after=CUR1' });
+    }
+    return resposta(404, {});
+  }
   if (url.startsWith('https://api.bcb.gov.br/')) return resposta(200, [{ data: '17/11/2026', valor: '10.50' }]);
   return resposta(404, {});
 }
@@ -132,6 +147,7 @@ http.createServer((req, res) => {
     // ?chave=1 liga a Luar; ?telegram=1 liga o bot; ?turno=1&hora=8&dia=... roda o turno; ?tg=CHAT&texto=... simula mensagem no Telegram
     const q = new URL(req.url, 'http://x').searchParams;
     if (q.get('chave')) vm.runInContext(`PropertiesService.getScriptProperties().setProperty('ANTHROPIC_API_KEY', 'chave-teste')`, ctx);
+    if (q.get('banco')) vm.runInContext(`var _p = PropertiesService.getScriptProperties(); _p.setProperty('PLUGGY_CLIENT_ID', 'id'); _p.setProperty('PLUGGY_CLIENT_SECRET', 's'); _p.setProperty('PLUGGY_ITENS', 'item1')`, ctx);
     if (q.get('telegram')) vm.runInContext(`PropertiesService.getScriptProperties().setProperty('TELEGRAM_TOKEN', '123:abc')`, ctx);
     let enviados = [];
     if (q.get('turno')) {
@@ -151,7 +167,7 @@ http.createServer((req, res) => {
     const nomes = Object.fromEntries(vm.runInContext('ler_("Pessoas").map(function (p) { return [p.ID, p.Nome]; })', ctx));
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ push: enviados.map(l => l.replace(/^P\w+/, id => nomes[id] || id)), telegram: externo.telegram.splice(0), anthropic: externo.anthropic.splice(0).map(c => ({ model: c.model, effort: c.output_config && c.output_config.effort, tools: (c.tools || []).length, fallbacks: c.fallbacks, sys: c.system.map(b => b.text.length), ultima: JSON.stringify(c.messages[c.messages.length - 1]).slice(0, 300), papeis: c.messages.map(m => m.role).join(',') })),
-      categorias: vm.runInContext('categorias_()', ctx).filter(c => c.orc), caderno: vm.runInContext('luarCaderno_()', ctx) }));
+      categorias: vm.runInContext('categorias_()', ctx).filter(c => c.orc), caderno: vm.runInContext('luarCaderno_()', ctx), pluggy: (externo.pluggy || []).splice(0), contexto: q.get('contexto') ? vm.runInContext('_cache = {}; luarContexto_()', ctx) : '' }));
     return;
   }
   if (req.url.startsWith('/__legado')) {

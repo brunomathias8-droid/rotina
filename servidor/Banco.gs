@@ -43,10 +43,11 @@ function bancoSincronizar() {
         contas.push({ ID: a.id, Nome: a.name || a.marketingName || a.type, Tipo: a.type === 'CREDIT' ? 'cartao' : 'conta', Instituicao: inst,
           Saldo: (Number(a.balance) || 0).toFixed(2), Limite: cred.creditLimit != null ? Number(cred.creditLimit).toFixed(2) : '',
           Disponivel: cred.availableCreditLimit != null ? Number(cred.availableCreditLimit).toFixed(2) : '', Atualizado: agora });
-        for (var pag = 1, total = 1; pag <= total && pag <= 10; pag++) {
-          var t = pluggyGet_('/transactions?accountId=' + encodeURIComponent(a.id) + '&from=' + desde + '&pageSize=500&page=' + pag);
-          total = t.totalPages || 1;
-          (t.results || []).forEach(function (x) {
+        // /v2/transactions pagina por cursor: "next" traz o parâmetro after da próxima página (ou vem vazio no fim)
+        var base = '/v2/transactions?accountId=' + encodeURIComponent(a.id) + '&dateFrom=' + desde, after = '';
+        for (var pag = 0; pag < 20; pag++) {
+          var t = pluggyGet_(base + (after ? '&after=' + encodeURIComponent(after) : ''));
+          (t.results || t.data || []).forEach(function (x) {
             var md = x.creditCardMetadata || {}, v = Math.abs(Number(x.amount) || 0);
             // DEBIT é dinheiro saindo (na conta e nas compras do cartão); sem tipo, vale o sinal do valor
             var saida = x.type ? x.type === 'DEBIT' : Number(x.amount) < 0;
@@ -54,6 +55,9 @@ function bancoSincronizar() {
               Categoria: x.category || '', Conta: a.id, Instituicao: inst + (a.type === 'CREDIT' ? ' cartão' : ''),
               Parcela: md.totalInstallments > 1 ? md.installmentNumber + '/' + md.totalInstallments : '', Status: x.status || '', Atualizado: agora });
           });
+          var prox = /[?&]after=([^&]+)/.exec(String(t.next || ''));
+          if (!prox || decodeURIComponent(prox[1]) === after) break;
+          after = decodeURIComponent(prox[1]);
         }
       });
     } catch (e) { erros.push(String(e.message || e)); Logger.log('banco ' + item + ': ' + e); }

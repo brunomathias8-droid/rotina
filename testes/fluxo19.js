@@ -66,6 +66,16 @@ const luar = q => fetch('http://localhost:8787/__luar?' + q).then(r => r.json())
   ok(r.telegram.length === 1 && /Luar responde: oi luar, pelo telegram/.test(r.telegram[0].text), 'conversa pelo Telegram');
   r = await luar('tg=777&texto=' + encodeURIComponent('quanto vocês ganham?'));
   ok(r.telegram.length === 1 && /particular/.test(r.telegram[0].text) && r.anthropic.length === 0, 'chat desconhecido não chega na Luar');
+  console.log('5b. Bancos (Pluggy, paginação por cursor)');
+  await luar('banco=1');
+  await p.click('.sheet [data-a="close"]'); await p.evaluate(() => A.luarRecarregar()); await espera(800);
+  await p.click('#main button[data-a="sheet"][data-k="luarAjustes"]');
+  await p.click('.sheet button[data-a="luarBanco"]'); await p.locator('.sheet .note', { hasText: '3 transações' }).waitFor({ timeout: 15000 });
+  r = await luar('contexto=1');
+  ok(r.pluggy.some(u => u.includes('/v2/transactions') && u.includes('after=CUR1')) && !r.pluggy.some(u => u.startsWith('/transactions')), 'usa /v2/transactions e segue o cursor até o fim');
+  ok(/Conta corrente: saldo R\$ 1\.234,50/.test(r.contexto) && /Delivery\/restaurante no banco: 1 compras, R\$ 89,90/.test(r.contexto) && /entradas R\$ 5\.000,00/.test(r.contexto), 'Luar lê saldo, delivery e entradas do banco');
+  await p.click('.sheet button[data-a="luarBanco"]'); await espera(1500);
+  ok(await p.locator('.sheet .note', { hasText: '3 transações' }).isVisible(), 'buscar de novo não duplica');
   await p.click('.sheet [data-a="close"]');
 
   console.log('6. Turnos');
