@@ -29,7 +29,7 @@ const sinc = async p => { await p.evaluate(() => sincronizar()); await espera(50
   await bruno.click('text=Primeiro acesso');
   await bruno.fill('#lconvite', convite); await bruno.fill('#lnome', 'Bruno'); await bruno.fill('#lpin', '1234');
   await bruno.click('button[type=submit]'); await bruno.waitForSelector('nav button');
-  ok((await bruno.locator('nav').innerText()).replace(/\s+/g, ' ').includes('Hoje Agenda Tarefas Finanças Compras'), 'menu: Hoje, Agenda, Tarefas, Finanças, Compras');
+  ok((await bruno.locator('nav').innerText()).replace(/\s+/g, ' ').includes('Hoje Plano Agenda Tarefas Finanças Compras'), 'menu: Hoje, Plano, Agenda, Tarefas, Finanças, Compras');
   await foto(bruno, 'hoje-vazio');
   const H = await bruno.evaluate(() => hoje());
 

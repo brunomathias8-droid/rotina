@@ -21,7 +21,11 @@ var ABAS = {
   Contas: ['ID', 'Nome', 'Tipo', 'Valor', 'Vence', 'Categoria', 'Forma', 'Cartao', 'Carteira', 'Destino', 'Meta', 'Ativa', 'Fim', 'Nota', 'Auto', 'AutoDesde', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Cartoes: ['ID', 'Nome', 'Cor', 'Limite', 'Fecha', 'Vence', 'Carteira', 'Ativo', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Patrimonio: ['ID', 'Nome', 'Icone', 'Natureza', 'Classe', 'Instituicao', 'Historico', 'Taxa', 'Ativo', 'Nota', 'Aplicado', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
-  Metas: ['ID', 'Nome', 'Icone', 'Tipo', 'Alvo', 'Prazo', 'Inicio', 'Itens', 'Metrica', 'Categoria', 'Base', 'Ativa', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
+  Metas: ['ID', 'Nome', 'Icone', 'Tipo', 'Alvo', 'Prazo', 'Inicio', 'Itens', 'Metrica', 'Categoria', 'Base', 'Ativa', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado', 'Objetivo'],
+  // Plano da família: objetivos (curto, médio e longo prazo), compromissos com dono e prazo, e a ata de cada ritual
+  Objetivos: ['ID', 'Nome', 'Icone', 'Horizonte', 'Porque', 'Prazo', 'Dono', 'Ordem', 'Status', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
+  Compromissos: ['ID', 'Texto', 'Dono', 'Prazo', 'Meta', 'Objetivo', 'Status', 'Motivo', 'FechadoEm', 'Origem', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
+  Rituais: ['ID', 'Tipo', 'Ref', 'Dia', 'Ata', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Compras: ['ID', 'Item', 'Qtd', 'Setor', 'Comprado', 'CompradoPor', 'CompradoEm', 'Lista', 'Fixo', 'Opcoes', 'Orcamento', 'Prazo', 'Resp', 'Prioridade', 'Categoria', 'Lancamento', 'Nota', 'CriadoPor', 'CriadoEm', 'Excluido', 'Atualizado'],
   Push: ['Token', 'Pessoa', 'Plataforma', 'Tipos', 'CriadoEm', 'AtualizadoEm', 'Ativo', 'UltimoErro'],
   // A conversa com a Luar (Luar.gs). Custo em dólares, para o app mostrar quanto a Luar gastou no mês
@@ -237,9 +241,17 @@ var COLECOES = {
     nome: ['Nome', 't', 60], ic: ['Icone', 't', 16], nat: ['Natureza', 'e', ['ativo', 'passivo']], classe: ['Classe', 't', 20], inst: ['Instituicao', 't', 60],
     hist: ['Historico', 'j', 30000], taxa: ['Taxa', 'x'], ativo: ['Ativo', 'b'], nota: ['Nota', 't', 300], aplicado: ['Aplicado', 'c'] } },
   metas: { aba: 'Metas', exigir: 'nome', campos: {
-    nome: ['Nome', 't', 60], ic: ['Icone', 't', 16], tipo: ['Tipo', 'e', ['juntar', 'mensal', 'reduzir']], alvo: ['Alvo', 'c'], prazo: ['Prazo', 'd'],
+    nome: ['Nome', 't', 60], ic: ['Icone', 't', 16], tipo: ['Tipo', 'e', ['juntar', 'mensal', 'reduzir', 'saldo']], alvo: ['Alvo', 'c'], prazo: ['Prazo', 'd'], objetivo: ['Objetivo', 't', 40],
     inicio: ['Inicio', 'd'], itens: ['Itens', 'L'], metrica: ['Metrica', 'e', ['', 'cartao', 'cat', 'divida']], cat: ['Categoria', 't', 30],
     base: ['Base', 'c'], ativa: ['Ativa', 'b'], nota: ['Nota', 't', 300] } },
+  objetivos: { aba: 'Objetivos', exigir: 'nome', campos: {
+    nome: ['Nome', 't', 80], ic: ['Icone', 't', 16], horiz: ['Horizonte', 'e', ['curto', 'medio', 'longo']], porque: ['Porque', 't', 400], prazo: ['Prazo', 'd'],
+    dono: ['Dono', 'r'], ordem: ['Ordem', 'n'], status: ['Status', 'e', ['ativo', 'concluido', 'arquivado']] } },
+  compromissos: { aba: 'Compromissos', exigir: 'texto', campos: {
+    texto: ['Texto', 't', 160], dono: ['Dono', 'r'], prazo: ['Prazo', 'd'], meta: ['Meta', 't', 40], objetivo: ['Objetivo', 't', 40],
+    status: ['Status', 'e', ['aberto', 'feito', 'naofeito']], motivo: ['Motivo', 't', 300], fechadoEm: ['FechadoEm', 'd'], origem: ['Origem', 't', 40] } },
+  rituais: { aba: 'Rituais', exigir: 'dia', campos: {
+    tipo: ['Tipo', 'e', ['semanal', 'mensal']], ref: ['Ref', 't', 10], dia: ['Dia', 'd'], ata: ['Ata', 'j', 30000] } },
   arquivos: { aba: 'Arquivos', exigir: 'titulo', campos: {
     titulo: ['Titulo', 't', 120], tipo: ['Tipo', 'e', ['link', 'arquivo']], url: ['Url', 'u'], cat: ['Categoria', 'e', CATS_ARQ], pessoas: ['Pessoas', 'L'],
     liga: ['Liga', 'g'], fixo: ['Fixo', 'b'], validade: ['Validade', 'd'], nota: ['Nota', 't', 500] } },

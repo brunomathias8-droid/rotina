@@ -33,7 +33,7 @@ const luar = q => fetch('http://localhost:8787/__luar?' + q).then(r => r.json())
   ok(await p.locator('.bolha.luar', { hasText: 'Como estamos este mês? (li os dados)' }).isVisible(), 'Luar responde com os dados da casa no contexto');
   ok(await p.locator('.bolha.eu', { hasText: 'Como estamos este mês?' }).isVisible(), 'minha fala fica na conversa');
   let r = await luar('');
-  ok(r.anthropic.length === 1 && r.anthropic[0].model === 'claude-opus-5-5' && r.anthropic[0].effort === 'low' && r.anthropic[0].tools === 4 && r.anthropic[0].fallbacks === 'default', 'chama o modelo certo, com ferramentas e fallback');
+  ok(r.anthropic.length === 1 && r.anthropic[0].model === 'claude-opus-5-5' && r.anthropic[0].effort === 'low' && r.anthropic[0].tools === 6 && r.anthropic[0].fallbacks === 'default', 'chama o modelo certo, com ferramentas e fallback');
   ok(r.anthropic[0].sys.length === 2 && /\[Bruno\] Como estamos/.test(r.anthropic[0].ultima), 'persona e dados separados; quem fala vai entre colchetes');
 
   console.log('3. Ferramenta: definir teto');

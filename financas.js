@@ -260,6 +260,7 @@ function alertasOrcamento(ref) {
 /* ============================== metas ============================== */
 const metas = () => lista('metas').filter(m => m.ativa !== false).sort((a, b) => String(a.em).localeCompare(String(b.em)));
 const META_TIPOS = { juntar: 'Juntar um valor', mensal: 'Investir todo mês', reduzir: 'Reduzir' };
+const TIPOS_META = { juntar: 'Juntar', mensal: 'Todo mês', reduzir: 'Reduzir', saldo: 'Fechar no azul' };
 const METRICAS = { cartao: 'Fatura do cartão por mês', cat: 'Gasto de uma categoria por mês', divida: 'Saldo de dívidas' };
 /** Aportes líquidos do mês que contam para a meta (se ela não tiver investimentos escolhidos, conta tudo). */
 function aportesMeta(m, ref) {
@@ -282,6 +283,16 @@ function valorReduzir(m, ref) {
  */
 function progressoMeta(m) {
   const h = hoje(), ref = N_mes(h), alvo = m.alvo || 0;
+  if (m.tipo === 'saldo') {
+    // Fechar o mês com sobra de pelo menos "alvo": meses passados pelo resultado, o atual pela previsão
+    const serie = []; for (let i = 5; i >= 1; i--) { const r = N_somaMes(ref, -i), x = resumoMes(r); serie.push({ ref: r, v: x.rec - x.desp }); }
+    const prev = previsaoMes(ref).saldo; serie.push({ ref, v: prev });
+    let seguidos = 0; for (let i = 4; i >= 0 && serie[i].v >= alvo; i--) seguidos++;
+    const base = Math.max(Math.abs(alvo), 100000);
+    return { atual: prev, alvo, pct: prev >= alvo ? 1 : clamp(1 - (alvo - prev) / (base * 3), 0, 1), serie, seguidos, cor: prev >= alvo ? 'var(--accent)' : 'var(--bad)',
+      status: prev >= alvo ? 'ok' : 'atencao',
+      linha: prev >= alvo ? `Previsão do mês: sobra ${reais(prev)}${seguidos ? ` · ${seguidos} ${plu(seguidos, 'mês', 'meses')} no azul antes deste` : ''}` : `Previsão do mês: falta ${reais(alvo - prev)}` };
+  }
   if (m.tipo === 'mensal') {
     const serie = []; for (let i = 5; i >= 0; i--) { const r = N_somaMes(ref, -i); serie.push({ ref: r, v: aportesMeta(m, r) }); }
     const atual = serie[5].v, seguidos = (() => { let n = 0; for (let i = 4; i >= 0 && serie[i].v >= alvo; i--) n++; return n; })();

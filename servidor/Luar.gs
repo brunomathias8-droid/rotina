@@ -43,7 +43,8 @@ var LUAR_PERSONA = [
   '- Cada mensagem termina com UMA ação concreta, com prazo e dono (Bruno, Raquel ou os dois). Peça o compromisso.',
   '- Cobre os compromissos anotados no caderno: cumpriu? Se não, pergunte o motivo e não aceite desculpa vaga.',
   '- Anote no caderno (ferramenta anotar) decisões, compromissos, tetos combinados e fatos importantes sobre a família. O caderno é sua memória entre conversas.',
-  '- Pode criar lembretes (tarefas com prazo) e definir tetos de orçamento quando eles concordarem ou quando você combinar algo claro com eles.',
+  '- O plano da família vive no app, na aba Plano: objetivos (curto, médio e longo prazo), metas medidas pelos números, compromissos com dono e prazo, e rituais (semanal no domingo às 20h, mensal no dia 5) com ata. Trabalhe em cima dele: cite o placar, as metas em risco e os compromissos atrasados.',
+  '- Ação combinada com eles vira compromisso (criar_compromisso), com dono, prazo e a meta que ela move. Defina tetos de orçamento (definir_teto) quando combinarem. Para montar ou refazer o plano inteiro, use propor_plano: vira uma proposta que eles aprovam no app.',
   '- Mensagens curtas: no chat, até umas 150 palavras, a não ser que peçam o plano completo. Texto simples, no máximo listas com hífen e *negrito* raro. Nada de tabelas.',
   '- Quem fala aparece entre colchetes no começo da mensagem, como [Bruno] ou [Raquel]. Responda para os dois quando o assunto for da casa.',
   '- Você não é planejadora certificada nem consultora da CVM; quando o assunto for imposto ou contrato complexo, diga o que estudar e com quem falar.'
@@ -59,6 +60,29 @@ var LUAR_FERRAMENTAS = [
       titulo: { type: 'string', description: 'O que fazer, até 100 caracteres' },
       prazo: { type: 'string', description: 'Data AAAA-MM-DD' },
       quem: { type: 'string', enum: ['Bruno', 'Raquel', 'ambos'], description: 'Quem faz' } }, required: ['titulo', 'prazo', 'quem'], additionalProperties: false } },
+  { name: 'criar_compromisso', description: 'Registra um compromisso no Plano da família (aba Plano): uma ação com dono e prazo, cobrada no próximo ritual. Use quando eles se comprometerem com algo.',
+    input_schema: { type: 'object', properties: {
+      texto: { type: 'string', description: 'A ação, concreta e verificável, até 160 caracteres' },
+      quem: { type: 'string', enum: ['Bruno', 'Raquel', 'ambos'] },
+      prazo: { type: 'string', description: 'Data AAAA-MM-DD' },
+      meta: { type: 'string', description: 'Nome da meta do plano que essa ação move (opcional)' } }, required: ['texto', 'quem', 'prazo'], additionalProperties: false } },
+  { name: 'propor_plano', description: 'Monta a proposta do Plano da família para eles aprovarem no app, item por item. Objetivos por horizonte, cada um com metas que o app mede sozinho, e os primeiros compromissos.',
+    input_schema: { type: 'object', properties: {
+      resumo: { type: 'string', description: 'O diagnóstico e a lógica do plano, direto, até 600 caracteres' },
+      objetivos: { type: 'array', items: { type: 'object', properties: {
+        nome: { type: 'string' }, ic: { type: 'string', description: 'Um emoji' }, horiz: { type: 'string', enum: ['curto', 'medio', 'longo'] },
+        porque: { type: 'string', description: 'Por que importa para esta família' }, prazo: { type: 'string', description: 'AAAA-MM-DD' }, dono: { type: 'string', enum: ['Bruno', 'Raquel', 'ambos'] },
+        metas: { type: 'array', items: { type: 'object', properties: {
+          nome: { type: 'string' }, ic: { type: 'string' },
+          tipo: { type: 'string', enum: ['saldo', 'reduzir', 'juntar', 'mensal'], description: 'saldo: fechar o mês com sobra >= alvo. reduzir: gasto mensal <= alvo (metrica). juntar: acumular alvo até o prazo. mensal: investir alvo todo mês.' },
+          metrica: { type: 'string', enum: ['', 'cartao', 'cat', 'divida'], description: 'Só para reduzir: cartao = soma das faturas do mês; cat = uma categoria; divida = saldo de dívidas' },
+          cat: { type: 'string', description: 'id da categoria, se metrica = cat' }, alvo: { type: 'number', description: 'Em reais' }, prazo: { type: 'string', description: 'AAAA-MM-DD, para juntar' } },
+          required: ['nome', 'tipo', 'alvo'], additionalProperties: false } } },
+        required: ['nome', 'horiz', 'porque', 'metas'], additionalProperties: false } },
+      compromissos: { type: 'array', items: { type: 'object', properties: {
+        texto: { type: 'string' }, dono: { type: 'string', enum: ['Bruno', 'Raquel', 'ambos'] }, prazo: { type: 'string', description: 'AAAA-MM-DD' },
+        objetivo: { type: 'integer', description: 'Índice (começando em 0) do objetivo que ele move' } }, required: ['texto', 'dono', 'prazo'], additionalProperties: false } } },
+    required: ['resumo', 'objetivos', 'compromissos'], additionalProperties: false } },
   { name: 'definir_teto', description: 'Define o teto do mês (orçamento) de uma categoria de gasto, em reais. Use o id da categoria que aparece nos dados.',
     input_schema: { type: 'object', properties: {
       categoria: { type: 'string', description: 'id da categoria, por exemplo delivery' },
@@ -102,6 +126,23 @@ function luarApi_(s, req) {
     return { caderno: luarCaderno_() };
   }
   if (op === 'telegram') return telegramCodigo_(s.pessoa);
+  if (op === 'proposta') return { proposta: json_(luarProps_().getProperty('LUAR_PROPOSTA'), null) };
+  if (op === 'descartarProposta') { luarProps_().deleteProperty('LUAR_PROPOSTA'); return { ok: true }; }
+  if (op === 'gerarPlano') {
+    if (!luarChave_()) throw apiErro_('A Luar ainda não foi ligada no servidor (falta a chave da API).', 'CONFIG');
+    luarProps_().deleteProperty('LUAR_PROPOSTA');
+    var pedido = '[Sistema do Rotina] Monte agora a proposta do Plano da família chamando propor_plano. Regras: ' +
+      '3 a 6 objetivos cobrindo curto prazo (parar de fechar no vermelho, controlar o cartão), médio (reserva de emergência, viagem anual, troca dos carros) e longo (metade do apartamento, aposentadoria aos 60), conforme o perfil. ' +
+      'Cada objetivo com 1 a 3 metas que o app mede sozinho, com números tirados dos DADOS DA CASA (nada genérico): saldo, reduzir (cartao, cat com id da categoria, divida), juntar (com prazo) ou mensal. ' +
+      '3 a 6 compromissos para as próximas duas semanas, concretos, com dono e prazo. Depois de chamar a ferramenta, responda em até 3 linhas.';
+    var msgsP = luarMensagens_(10); msgsP.push({ role: 'user', content: pedido });
+    if (msgsP.length > 1 && msgsP[msgsP.length - 2].role === 'user') { var up = msgsP.pop(); msgsP[msgsP.length - 1].content += '\n\n' + up.content; }
+    var rp = luarChamar_(msgsP, luarContexto_(), { esforco: 'medium', ferramentas: true, pessoa: s.pessoa });
+    var proposta = json_(luarProps_().getProperty('LUAR_PROPOSTA'), null);
+    if (!proposta) throw apiErro_('A Luar não montou a proposta desta vez. Tente de novo.', 'EXTERNO');
+    luarGuardar_('luar', '', 'app', proposta.resumo || rp.texto, rp.custo);
+    return { proposta: proposta };
+  }
   if (op === 'banco') { bancoSincronizar(); return { banco: bancoResumoApp_() }; }
   if (op === 'bancoMapa') {
     var r = comLock_(function () { return bancoSalvarMapa_(req.mapa, req.desde); });
@@ -228,6 +269,19 @@ function luarFerramenta_(nome, ent, pessoa) {
     comLock_(function () { gravar_({ pessoa: pessoa || idsAtivos_()[0] }, 'tarefas', item, idsAtivos_()); });
     return 'Lembrete criado para ' + (resp === 'ambos' ? 'os dois' : nomeDe_(resp)) + ' em ' + dataCurta_(prazo) + '.';
   }
+  if (nome === 'criar_compromisso') {
+    var dono = 'ambos', metaId = '', alvoMeta = normNome_(ent.meta || '');
+    pessoasAtivas_().forEach(function (p) { if (normNome_(p.Nome).split(' ')[0] === normNome_(ent.quem).split(' ')[0]) dono = p.ID; });
+    if (alvoMeta) ativos_('metas').forEach(function (m) { if (!metaId && normNome_(m.nome).indexOf(alvoMeta) >= 0 || alvoMeta.indexOf(normNome_(m.nome)) >= 0) metaId = metaId || m.id; });
+    var c = { id: 'lu' + Utilities.getUuid().replace(/-/g, '').slice(0, 14), texto: String(ent.texto || '').slice(0, 160), dono: dono, prazo: N_dataValida(ent.prazo) ? ent.prazo : N_somaDias(hoje_(), 7), meta: metaId, status: 'aberto', origem: 'luar' };
+    comLock_(function () { gravar_({ pessoa: pessoa || idsAtivos_()[0] }, 'compromissos', c, idsAtivos_()); });
+    return 'Compromisso registrado no Plano: ' + c.texto + ' (' + (dono === 'ambos' ? 'os dois' : nomeDe_(dono)) + ', até ' + dataCurta_(c.prazo) + ').';
+  }
+  if (nome === 'propor_plano') {
+    var prop = { resumo: String(ent.resumo || '').slice(0, 1200), objetivos: (ent.objetivos || []).slice(0, 10), compromissos: (ent.compromissos || []).slice(0, 12), quando: new Date().toISOString() };
+    luarProps_().setProperty('LUAR_PROPOSTA', JSON.stringify(prop).slice(0, 9000));
+    return 'Proposta guardada: ' + prop.objetivos.length + ' objetivos e ' + prop.compromissos.length + ' compromissos. Eles revisam e aprovam na aba Plano.';
+  }
   if (nome === 'definir_teto') {
     var cats = categorias_(), achou = null, cents = Math.max(0, Math.round(Number(ent.reais || 0) * 100));
     cats.forEach(function (c) { if (c.id === ent.categoria) { c.orc = cents; achou = c; } });
@@ -259,8 +313,8 @@ function luarTurno(teste) {
     manha: 'Turno da manhã. Uma mensagem curta (até 500 caracteres) para começar o dia: o que vence ou pesa hoje e nos próximos dias, quanto ainda dá para gastar por dia nas categorias livres até o fim do mês, e UMA ação para hoje.',
     tarde: 'Turno da tarde. Vigie: gastos de ontem e de hoje (no banco e nos lançamentos), delivery, categorias perto ou acima do teto, compromissos do caderno vencendo. Se não houver nada relevante, responda só PULAR. Se houver, até 400 caracteres, direto ao ponto.',
     noite: 'Turno da noite. Feche o dia: o que foi gasto hoje, se estão lançando (cobre se não), e um compromisso para amanhã. Até 500 caracteres.',
-    semana: 'Check-in de domingo à noite. Até 900 caracteres: placar da semana (gasto x teto, déficit ou sobra projetada do mês), compromissos do caderno cumpridos e não cumpridos, a maior vitória e o maior vazamento. Termine com 3 perguntas objetivas para os dois responderem agora e anote no caderno o que ficar combinado.',
-    mes: 'Fechamento do mês que acabou (dia 1, de manhã). Até 1200 caracteres: fechou no azul ou no vermelho e quanto, onde estourou, como andaram as metas de curto, médio e longo prazo, e o plano do mês que começa: 3 tetos para apertar e a meta de saldo. Anote no caderno os tetos e a meta.'
+    semana: 'Domingo à noite: hora do ritual da semana no app (aba Plano, uns 20 minutos, os dois juntos). Até 700 caracteres: se o ritual da semana ainda não foi feito, convoque com firmeza e diga o que vai pesar (metas em risco, compromissos vencendo ou atrasados, saldo previsto). Se já foi feito, comente a ata: o que melhorou, o que não foi cumprido e o que cobrar na semana.',
+    mes: 'O mês acabou (dia 1, de manhã). Até 900 caracteres: fechou no azul ou no vermelho e quanto, onde estourou, como andaram as metas do Plano. Lembre que o fechamento do mês no app (aba Plano) vence no dia 5 e diga quais 3 tetos vocês devem apertar nele.'
   };
   var msgs = luarMensagens_(16);
   msgs.push({ role: 'user', content: '[Sistema do Rotina] ' + pedidos[modo] + ' Escreva para os dois, sem cumprimentos longos.' });
@@ -387,6 +441,7 @@ function luarContexto_() {
     L.push('', '## Patrimônio (último saldo informado de cada item)', 'Ativos ' + reais_(at) + ' · dívidas ' + reais_(pa) + ' · líquido ' + reais_(at - pa) + '.', linhas.join('\n'));
   }
 
+  L.push('', planoContexto_(hoje));
   var banco = bancoContexto_(hoje);
   if (banco) L.push('', banco);
   var merc = mercado_();
@@ -433,3 +488,31 @@ function mercado_() {
 function verContextoLuar() { Logger.log(luarContexto_()); }
 /** Para testar no editor: roda o turno desta hora mesmo que já tenha rodado. */
 function testarLuar() { Logger.log(luarResponder_(idsAtivos_()[0], 'Luar, como estamos este mês? Seja sincera.', 'app')); }
+
+/** O Plano da família para a Luar: objetivos, metas, compromissos (abertos, atrasados e como foram os últimos) e as atas dos rituais. */
+function planoContexto_(hoje) {
+  var L = ['## Plano da família (aba Plano)'], objs = ativos_('objetivos').filter(function (o) { return (o.status || 'ativo') === 'ativo'; });
+  var ms = ativos_('metas').filter(function (m) { return m.ativa !== false; }), nomeObj = {}, nomeMeta = {};
+  objs.forEach(function (o) { nomeObj[o.id] = o.nome; });
+  ms.forEach(function (m) { nomeMeta[m.id] = m.nome; });
+  if (!objs.length && !ms.length) L.push('Ainda não há plano. Sugira montar com propor_plano.');
+  objs.forEach(function (o) {
+    L.push('- Objetivo (' + (o.horiz || 'curto') + ' prazo' + (o.prazo ? ', até ' + o.prazo : '') + ', dono ' + (o.dono && o.dono !== 'ambos' ? nomeDe_(o.dono) : 'os dois') + '): ' + o.nome + (o.porque ? '. Por quê: ' + o.porque : ''));
+    ms.filter(function (m) { return m.objetivo === o.id; }).forEach(function (m) { L.push('  - Meta: ' + m.nome + ' (' + m.tipo + (m.metrica ? '/' + m.metrica : '') + (m.cat ? ' ' + m.cat : '') + ', alvo ' + reais_(m.alvo || 0) + (m.prazo ? ' até ' + m.prazo : '') + ')'); });
+  });
+  ms.filter(function (m) { return !nomeObj[m.objetivo]; }).forEach(function (m) { L.push('- Meta sem objetivo: ' + m.nome + ' (' + m.tipo + ', alvo ' + reais_(m.alvo || 0) + ')'); });
+  var cs = ativos_('compromissos'), abertos = cs.filter(function (c) { return (c.status || 'aberto') === 'aberto'; });
+  var dono = function (c) { return c.dono && c.dono !== 'ambos' ? nomeDe_(c.dono) : 'os dois'; };
+  if (abertos.length) L.push('Compromissos abertos: ' + abertos.map(function (c) { return c.texto + ' (' + dono(c) + ', até ' + (c.prazo || '?') + (c.prazo && c.prazo < hoje ? ', ATRASADO' : '') + (c.meta && nomeMeta[c.meta] ? ', meta ' + nomeMeta[c.meta] : '') + ')'; }).join('; ') + '.');
+  var fechados = cs.filter(function (c) { return c.status === 'feito' || c.status === 'naofeito'; }).sort(function (a, b) { return String(b.fechadoEm).localeCompare(String(a.fechadoEm)); }).slice(0, 10);
+  if (fechados.length) L.push('Últimos compromissos fechados: ' + fechados.map(function (c) { return (c.status === 'feito' ? 'CUMPRIU ' : 'NÃO CUMPRIU ') + c.texto + ' (' + dono(c) + ')' + (c.motivo ? ' — motivo: ' + c.motivo : ''); }).join('; ') + '.');
+  var rs = ativos_('rituais').sort(function (a, b) { return String(b.dia).localeCompare(String(a.dia)); });
+  var semana = N_segunda(N_somaDias(hoje, -2)), feitoSemana = rs.some(function (r) { return r.tipo === 'semanal' && r.ref === semana; });
+  L.push('Ritual desta semana (vence ' + N_somaDias(semana, 6) + ' às 20h): ' + (feitoSemana ? 'FEITO' : 'ainda não feito') + '. Fechamento do mês (vence dia 5): ' + (rs.some(function (r) { return r.tipo === 'mensal' && r.ref === N_somaMes(N_mes(hoje), -1); }) ? 'FEITO' : 'ainda não feito') + '.');
+  rs.slice(0, 3).forEach(function (r) {
+    var a = r.ata || {}, pl = a.placar || {}, rv = a.revisados || [];
+    L.push('- Ata ' + r.tipo + ' de ' + r.dia + ': saldo previsto ' + (pl.saldoPrev != null ? reais_(pl.saldoPrev) : '?') + ', ' + (pl.metasAtencao || 0) + ' metas em risco, ' + rv.filter(function (x) { return x.status === 'feito'; }).length + '/' + rv.length + ' compromissos cumpridos' + (a.notas ? '. Decisões: ' + String(a.notas).slice(0, 300) : '') + '.');
+  });
+  if (luarProps_().getProperty('LUAR_PROPOSTA')) L.push('Há uma proposta de plano sua esperando aprovação no app.');
+  return L.join('\n');
+}

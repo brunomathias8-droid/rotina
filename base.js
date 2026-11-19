@@ -4,7 +4,7 @@
 const CFG = Object.assign({ api: '', intervaloSincSeg: 30 }, window.ROTINA_CONFIG || {});
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const INSTALADO = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const COLS = ['tarefas', 'feitos', 'eventos', 'perfis', 'arquivos', 'lancamentos', 'contas', 'cartoes', 'patrimonio', 'metas', 'compras'];
+const COLS = ['tarefas', 'feitos', 'eventos', 'perfis', 'arquivos', 'lancamentos', 'contas', 'cartoes', 'patrimonio', 'metas', 'compras', 'objetivos', 'compromissos', 'rituais'];
 
 /* ============================== utilidades ============================== */
 const $ = s => document.querySelector(s);

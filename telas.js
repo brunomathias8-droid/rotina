@@ -68,7 +68,7 @@ function scrHoje() {
   partes.push(minhas.length ? `${minhas.length} ${plu(minhas.length, 'tarefa')} com você` : 'nenhuma tarefa sua');
   return `<div class="stack" style="gap:4px"><p class="eb">${fmtData(h)}</p><h1 class="display">${saudacao()}, <span class="dest">${esc(primeiroNome(S.eu))}</span>.</h1><p class="muted">Hoje: ${partes.join(' e ')}${o && doOutro.length ? `. ${esc(primeiroNome(o.id))} tem ${doOutro.length}` : ''}.</p></div>
     ${!o ? `<div class="note warn"><span>Falta chamar a outra pessoa da casa. <button class="link" data-a="convidar">Mandar o convite</button></span></div>` : ''}
-    ${COL_INI}${blocoTrocas()}${cartaoLuar()}
+    ${COL_INI}${blocoTrocas()}${cartaoPlanoHoje()}${cartaoLuar()}
     ${secao('Agenda de hoje', `<button class="link" data-a="tab" data-v="agenda">Ver agenda</button>`)}
     ${evHoje.length ? listaOu(evHoje, x => linhaEvento(x.e, x.dia)) : `<div class="panel" style="padding:12px 14px;flex-direction:row;align-items:center;justify-content:space-between"><span class="small muted">Nada marcado para hoje.</span><button class="btn ghost sm" data-a="novoEvento">${ic('plus', 15, 2.4)} Marcar</button></div>`}
     ${evAmanha.length ? `<p class="dia-h">Amanhã</p>` + listaOu(evAmanha, x => linhaEvento(x.e, x.dia)) : ''}

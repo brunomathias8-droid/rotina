@@ -158,8 +158,8 @@ const PDF = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 
   console.log('7. Computador');
   const { c: cpc, p: pc } = await entrar(b, 'Bruno', '1234', 'light', 1366, 768);
   ok(await pc.locator('nav button[data-v="arquivos"]').isVisible() && !(await pc.locator('#top button[data-v="arquivos"]').isVisible()), 'no computador, Arquivos fica no menu lateral');
-  await pc.keyboard.press('6'); await espera(200);
-  ok(await pc.evaluate(() => S.tab) === 'arquivos', 'tecla 6 abre Arquivos');
+  await pc.keyboard.press('7'); await espera(200);
+  ok(await pc.evaluate(() => S.tab) === 'arquivos', 'tecla 7 abre Arquivos');
   ok(await pc.evaluate(() => { const m = document.querySelector('#main'); return m.scrollWidth <= m.clientWidth + 1; }), 'sem rolagem lateral');
   await foto(pc, 'pc-arquivos');
   await pc.locator('#main .it', { hasText: 'Carteirinha do plano da Ana' }).click();

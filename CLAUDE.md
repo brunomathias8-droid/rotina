@@ -17,6 +17,7 @@ Textos do app e mensagens de commit em português, no tom dos que já existem.
 | `telas-fin.js` | telas de Finanças (`FIN_ABAS`, `fin*`), painéis `SH.lanc`/`SH.conta`/…, ações de finanças |
 | `analises.js` / `invest.js` | Finanças › Análises / Investimentos |
 | `luar.js` + `servidor/Luar.gs` | Luar, a coach financeira (Claude via API): conversa, turnos 8h/13h/20h, ferramentas, caderno. `Telegram.gs` (bot por código) e `Banco.gs` (Open Finance só leitura via MeuPluggy). Chaves só nas propriedades do script |
+| `plano.js` | aba Plano: objetivos (curto/médio/longo), metas ligadas (`objetivo`), compromissos (dono, prazo, não cumprido exige motivo), rituais semanal/mensal com ata (`SH.ritual`), proposta da Luar (`SH.proposta`, ferramenta `propor_plano`) |
 | `compras.js` | Para comprar (`shPlano`) e Mercado; `telas.js` tem Hoje, Tarefas e itens do mercado |
 | `agenda.js`, `arquivos.js`, `importar.js` | Agenda; Arquivos/anexos (Drive); importar fatura |
 | `paineis.js` | helpers de formulário (`campo`, `inp`, `escolha`, `segm`, `head`) e painéis gerais |

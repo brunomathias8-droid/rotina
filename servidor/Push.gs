@@ -19,9 +19,10 @@ var PUSH_TIPOS = {
   compras: 'Itens novos na lista de compras e em Para comprar',
   resumo: 'Resumo da semana e o combinado de domingo, às 19h',
   fechamento: 'Fechamento do mês e das metas, no dia 1',
-  luar: 'Luar, a coach financeira: manhã, tarde e noite'
+  luar: 'Luar, a coach financeira: manhã, tarde e noite',
+  plano: 'Plano: rituais (domingo 20h e dia 5) e compromissos vencendo'
 };
-var PUSH_PADRAO = ['tarefas', 'agenda', 'agendanovo', 'contas', 'trocas', 'atribuidas', 'resumo', 'fechamento', 'luar'];
+var PUSH_PADRAO = ['tarefas', 'agenda', 'agendanovo', 'contas', 'trocas', 'atribuidas', 'resumo', 'fechamento', 'luar', 'plano'];
 var PUSH_V3 = ['tarefas', 'agenda', 'agendanovo'];
 
 /* ------------------------------ configuração ------------------------------ */
@@ -243,6 +244,24 @@ function verificarAvisos() {
     pessoas.forEach(function (p) {
       avisarPessoa_(p, 'resumo', { titulo: 'Hora do combinado da semana', corpo: (prox ? prox + (prox === 1 ? ' compromisso' : ' compromissos') + ' nos próximos 7 dias. ' : '') + 'Tarefas: ' + placar + '. Gastos da semana: ' + reais_(gasto) + '.', url: '#agenda/semana', tag: 'resumo' });
     });
+  }
+
+  // Plano da família: compromissos que vencem hoje (de manhã), ritual da semana (domingo 20h) e fechamento do mês (dia 5, 9h)
+  if (hora === manha && !feito('plano')) {
+    var comps = ativos_('compromissos').filter(function (c) { return (c.status || 'aberto') === 'aberto' && c.prazo && c.prazo <= hoje; });
+    pessoas.forEach(function (p) {
+      var meus = comps.filter(function (c) { return !c.dono || c.dono === 'ambos' || c.dono === p; }); if (!meus.length) return;
+      var atras = meus.filter(function (c) { return c.prazo < hoje; }).length;
+      avisarPessoa_(p, 'plano', { titulo: meus.length === 1 ? 'Compromisso: ' + meus[0].texto : meus.length + ' compromissos para hoje' + (atras ? ' (' + atras + ' atrasados)' : ''),
+        corpo: meus.length === 1 ? (atras ? 'Está atrasado desde ' + dataCurta_(meus[0].prazo) + '. Cumpriu? Marque no Plano.' : 'Vence hoje. Cumpriu? Marque no Plano.') : lista_(meus.map(function (c) { return c.texto; })), url: '#plano', tag: 'plano-comp' });
+    });
+  }
+  var semanaRef = N_segunda(N_somaDias(hoje, -2)), rituais = function (tipo, ref) { return ativos_('rituais').some(function (r) { return r.tipo === tipo && r.ref === ref; }); };
+  if (dow === 0 && hora === 20 && !feito('ritual') && !rituais('semanal', semanaRef)) {
+    pessoas.forEach(function (p) { avisarPessoa_(p, 'plano', { titulo: 'Ritual da semana: agora', corpo: '20 minutos, os dois juntos: placar, prestação de contas dos compromissos e os da próxima semana.', url: '#plano', tag: 'ritual' }); });
+  }
+  if (N_dataObj(hoje).getDate() === 5 && hora === 9 && !feito('ritualmes') && !rituais('mensal', N_somaMes(N_mes(hoje), -1))) {
+    pessoas.forEach(function (p) { avisarPessoa_(p, 'plano', { titulo: 'Hoje é o fechamento do mês', corpo: 'Como fechou ' + MESES_LONGO[+N_somaMes(N_mes(hoje), -1).slice(5, 7) - 1] + ', metas, tetos do mês e compromissos. Façam hoje no Plano.', url: '#plano', tag: 'ritual-mes' }); });
   }
 
   if (hora === 3) {

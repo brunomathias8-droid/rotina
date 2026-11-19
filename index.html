@@ -70,7 +70,7 @@ nav button.so-largo{display:none}
 .ib .dot{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--bad)}
 #main{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 16px 28px;display:flex;flex-direction:column;gap:14px;scrollbar-width:thin}
 #main > *,#main .col > *{flex-shrink:0}
-nav{display:grid;grid-template-columns:repeat(5,1fr);flex:none;background:var(--nav);box-shadow:0 -1px 0 var(--line);padding:4px 6px calc(4px + env(safe-area-inset-bottom))}
+nav{display:grid;grid-template-columns:repeat(6,1fr);flex:none;background:var(--nav);box-shadow:0 -1px 0 var(--line);padding:4px 6px calc(4px + env(safe-area-inset-bottom))}
 nav button{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:54px;font-size:11px;font-weight:700;color:var(--mut);cursor:pointer;position:relative}
 nav button.on{color:var(--accent)}
 nav button.on::before{content:'';position:absolute;top:2px;width:26px;height:3px;border-radius:3px;background:var(--accent)}
@@ -116,6 +116,18 @@ p{margin:0}
 .luar-form{display:flex;gap:8px;align-items:flex-end}
 .luar-form textarea{flex:1;resize:vertical;min-height:46px}
 .luar-hoje{cursor:pointer;gap:4px}
+.passos{display:flex;gap:6px;margin:-4px 0 12px}
+.passos span{flex:1;height:4px;border-radius:2px;background:var(--s3)}
+.passos span.ok{background:var(--accent-soft)}
+.passos span.on{background:var(--accent)}
+.ritual-nav{margin-top:14px}
+.ritual-l{gap:10px;padding-top:10px;box-shadow:0 -1px 0 var(--line)}
+.objetivo{gap:10px}
+.obj-cab{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;border:0;background:none;padding:0;text-align:left;cursor:pointer;color:inherit;font:inherit}
+.obj-cab .main{display:flex;flex-direction:column;gap:2px;min-width:0}
+.obj-cab .t{font-weight:800}
+.obj-cab .s{font-size:12.5px;color:var(--mut)}
+.objetivo .lst{margin:0 -4px}
 .vazio{text-align:center;padding:18px 8px;color:var(--mut);font-size:14px;display:flex;flex-direction:column;gap:6px;align-items:center}
 .vazio .em{font-size:30px;line-height:1}
 
@@ -483,6 +495,7 @@ kbd{font:600 11px var(--fb);background:var(--s2);border-radius:5px;padding:1px 5
 <script src="invest.js"></script>
 <script src="analises.js"></script>
 <script src="luar.js"></script>
+<script src="plano.js"></script>
 <script src="push.js"></script>
 <script>iniciar();</script>
 </body>

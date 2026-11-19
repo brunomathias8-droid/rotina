@@ -69,7 +69,17 @@ function urlFalsa(url, o) {
     if (o.headers['x-api-key'] !== 'chave-teste') return resposta(401, { error: { message: 'chave inválida' } });
     const ult = corpo.messages[corpo.messages.length - 1], txt = typeof ult.content === 'string' ? ult.content : '';
     const uso = { input_tokens: 1000, output_tokens: 100, cache_read_input_tokens: 2000 };
-    if (Array.isArray(ult.content) && ult.content[0].type === 'tool_result') return resposta(200, { stop_reason: 'end_turn', usage: uso, content: [{ type: 'text', text: 'Teto do delivery definido. ' + ult.content[0].content }] });
+    if (Array.isArray(ult.content) && ult.content[0].type === 'tool_result') return resposta(200, { stop_reason: 'end_turn', usage: uso, content: [{ type: 'text', text: (/^Teto/.test(ult.content[0].content) ? 'Teto do delivery definido. ' : 'Feito. ') + ult.content[0].content }] });
+    if (/Monte agora a proposta do Plano/.test(txt)) {
+      const dd = n => new Date(Date.now() - 3 * 3600e3 + n * 864e5).toISOString().slice(0, 10);
+      return resposta(200, { stop_reason: 'tool_use', usage: uso, content: [{ type: 'tool_use', id: 'tp1', name: 'propor_plano', input: {
+        resumo: 'Vocês gastam *mais do que ganham*. Primeiro estancar, depois a reserva.',
+        objetivos: [
+          { nome: 'Fechar no azul vinte', ic: '🩸', horiz: 'curto', porque: 'Parar de tirar da reserva todo mês', prazo: dd(120), dono: 'ambos', metas: [
+            { nome: 'Mês no azul vinte', ic: '🟢', tipo: 'saldo', alvo: 0 }, { nome: 'Delivery vinte', ic: '🍔', tipo: 'reduzir', metrica: 'cat', cat: 'delivery', alvo: 800 }, { nome: 'Categoria inventada', tipo: 'reduzir', metrica: 'cat', cat: 'naoexiste', alvo: 10 }] },
+          { nome: 'Reserva vinte', ic: '🛟', horiz: 'medio', porque: 'Dormir tranquilo com dois filhos pequenos', prazo: dd(500), dono: 'Bruno', metas: [{ nome: 'Reserva de 6 meses vinte', tipo: 'juntar', alvo: 120000, prazo: dd(500) }] }],
+        compromissos: [{ texto: 'Cancelar assinaturas vinte', dono: 'Bruno', prazo: dd(2), objetivo: 0 }, { texto: 'Compromisso para descartar vinte', dono: 'ambos', prazo: dd(5) }] } }] });
+    }
     if (/Turno da tarde/.test(txt)) return resposta(200, { stop_reason: 'end_turn', usage: uso, content: [{ type: 'text', text: 'PULAR' }] });
     if (/\[Sistema do Rotina\]/.test(txt)) return resposta(200, { stop_reason: 'end_turn', usage: uso, content: [{ type: 'text', text: 'Bom dia, casa. *Delivery* já passou do teto. Hoje: zero pedido.' }] });
     if (/^\[[^\]]+\] .*teto/i.test(txt)) return resposta(200, { stop_reason: 'tool_use', usage: uso, content: [{ type: 'thinking', thinking: '', signature: 'x' }, { type: 'tool_use', id: 'tu1', name: 'definir_teto', input: { categoria: 'delivery', reais: 800 } }] });

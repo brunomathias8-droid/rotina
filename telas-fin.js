@@ -503,7 +503,7 @@ function presetMeta(k) {
   }[k] || {};
   return { ...base, ...m };
 }
-function formMeta(m) { return { nome: m.nome, ic: m.ic || '🎯', tipo: m.tipo, alvo: reaisInput(m.alvo) || (m.tipo === 'reduzir' && m.metrica === 'divida' ? '0' : ''), prazo: m.prazo || '', itens: m.itens || [], metrica: m.metrica || '', cat: m.cat || '', nota: m.nota || '' }; }
+function formMeta(m) { return { nome: m.nome, ic: m.ic || '🎯', tipo: m.tipo, alvo: reaisInput(m.alvo) || ((m.tipo === 'reduzir' && m.metrica === 'divida') || m.tipo === 'saldo' ? '0' : ''), prazo: m.prazo || '', itens: m.itens || [], metrica: m.metrica || '', cat: m.cat || '', nota: m.nota || '', objetivo: m.objetivo || '' }; }
 const EMOJIS_META = ['🎯', '🛟', '📈', '💳', '🏦', '✈️', '🏠', '🚗', '🎓', '👶', '💍', '🏖️', '🛠️', '🍔', '💰', '🌱'];
 SH.meta = s => {
   const m = s.id && S.d.metas.get(s.id);
@@ -511,11 +511,13 @@ SH.meta = s => {
   if (m && !s.f) return verMeta(m);
   if (!s.f) return `${head('Nova meta', 'Qual é o objetivo?')}<div class="presets">${PRESETS_META.map(p => `<button class="preset" data-a="presetMeta" data-v="${p.k}"><span class="em">${p.ic}</span><b>${esc(p.t)}</b><span class="tiny muted">${esc(p.d)}</span></button>`).join('')}</div>`;
   const f = s.f, t = f.tipo;
-  const rotAlvo = t === 'mensal' ? 'Quanto investir por mês' : t === 'juntar' ? 'Quanto juntar' : f.metrica === 'divida' ? 'Chegar a dever (0 = quitar)' : 'Limite por mês';
+  const rotAlvo = t === 'mensal' ? 'Quanto investir por mês' : t === 'juntar' ? 'Quanto juntar' : t === 'saldo' ? 'Sobrar pelo menos (0 = não fechar no vermelho)' : f.metrica === 'divida' ? 'Chegar a dever (0 = quitar)' : 'Limite por mês';
+  const objs = objetivosAtivos();
   return `${head(m ? 'Editar meta' : 'Nova meta', esc(f.nome) || 'Objetivo da família')}
     ${campo('Nome', inp('nome', f.nome, 'maxlength="60" placeholder="Ex.: Viagem para o Chile" autocomplete="off"'))}
     ${grupo('Ícone', `<div class="emojis">${EMOJIS_META.map(e => `<button class="${f.ic === e ? 'on' : ''}" data-a="f" data-k="ic" data-v="${e}">${e}</button>`).join('')}</div>`)}
-    ${segm('tipo', t, [['juntar', 'Juntar'], ['mensal', 'Todo mês'], ['reduzir', 'Reduzir']])}
+    ${segm('tipo', t, Object.entries(TIPOS_META))}
+    ${objs.length ? grupo('Faz parte do objetivo', escolha('objetivo', f.objetivo || '', [['', 'Nenhum']].concat(objs.map(o => [o.id, `${esc(o.ic || '🧭')} ${esc(o.nome)}`])))) : ''}
     ${t === 'reduzir' ? grupo('O que reduzir', escolha('metrica', f.metrica, Object.entries(METRICAS).map(([k, n]) => [k, n]))) : ''}
     ${t === 'reduzir' && f.metrica === 'cat' ? grupo('Categoria', escolha('cat', f.cat, categorias('saida').map(c => [c.id, `${esc(c.ic)} ${esc(c.nome)}`]))) : ''}
     ${grupo(rotAlvo, valorInp('alvo', f.alvo))}
@@ -535,13 +537,13 @@ function faturasDaMeta() {
 }
 function verMeta(m) {
   const p = progressoMeta(m), st = STATUS_META[p.status];
-  const desc = m.tipo === 'mensal' ? `Investir ${reais(m.alvo)} por mês` : m.tipo === 'juntar' ? `Juntar ${reais(m.alvo)}${m.prazo ? ' até ' + fmtCurta(m.prazo) + '/' + m.prazo.slice(2, 4) : ''}` : m.metrica === 'divida' ? 'Quitar dívida' : `${METRICAS[m.metrica] || 'Gasto'}: até ${reais(m.alvo)}${m.metrica === 'cat' ? ' em ' + categoria(m.cat).nome : ''}`;
+  const desc = m.tipo === 'saldo' ? `Fechar o mês com sobra de ${reais(m.alvo)} ou mais` : m.tipo === 'mensal' ? `Investir ${reais(m.alvo)} por mês` : m.tipo === 'juntar' ? `Juntar ${reais(m.alvo)}${m.prazo ? ' até ' + fmtCurta(m.prazo) + '/' + m.prazo.slice(2, 4) : ''}` : m.metrica === 'divida' ? 'Quitar dívida' : `${METRICAS[m.metrica] || 'Gasto'}: até ${reais(m.alvo)}${m.metrica === 'cat' ? ' em ' + categoria(m.cat).nome : ''}`;
   return `${head(esc(desc), `${esc(m.ic || '🎯')} ${esc(m.nome)}`)}
     <div class="panel soft"><div class="between"><p class="saldo" style="font-size:30px">${m.tipo === 'juntar' || m.tipo === 'mensal' ? Math.round(p.pct * 100) + '%' : reais(p.atual)}</p><span class="tag ${st[0]}">${st[1]}</span></div>
       ${bar(p.pct, 1, p.cor || (p.status === 'atencao' ? 'var(--warn)' : 'var(--accent)'))}<p class="small">${esc(p.linha)}</p>
-      ${m.tipo !== 'reduzir' || m.metrica === 'divida' ? `<p class="small muted">${reais(p.atual)} ${m.metrica === 'divida' ? 'de saldo devedor' : 'de ' + reais(p.alvo)}</p>` : ''}</div>
+      ${m.tipo !== 'reduzir' && m.tipo !== 'saldo' || m.metrica === 'divida' ? `<p class="small muted">${reais(p.atual)} ${m.metrica === 'divida' ? 'de saldo devedor' : 'de ' + reais(p.alvo)}</p>` : ''}</div>
     ${m.metrica === 'cartao' ? faturasDaMeta() : ''}
-    ${p.serie ? `<div class="panel"><p class="small muted">Últimos 6 meses ${m.tipo === 'mensal' ? '(investido no mês)' : ''}</p>${grafMini(p.serie, m.alvo, v => m.tipo === 'mensal' ? v >= m.alvo : v <= m.alvo)}</div>` : ''}
+    ${p.serie ? `<div class="panel"><p class="small muted">Últimos 6 meses ${m.tipo === 'mensal' ? '(investido no mês)' : m.tipo === 'saldo' ? '(sobra de cada mês; o atual é a previsão)' : ''}</p>${grafMini(p.serie, m.alvo, v => m.tipo === 'mensal' || m.tipo === 'saldo' ? v >= m.alvo : v <= m.alvo)}</div>` : ''}
     ${m.tipo === 'juntar' || m.tipo === 'mensal' ? `<button class="btn block" data-a="novoLanc" data-tipo="aporte" data-meta="${m.id}"${m.itens && m.itens[0] ? ` data-destino="${m.itens[0]}"` : ''}>📈 Registrar aporte</button>` : ''}
     ${m.nota ? `<div class="note"><span>“${esc(m.nota)}”</span></div>` : ''}
     <div class="between">${criadoPor(m)}<button class="btn ghost sm" data-a="editarMeta">${ic('edit', 16)} Editar</button></div>`;
@@ -746,12 +748,12 @@ Object.assign(A, {
     const s = S.sheet, f = s.f, nome = f.nome.trim(), alvo = lerReais(f.alvo);
     if (!nome) { toast('Dê um nome à meta.'); focar('f-nome'); return; }
     if (f.tipo === 'reduzir' && !f.metrica) { toast('Escolha o que reduzir.'); return; }
-    if (!alvo && !(f.tipo === 'reduzir' && f.metrica === 'divida')) { toast('Digite o valor da meta.'); focar('f-alvo'); return; }
+    if (!alvo && !(f.tipo === 'reduzir' && f.metrica === 'divida') && f.tipo !== 'saldo') { toast('Digite o valor da meta.'); focar('f-alvo'); return; }
     if (f.tipo === 'juntar' && f.prazo && !N_dataValida(f.prazo)) { toast('Data inválida.'); return; }
     const item = { id: s.id || uidNovo(), nome, ic: f.ic, tipo: f.tipo, alvo, prazo: f.tipo === 'juntar' ? f.prazo : '', itens: f.itens || [],
-      metrica: f.tipo === 'reduzir' ? f.metrica : '', cat: f.metrica === 'cat' ? f.cat : '', nota: String(f.nota || '').trim(), ativa: true };
+      metrica: f.tipo === 'reduzir' ? f.metrica : '', cat: f.tipo === 'reduzir' && f.metrica === 'cat' ? f.cat : '', nota: String(f.nota || '').trim(), ativa: true, objetivo: f.objetivo || '' };
     if (!s.id) { item.inicio = hoje(); if (item.metrica === 'divida') item.base = valorReduzir(item, N_mes(hoje())); }
-    closeSheet(); enfileirar('salvar', { col: 'metas', item }); S.tab = 'financas'; S.fv = 'metas'; render(false);
+    closeSheet(); enfileirar('salvar', { col: 'metas', item }); if (S.tab !== 'plano') { S.tab = 'financas'; S.fv = 'metas'; } render(false);
     toast(s.id ? 'Meta atualizada.' : 'Meta criada. Bora!');
   },
   arquivarMeta: d => { const m = S.d.metas.get(d.id); if (!m) return; closeSheet(); enfileirar('salvar', { col: 'metas', item: { id: m.id, ativa: m.ativa === false } }); toast(m.ativa === false ? 'Meta reativada.' : 'Meta arquivada.'); },

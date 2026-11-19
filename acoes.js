@@ -1,15 +1,15 @@
 /* acoes.js — o que cada toque faz, login, roteamento e a inicialização do app. */
 'use strict';
 
-const VERSAO_APP = '3.10.3';
+const VERSAO_APP = '3.11.0';
 /* Versão mínima do servidor (Apps Script) para os recursos desta versão: Para comprar, receita automática, regras de categoria, projetos e reembolso */
 const API_MINIMA = '3.5.0';
 const servidorAntigo = () => !!S.apiVersao && S.apiVersao.localeCompare(API_MINIMA, undefined, { numeric: true }) < 0;
 const avisoServidor = () => servidorAntigo() ? `<div class="note warn"><span>${ic('alert', 16)}</span><span style="flex:1">${pessoa(S.eu).admin ? `O servidor (Apps Script) está na versão ${esc(S.apiVersao)}. Atualize para a ${API_MINIMA}: sem isso, Para comprar, receitas automáticas, regras de categoria e reembolsos não ficam guardados. O passo a passo está em IMPLANTAR.md, “Atualizar da versão 3.4 para a 3.5”.` : `Peça para ${esc(primeiroNome((S.pessoas.find(p => p.admin) || {}).id || S.eu))} atualizar o servidor do app: algumas novidades só ficam guardadas depois disso.`}</span></div>` : '';
 
 /* ============ desenho ============ */
-const ABAS_APP = [['hoje', 'Hoje', 'sun'], ['agenda', 'Agenda', 'cal'], ['tarefas', 'Tarefas', 'clip'], ['financas', 'Finanças', 'wallet'], ['compras', 'Compras', 'cart'], ['arquivos', 'Arquivos', 'pasta']];
-const SCR = { hoje: () => scrHoje(), agenda: () => scrAgenda(), tarefas: () => scrTarefas(), financas: () => scrFin(), compras: () => scrCompras(), arquivos: () => scrArquivos() };
+const ABAS_APP = [['hoje', 'Hoje', 'sun'], ['plano', 'Plano', 'flag'], ['agenda', 'Agenda', 'cal'], ['tarefas', 'Tarefas', 'clip'], ['financas', 'Finanças', 'wallet'], ['compras', 'Compras', 'cart'], ['arquivos', 'Arquivos', 'pasta']];
+const SCR = { hoje: () => scrHoje(), plano: () => scrPlano(), agenda: () => scrAgenda(), tarefas: () => scrTarefas(), financas: () => scrFin(), compras: () => scrCompras(), arquivos: () => scrArquivos() };
 function renderTop() {
   const t = $('#top'); if (!t) return;
   const marca = `<p class="brand">Rotina<b>.</b></p>`;
@@ -30,7 +30,7 @@ function renderNav() {
   };
   n.innerHTML = `<p class="brand nav-brand">Rotina<b>.</b></p>`
     + ABAS_APP.map(([k, l, i], j) => `<button class="${S.tab === k ? 'on' : ''}${k === 'arquivos' ? ' so-largo' : ''}" data-a="tab" data-v="${k}" aria-current="${S.tab === k ? 'page' : 'false'}" title="${l} (${j + 1})">${ic(i, 22)}${l}${badge[k] ? `<span class="badge">${badge[k]}</span>` : ''}</button>`).join('')
-    + `<p class="nav-dica">Atalhos: <kbd>1</kbd>–<kbd>6</kbd> trocam de tela · <kbd>N</kbd> novo (compromisso, tarefa ou lançamento) · <kbd>/</kbd> buscar ou adicionar · <kbd>Esc</kbd> fecha</p>`;
+    + `<p class="nav-dica">Atalhos: <kbd>1</kbd>–<kbd>7</kbd> trocam de tela · <kbd>N</kbd> novo (compromisso, tarefa ou lançamento) · <kbd>/</kbd> buscar ou adicionar · <kbd>Esc</kbd> fecha</p>`;
 }
 function render(keep = true) {
   const m = $('#main'); if (!m) return; const y = m.scrollTop;
@@ -321,7 +321,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (S.sheet) A.close(); else if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return; }
   const alvo = e.target, digitando = alvo && (alvo.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName));
   if (digitando || e.ctrlKey || e.metaKey || e.altKey || !S.sessao || S.sheet) return;
-  if (/^[1-6]$/.test(e.key)) { e.preventDefault(); A.tab({ v: ABAS_APP[+e.key - 1][0] }); return; }
+  if (/^[1-7]$/.test(e.key)) { e.preventDefault(); A.tab({ v: ABAS_APP[+e.key - 1][0] }); return; }
   if (e.key === 'n' || e.key === 'N') { e.preventDefault(); if (S.tab === 'agenda') A.novoEvento({}); else if (S.tab === 'arquivos') A.anexar({ abrir: '1' }); else if (S.tab === 'tarefas') A.sheet({ k: 'tarefa' }); else A.novoLanc({ tipo: 'saida' }); return; }
   if (e.key === '/') { const c = $('#busca') || $('#arqbusca') || $('#comptxt') || $('#tartxt') || $('#evtxt'); if (c) { e.preventDefault(); c.focus(); } }
 });

@@ -156,6 +156,18 @@ Daí em diante, a cada busca (de 4 em 4 horas) as transações viram lançamento
 
 **Segurança**: nenhuma chave fica no código nem no GitHub, só nas propriedades do script. Nada aqui consegue pagar ou transferir dinheiro. As conversas e os números vão para a API da Anthropic na hora de cada resposta.
 
+## Plano da família (servidor 3.8, app 3.11)
+
+Uma aba nova, **Plano**, no menu de baixo. Ela reúne:
+- **objetivos** de curto, médio e longo prazo;
+- **metas** medidas pelos números do app (inclusive "fechar o mês no azul");
+- **compromissos** com dono e prazo;
+- **rituais** com ata: semanal no domingo às 20h e fechamento do mês no dia 5. Em março, junho, setembro e dezembro, o fechamento também revisa os objetivos.
+
+1. No Apps Script, troque `Dados`, `Api`, `Push` e `Luar` pelos novos e faça **Nova versão** na implantação. As abas `Objetivos`, `Compromissos` e `Rituais` e a coluna `Objetivo` em Metas aparecem sozinhas.
+2. No app, abra **Plano** e toque em **A Luar propõe, nós aprovamos**. Revisem item por item e aprovem; tudo pode ser editado depois.
+3. Os lembretes (compromisso vencendo de manhã, ritual no domingo às 20h e fechamento no dia 5, às 9h) chegam pelo push, no tipo "Plano".
+
 ## Atualizar da versão 3.4 para a 3.5 (app 3.8: Para comprar, Análises, receita automática)
 
 1. No Apps Script, troque o conteúdo de `Dados`, `Api` e `Push` pelos novos.
